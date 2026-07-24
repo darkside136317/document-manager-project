@@ -1,0 +1,16 @@
+__pycache__
+*.pyc
+*.pyo
+*.egg-info
+.git
+.gitignore
+.env
+*.md
+docs/
+docker/.env
+docker/.env.production
+docker/mariadb/
+*.log
+.vscode/
+.idea/
+node_modules/

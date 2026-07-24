@@ -1,0 +1,22 @@
+{
+  "name": "Restore Batch", "module": "Document Manager", "doctype": "DocType",
+  "document_type": "Document", "engine": "InnoDB",
+  "naming_rule": "Expression", "autoname": "format:RS-{YYYY}{MM}{DD}-{###}",
+  "is_submittable": 0, "track_changes": 1,
+  "fields": [
+    {"fieldname": "restore_type", "fieldtype": "Select", "label": "Loại phục hồi", "options": "Cơ sở dữ liệu\nTệp tài liệu\nCả hai", "reqd": 1, "in_list_view": 1},
+    {"fieldname": "source_backup", "fieldtype": "Link", "label": "Bản sao lưu nguồn", "options": "Backup Batch", "in_list_view": 1},
+    {"fieldname": "column_break_1", "fieldtype": "Column Break"},
+    {"fieldname": "status", "fieldtype": "Select", "label": "Trạng thái", "options": "Đang chờ\nĐang chạy\nThành công\nLỗi", "default": "Đang chờ", "in_list_view": 1, "read_only": 1},
+    {"fieldname": "started_at", "fieldtype": "Datetime", "label": "Bắt đầu", "read_only": 1},
+    {"fieldname": "completed_at", "fieldtype": "Datetime", "label": "Hoàn thành", "read_only": 1},
+    {"fieldname": "section_result", "fieldtype": "Section Break", "label": "Kết quả"},
+    {"fieldname": "records_restored", "fieldtype": "Int", "label": "Số bản ghi phục hồi", "read_only": 1},
+    {"fieldname": "error_log", "fieldtype": "Long Text", "label": "Log lỗi", "read_only": 1}
+  ],
+  "permissions": [
+    {"role": "Document Admin", "read": 1, "write": 1, "create": 1, "delete": 1},
+    {"role": "Preservation Officer", "read": 1, "write": 1, "create": 1}
+  ],
+  "sort_field": "modified", "sort_order": "DESC"
+}

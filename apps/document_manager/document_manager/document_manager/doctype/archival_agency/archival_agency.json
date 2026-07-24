@@ -1,0 +1,108 @@
+{
+  "name": "Archival Agency",
+  "module": "Document Manager",
+  "doctype": "DocType",
+  "document_type": "Setup",
+  "engine": "InnoDB",
+  "naming_rule": "By fieldname",
+  "autoname": "field:agency_name",
+  "is_submittable": 0,
+  "allow_rename": 1,
+  "quick_entry": 1,
+  "track_changes": 1,
+  "fields": [
+    {
+      "fieldname": "agency_name",
+      "fieldtype": "Data",
+      "label": "Tên cơ quan lưu trữ",
+      "reqd": 1,
+      "unique": 1,
+      "in_list_view": 1,
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "agency_code",
+      "fieldtype": "Data",
+      "label": "Mã cơ quan",
+      "unique": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "column_break_1",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "agency_type",
+      "fieldtype": "Select",
+      "label": "Loại cơ quan",
+      "options": "\nTrung tâm lưu trữ\nThư viện\nCơ quan nhà nước\nDoanh nghiệp\nKhác",
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "is_active",
+      "fieldtype": "Check",
+      "label": "Đang hoạt động",
+      "default": "1"
+    },
+    {
+      "fieldname": "section_contact",
+      "fieldtype": "Section Break",
+      "label": "Thông tin liên hệ"
+    },
+    {
+      "fieldname": "address",
+      "fieldtype": "Small Text",
+      "label": "Địa chỉ"
+    },
+    {
+      "fieldname": "phone",
+      "fieldtype": "Data",
+      "label": "Điện thoại",
+      "options": "Phone"
+    },
+    {
+      "fieldname": "column_break_2",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "email",
+      "fieldtype": "Data",
+      "label": "Email",
+      "options": "Email"
+    },
+    {
+      "fieldname": "website",
+      "fieldtype": "Data",
+      "label": "Website",
+      "options": "URL"
+    },
+    {
+      "fieldname": "section_description",
+      "fieldtype": "Section Break",
+      "label": "Mô tả"
+    },
+    {
+      "fieldname": "description",
+      "fieldtype": "Text Editor",
+      "label": "Mô tả chi tiết"
+    }
+  ],
+  "permissions": [
+    {
+      "role": "Document Admin",
+      "read": 1, "write": 1, "create": 1, "delete": 1, "submit": 0,
+      "cancel": 0, "amend": 0, "print": 1, "export": 1, "import": 1,
+      "share": 1, "report": 1
+    },
+    {
+      "role": "Cataloger",
+      "read": 1, "write": 1, "create": 1, "delete": 0
+    },
+    {
+      "role": "Reading Room Officer",
+      "read": 1
+    }
+  ],
+  "sort_field": "agency_name",
+  "sort_order": "ASC"
+}

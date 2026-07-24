@@ -1,0 +1,9 @@
+{
+  "name": "Catalog Standard",
+  "module": "Document Manager",
+  "doctype": "Print Format",
+  "print_format_type": "Jinja",
+  "standard": "Yes",
+  "doc_type": "Catalog",
+  "html": "<style>\n  .print-format { font-family: 'Times New Roman', serif; font-size: 13px; }\n  .header-center { text-align: center; margin-bottom: 20px; }\n  .header-center h2 { margin: 0; text-transform: uppercase; }\n  .info-table { width: 100%; border-collapse: collapse; margin-top: 10px; }\n  .info-table td { padding: 5px 10px; vertical-align: top; }\n  .info-table td:first-child { font-weight: bold; width: 200px; }\n</style>\n<div class=\"print-format\">\n  <div class=\"header-center\">\n    <h2>MỤC LỤC TÀI LIỆU</h2>\n    <p>Số: {{ doc.name }}</p>\n  </div>\n  <table class=\"info-table\">\n    <tr><td>Tên mục lục:</td><td>{{ doc.catalog_title }}</td></tr>\n    <tr><td>Số mục lục:</td><td>{{ doc.catalog_number or '' }}</td></tr>\n    <tr><td>Khối tài liệu:</td><td>{{ doc.record_group or '' }}</td></tr>\n    <tr><td>Phông lưu trữ:</td><td>{{ doc.fonds or '' }}</td></tr>\n    <tr><td>Thời gian:</td><td>{{ doc.start_year or '' }} — {{ doc.end_year or '' }}</td></tr>\n  </table>\n  {% if doc.description %}\n  <div style=\"margin-top:15px; font-weight:bold;\">Mô tả</div>\n  <div>{{ doc.description }}</div>\n  {% endif %}\n</div>"
+}

@@ -1,0 +1,26 @@
+{
+  "name": "Reader Feedback", "module": "Document Manager", "doctype": "DocType",
+  "document_type": "Document", "engine": "InnoDB",
+  "naming_rule": "Expression", "autoname": "format:FB-{YYYY}-{####}",
+  "is_submittable": 0, "track_changes": 1,
+  "fields": [
+    {"fieldname": "reader", "fieldtype": "Link", "label": "Độc giả", "options": "Reader", "in_list_view": 1, "in_standard_filter": 1},
+    {"fieldname": "reader_name", "fieldtype": "Data", "label": "Tên", "fetch_from": "reader.full_name", "read_only": 1, "in_list_view": 1},
+    {"fieldname": "column_break_1", "fieldtype": "Column Break"},
+    {"fieldname": "feedback_date", "fieldtype": "Date", "label": "Ngày góp ý", "default": "Today", "in_list_view": 1},
+    {"fieldname": "status", "fieldtype": "Select", "label": "Trạng thái", "options": "Mới\nĐã xem\nĐã phản hồi", "default": "Mới", "in_list_view": 1, "in_standard_filter": 1},
+    {"fieldname": "section_content", "fieldtype": "Section Break", "label": "Nội dung góp ý"},
+    {"fieldname": "subject", "fieldtype": "Data", "label": "Tiêu đề", "reqd": 1},
+    {"fieldname": "content", "fieldtype": "Text Editor", "label": "Nội dung chi tiết", "reqd": 1},
+    {"fieldname": "section_response", "fieldtype": "Section Break", "label": "Phản hồi"},
+    {"fieldname": "response", "fieldtype": "Text Editor", "label": "Nội dung phản hồi"},
+    {"fieldname": "responded_by", "fieldtype": "Link", "label": "Người phản hồi", "options": "User", "read_only": 1},
+    {"fieldname": "responded_date", "fieldtype": "Datetime", "label": "Ngày phản hồi", "read_only": 1}
+  ],
+  "permissions": [
+    {"role": "Document Admin", "read": 1, "write": 1, "create": 1, "delete": 1, "report": 1},
+    {"role": "Reading Room Officer", "read": 1, "write": 1},
+    {"role": "Reader", "read": 1, "write": 1, "create": 1, "if_owner": 1}
+  ],
+  "sort_field": "modified", "sort_order": "DESC", "title_field": "subject"
+}

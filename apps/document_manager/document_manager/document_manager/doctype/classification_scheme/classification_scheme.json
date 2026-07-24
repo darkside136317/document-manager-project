@@ -1,0 +1,83 @@
+{
+  "name": "Classification Scheme",
+  "module": "Document Manager",
+  "doctype": "DocType",
+  "document_type": "Setup",
+  "engine": "InnoDB",
+  "naming_rule": "By fieldname",
+  "autoname": "field:scheme_name",
+  "is_tree": 1,
+  "nsm_parent_field": "parent_scheme",
+  "is_submittable": 0,
+  "allow_rename": 1,
+  "track_changes": 1,
+  "fields": [
+    {
+      "fieldname": "scheme_name",
+      "fieldtype": "Data",
+      "label": "Tên khung phân loại",
+      "reqd": 1,
+      "in_list_view": 1,
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "scheme_code",
+      "fieldtype": "Data",
+      "label": "Mã phân loại",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "column_break_1",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "parent_scheme",
+      "fieldtype": "Link",
+      "label": "Thuộc khung cha",
+      "options": "Classification Scheme",
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "is_group",
+      "fieldtype": "Check",
+      "label": "Là nhóm (có phần tử con)",
+      "default": "1"
+    },
+    {
+      "fieldname": "description",
+      "fieldtype": "Small Text",
+      "label": "Mô tả"
+    },
+    {
+      "fieldname": "lft",
+      "fieldtype": "Int",
+      "label": "Left",
+      "hidden": 1
+    },
+    {
+      "fieldname": "rgt",
+      "fieldtype": "Int",
+      "label": "Right",
+      "hidden": 1
+    },
+    {
+      "fieldname": "old_parent",
+      "fieldtype": "Link",
+      "label": "Old Parent",
+      "options": "Classification Scheme",
+      "hidden": 1
+    }
+  ],
+  "permissions": [
+    {
+      "role": "Document Admin",
+      "read": 1, "write": 1, "create": 1, "delete": 1, "print": 1, "export": 1, "import": 1, "share": 1, "report": 1
+    },
+    {
+      "role": "Cataloger",
+      "read": 1, "write": 1, "create": 1
+    }
+  ],
+  "sort_field": "scheme_name",
+  "sort_order": "ASC"
+}

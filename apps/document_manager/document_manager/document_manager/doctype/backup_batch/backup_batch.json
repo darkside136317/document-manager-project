@@ -1,0 +1,25 @@
+{
+  "name": "Backup Batch", "module": "Document Manager", "doctype": "DocType",
+  "document_type": "Document", "engine": "InnoDB",
+  "naming_rule": "Expression", "autoname": "format:BK-{YYYY}{MM}{DD}-{###}",
+  "is_submittable": 0, "track_changes": 1,
+  "fields": [
+    {"fieldname": "backup_type", "fieldtype": "Select", "label": "Loại sao lưu", "options": "Cơ sở dữ liệu\nTệp tài liệu\nCả hai", "reqd": 1, "in_list_view": 1, "in_standard_filter": 1},
+    {"fieldname": "status", "fieldtype": "Select", "label": "Trạng thái", "options": "Đang chờ\nĐang chạy\nThành công\nLỗi", "default": "Đang chờ", "in_list_view": 1, "in_standard_filter": 1, "read_only": 1},
+    {"fieldname": "column_break_1", "fieldtype": "Column Break"},
+    {"fieldname": "started_at", "fieldtype": "Datetime", "label": "Bắt đầu lúc", "read_only": 1},
+    {"fieldname": "completed_at", "fieldtype": "Datetime", "label": "Hoàn thành lúc", "read_only": 1},
+    {"fieldname": "initiated_by", "fieldtype": "Link", "label": "Người thực hiện", "options": "User", "default": "__user"},
+    {"fieldname": "section_result", "fieldtype": "Section Break", "label": "Kết quả"},
+    {"fieldname": "backup_path", "fieldtype": "Data", "label": "Đường dẫn file backup", "read_only": 1},
+    {"fieldname": "backup_size_mb", "fieldtype": "Float", "label": "Kích thước (MB)", "read_only": 1, "precision": 2},
+    {"fieldname": "error_log", "fieldtype": "Long Text", "label": "Log lỗi", "read_only": 1},
+    {"fieldname": "section_notes", "fieldtype": "Section Break", "label": "Ghi chú", "collapsible": 1},
+    {"fieldname": "notes", "fieldtype": "Small Text", "label": "Ghi chú"}
+  ],
+  "permissions": [
+    {"role": "Document Admin", "read": 1, "write": 1, "create": 1, "delete": 1, "report": 1},
+    {"role": "Preservation Officer", "read": 1, "write": 1, "create": 1}
+  ],
+  "sort_field": "modified", "sort_order": "DESC"
+}

@@ -1,0 +1,212 @@
+{
+  "name": "Archival File",
+  "module": "Document Manager",
+  "doctype": "DocType",
+  "document_type": "Document",
+  "engine": "InnoDB",
+  "naming_rule": "Expression",
+  "autoname": "format:AF-{#####}",
+  "is_submittable": 0,
+  "allow_rename": 1,
+  "track_changes": 1,
+  "fields": [
+    {
+      "fieldname": "file_title",
+      "fieldtype": "Data",
+      "label": "Tiêu đề hồ sơ",
+      "reqd": 1,
+      "in_list_view": 1,
+      "in_standard_filter": 1,
+      "bold": 1
+    },
+    {
+      "fieldname": "file_number",
+      "fieldtype": "Data",
+      "label": "Số hồ sơ",
+      "in_list_view": 1,
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "column_break_1",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "catalog",
+      "fieldtype": "Link",
+      "label": "Mục lục tài liệu",
+      "options": "Catalog",
+      "reqd": 1,
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "record_group",
+      "fieldtype": "Link",
+      "label": "Khối tài liệu",
+      "options": "Record Group",
+      "read_only": 1,
+      "fetch_from": "catalog.record_group",
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "fonds",
+      "fieldtype": "Link",
+      "label": "Phông lưu trữ",
+      "options": "Fonds",
+      "read_only": 1,
+      "fetch_from": "catalog.fonds",
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "status",
+      "fieldtype": "Select",
+      "label": "Trạng thái",
+      "options": "Nháp\nĐang xử lý\nĐã hoàn thành\nĐã đóng",
+      "default": "Nháp",
+      "in_list_view": 1,
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "section_time",
+      "fieldtype": "Section Break",
+      "label": "Thời gian & Số lượng"
+    },
+    {
+      "fieldname": "start_date",
+      "fieldtype": "Date",
+      "label": "Ngày bắt đầu"
+    },
+    {
+      "fieldname": "end_date",
+      "fieldtype": "Date",
+      "label": "Ngày kết thúc"
+    },
+    {
+      "fieldname": "column_break_time",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "total_pages",
+      "fieldtype": "Int",
+      "label": "Số tờ"
+    },
+    {
+      "fieldname": "total_documents",
+      "fieldtype": "Int",
+      "label": "Số văn bản",
+      "read_only": 1,
+      "description": "Tự động cập nhật"
+    },
+    {
+      "fieldname": "section_classification",
+      "fieldtype": "Section Break",
+      "label": "Phân loại & Bảo mật"
+    },
+    {
+      "fieldname": "confidentiality_level",
+      "fieldtype": "Link",
+      "label": "Mức độ mật",
+      "options": "Confidentiality Level",
+      "in_list_view": 1,
+      "in_standard_filter": 1,
+      "default": "Thường"
+    },
+    {
+      "fieldname": "document_type_category",
+      "fieldtype": "Link",
+      "label": "Loại hình tài liệu",
+      "options": "Document Type Category",
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "column_break_class",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "document_group",
+      "fieldtype": "Link",
+      "label": "Nhóm tài liệu",
+      "options": "Document Group"
+    },
+    {
+      "fieldname": "classification_scheme",
+      "fieldtype": "Link",
+      "label": "Khung phân loại",
+      "options": "Classification Scheme"
+    },
+    {
+      "fieldname": "section_storage",
+      "fieldtype": "Section Break",
+      "label": "Vị trí lưu trữ"
+    },
+    {
+      "fieldname": "storage_warehouse",
+      "fieldtype": "Link",
+      "label": "Kho lưu trữ",
+      "options": "Storage Warehouse",
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "shelf_number",
+      "fieldtype": "Data",
+      "label": "Số giá"
+    },
+    {
+      "fieldname": "column_break_storage",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "box_number",
+      "fieldtype": "Data",
+      "label": "Số hộp"
+    },
+    {
+      "fieldname": "physical_location",
+      "fieldtype": "Data",
+      "label": "Vị trí vật lý",
+      "description": "Mô tả vị trí cụ thể trong kho"
+    },
+    {
+      "fieldname": "section_description",
+      "fieldtype": "Section Break",
+      "label": "Mô tả"
+    },
+    {
+      "fieldname": "description",
+      "fieldtype": "Text Editor",
+      "label": "Mô tả chi tiết"
+    },
+    {
+      "fieldname": "section_notes",
+      "fieldtype": "Section Break",
+      "label": "Ghi chú",
+      "collapsible": 1
+    },
+    {
+      "fieldname": "notes",
+      "fieldtype": "Text",
+      "label": "Ghi chú"
+    }
+  ],
+  "permissions": [
+    {
+      "role": "Document Admin",
+      "read": 1, "write": 1, "create": 1, "delete": 1, "print": 1, "export": 1, "import": 1, "share": 1, "report": 1
+    },
+    {
+      "role": "Cataloger",
+      "read": 1, "write": 1, "create": 1, "delete": 1
+    },
+    {
+      "role": "Reading Room Officer",
+      "read": 1, "write": 0
+    },
+    {
+      "role": "Reader",
+      "read": 1
+    }
+  ],
+  "sort_field": "modified",
+  "sort_order": "DESC",
+  "title_field": "file_title",
+  "search_fields": "file_title,file_number,fonds,catalog,confidentiality_level"
+}

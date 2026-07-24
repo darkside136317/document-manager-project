@@ -1,0 +1,527 @@
+{%- extends "templates/web.html" -%}
+
+{%- block title -%}Tìm kiếm tài liệu{%- endblock -%}
+
+{%- block page_content -%}
+<style>
+    .page-content-wrapper { background: var(--dm-background); }
+    .dm-search-page { color: var(--dm-ink); padding: 24px 0 56px; }
+    .dm-search-page * { box-sizing: border-box; }
+
+    .dm-breadcrumb {
+        align-items: center; color: var(--dm-muted); display: flex; font-size: 13px;
+        gap: 8px; margin-bottom: 18px;
+    }
+    .dm-breadcrumb a { color: var(--dm-primary); font-weight: 600; text-decoration: none; }
+
+    .dm-hero {
+        background:
+            radial-gradient(circle at 84% 8%, rgba(255,255,255,.19), transparent 27%),
+            var(--dm-brand-gradient);
+        border-radius: var(--dm-radius-xl); box-shadow: var(--dm-shadow-lg);
+        color: #fff; overflow: hidden; padding: 36px 40px 40px; position: relative;
+    }
+    .dm-hero::after {
+        border: 1px solid rgba(255,255,255,.15); border-radius: 999px; content: "";
+        height: 250px; position: absolute; right: -75px; top: -105px; width: 250px;
+    }
+    .dm-eyebrow {
+        align-items: center; display: flex; font-size: 12px; font-weight: 700;
+        gap: 8px; letter-spacing: .12em; margin-bottom: 10px; text-transform: uppercase;
+    }
+    .dm-eyebrow-dot { background: var(--dm-accent); border-radius: 50%; height: 8px; width: 8px; }
+    .dm-hero h1 { color: #fff; font-size: 32px; font-weight: 700; line-height: 1.25; margin: 0 0 8px; }
+    .dm-hero-copy { color: rgba(255,255,255,.8); margin: 0 0 24px; max-width: 660px; }
+
+    .dm-search-box {
+        align-items: center; background: #fff; border: 4px solid rgba(255,255,255,.22);
+        background-clip: padding-box; border-radius: 14px; display: flex; max-width: 860px;
+        padding: 6px 7px 6px 17px; position: relative; z-index: 1;
+    }
+    .dm-search-box .fa { color: #98a2b3; font-size: 18px; }
+    .dm-search-input {
+        background: transparent; border: 0; color: var(--dm-ink); flex: 1; font-size: 16px;
+        min-width: 0; outline: none; padding: 10px 12px;
+    }
+    .dm-search-input::placeholder { color: #98a2b3; }
+    .dm-search-button {
+        align-items: center; background: var(--dm-primary); border: 0; border-radius: var(--dm-radius-sm);
+        color: #fff; cursor: pointer; display: inline-flex; font-weight: 700; gap: 8px;
+        justify-content: center; min-height: 42px; padding: 0 22px; transition: .18s ease;
+    }
+    .dm-search-button:hover { background: var(--dm-primary-hover); transform: translateY(-1px); }
+    .dm-search-button .fa { color: #fff; font-size: 14px; }
+    .dm-search-hint { color: rgba(255,255,255,.7); font-size: 12px; margin: 10px 0 0 4px; }
+
+    .dm-layout { display: grid; gap: 22px; grid-template-columns: 250px minmax(0,1fr); margin-top: 24px; }
+    .dm-panel {
+        background: var(--dm-surface); border: 1px solid var(--dm-border); border-radius: 14px;
+        box-shadow: 0 3px 12px rgba(16,24,40,.035);
+    }
+    .dm-filter-panel { align-self: start; padding: 20px; position: sticky; top: 76px; }
+    .dm-panel-title { align-items: center; display: flex; font-size: 15px; font-weight: 700; gap: 8px; margin-bottom: 18px; }
+    .dm-field { margin-bottom: 16px; }
+    .dm-field label { color: #344054; display: block; font-size: 13px; font-weight: 600; margin-bottom: 7px; }
+    .dm-select {
+        appearance: none; background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23667085' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 12px center;
+        border: 1px solid #d0d5dd; border-radius: 8px; color: #344054; height: 40px;
+        padding: 0 34px 0 11px; width: 100%;
+    }
+    .dm-select:focus { border-color: #84adff; box-shadow: 0 0 0 3px rgba(29,78,216,.1); outline: none; }
+    .dm-reset-button {
+        background: #fff; border: 1px solid #d0d5dd; border-radius: 8px; color: #344054;
+        cursor: pointer; font-size: 13px; font-weight: 600; height: 38px; width: 100%;
+    }
+    .dm-reset-button:hover { background: #f9fafb; border-color: #98a2b3; }
+
+    .dm-results-panel { min-height: 390px; padding: 22px; }
+    .dm-results-head { align-items: center; display: flex; justify-content: space-between; margin-bottom: 18px; }
+    .dm-results-title { font-size: 18px; font-weight: 700; margin: 0; }
+    .dm-result-count { color: var(--dm-muted); font-size: 13px; }
+
+    .dm-state { align-items: center; display: flex; flex-direction: column; padding: 62px 20px; text-align: center; }
+    .dm-state-icon {
+        align-items: center; background: #eef4ff; border-radius: 50%; color: var(--dm-primary);
+        display: flex; font-size: 25px; height: 62px; justify-content: center; margin-bottom: 16px; width: 62px;
+    }
+    .dm-state h2 { font-size: 18px; font-weight: 700; margin: 0 0 7px; }
+    .dm-state p { color: var(--dm-muted); margin: 0; max-width: 470px; }
+
+    .dm-result-card {
+        border: 1px solid var(--dm-border); border-radius: 12px; display: grid; gap: 15px;
+        grid-template-columns: 45px minmax(0,1fr); margin-bottom: 12px; padding: 18px;
+        transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+    }
+    .dm-result-card:hover { border-color: #b5c9fa; box-shadow: 0 8px 20px rgba(16,24,40,.07); transform: translateY(-1px); }
+    .dm-file-icon {
+        align-items: center; background: #eef4ff; border-radius: 10px; color: var(--dm-primary);
+        display: flex; font-size: 12px; font-weight: 800; height: 45px; justify-content: center;
+        overflow: hidden; padding: 4px; text-transform: uppercase; width: 45px;
+    }
+    .dm-result-title { color: #173b8f; display: inline-block; font-size: 16px; font-weight: 700; line-height: 1.4; margin-bottom: 7px; text-decoration: none; }
+    .dm-result-title:hover { color: var(--dm-primary); text-decoration: underline; }
+    .dm-result-title mark, .dm-snippet mark { background: #fef08a; border-radius: 3px; color: inherit; padding: 0 2px; }
+    .dm-snippet { color: #475467; font-size: 14px; line-height: 1.62; margin: 0 0 12px; }
+    .dm-result-actions { align-items: center; display: flex; flex-wrap: wrap; gap: 8px; margin-top: 13px; }
+    .dm-action-button {
+        align-items: center; background: #fff; border: 1px solid #c7d7fe; border-radius: 8px;
+        color: var(--dm-primary); cursor: pointer; display: inline-flex; font-size: 12px;
+        font-weight: 700; gap: 6px; min-height: 34px; padding: 0 12px; text-decoration: none;
+    }
+    .dm-action-button:hover { background: #eef4ff; color: var(--dm-primary-dark); text-decoration: none; }
+    .dm-meta { align-items: center; color: var(--dm-muted); display: flex; flex-wrap: wrap; font-size: 12px; gap: 7px 14px; }
+    .dm-meta-item { align-items: center; display: inline-flex; gap: 5px; }
+    .dm-badge { background: #f2f4f7; border-radius: 999px; color: #475467; font-weight: 600; padding: 4px 9px; }
+    .dm-badge-security { background: #fff7ed; color: #b54708; }
+
+    .dm-pagination { align-items: center; display: flex; gap: 8px; justify-content: center; margin-top: 22px; }
+    .dm-page-button {
+        align-items: center; background: #fff; border: 1px solid #d0d5dd; border-radius: 8px;
+        color: #344054; cursor: pointer; display: inline-flex; height: 36px; justify-content: center;
+        min-width: 36px; padding: 0 11px;
+    }
+    .dm-page-button:hover:not(:disabled) { background: #eef4ff; border-color: #84adff; color: var(--dm-primary); }
+    .dm-page-button:disabled { cursor: default; opacity: .42; }
+    .dm-page-current { color: var(--dm-muted); font-size: 13px; padding: 0 8px; }
+
+    .dm-skeleton { animation: dm-pulse 1.3s ease-in-out infinite; background: #eef1f5; border-radius: 7px; }
+    .dm-skeleton-card { border: 1px solid var(--dm-border); border-radius: 12px; display: grid; gap: 15px; grid-template-columns: 45px 1fr; margin-bottom: 12px; padding: 18px; }
+    .dm-skeleton-icon { height: 45px; width: 45px; }
+    .dm-skeleton-line { height: 12px; margin-bottom: 10px; }
+    @keyframes dm-pulse { 50% { opacity: .48; } }
+
+    .dm-preview-overlay {
+        align-items: center; background: rgba(15,23,42,.62); display: flex; inset: 0;
+        justify-content: center; padding: 22px; position: fixed; z-index: 1050;
+    }
+    .dm-preview-overlay[hidden] { display: none; }
+    .dm-preview-dialog {
+        background: #fff; border-radius: 16px; box-shadow: 0 28px 80px rgba(15,23,42,.28);
+        display: flex; flex-direction: column; height: min(86vh, 820px); overflow: hidden;
+        width: min(1050px, 96vw);
+    }
+    .dm-preview-header {
+        align-items: center; border-bottom: 1px solid var(--dm-border); display: flex;
+        gap: 14px; justify-content: space-between; padding: 15px 18px;
+    }
+    .dm-preview-heading { min-width: 0; }
+    .dm-preview-heading h2 { font-size: 16px; font-weight: 700; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .dm-preview-filename { color: var(--dm-muted); font-size: 12px; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .dm-preview-close { background: #f2f4f7; border: 0; border-radius: 50%; color: #475467; cursor: pointer; flex: 0 0 auto; font-size: 18px; height: 36px; width: 36px; }
+    .dm-preview-body { background: #edf0f5; flex: 1; min-height: 0; overflow: auto; position: relative; }
+    .dm-preview-frame { border: 0; height: 100%; width: 100%; }
+    .dm-preview-image-wrap { align-items: center; display: flex; justify-content: center; min-height: 100%; padding: 25px; }
+    .dm-preview-image { background: #fff; box-shadow: 0 5px 24px rgba(16,24,40,.16); max-height: 100%; max-width: 100%; object-fit: contain; }
+    .dm-preview-text-wrap { margin: 28px auto; max-width: 820px; padding: 0 22px; }
+    .dm-preview-notice { background: #fffaeb; border: 1px solid #fedf89; border-radius: 9px; color: #93370d; font-size: 12px; margin-bottom: 13px; padding: 10px 12px; }
+    .dm-preview-text { background: #fff; border-radius: 8px; box-shadow: 0 3px 15px rgba(16,24,40,.08); color: #344054; line-height: 1.7; margin: 0; min-height: 340px; padding: 30px; white-space: pre-wrap; word-break: break-word; }
+    .dm-preview-footer { align-items: center; border-top: 1px solid var(--dm-border); display: flex; gap: 9px; justify-content: flex-end; padding: 12px 18px; }
+    .dm-preview-primary { background: var(--dm-primary); border-color: var(--dm-primary); color: #fff; }
+    .dm-preview-primary:hover { background: var(--dm-primary-dark); color: #fff; }
+    body.dm-modal-open { overflow: hidden; }
+
+    @media (max-width: 767px) {
+        .dm-search-page { padding-top: 14px; }
+        .dm-hero { border-radius: 16px; padding: 26px 20px 28px; }
+        .dm-hero h1 { font-size: 25px; }
+        .dm-search-box { align-items: stretch; flex-wrap: wrap; padding: 8px; }
+        .dm-search-box > .fa { display: none; }
+        .dm-search-input { flex-basis: 100%; padding: 10px 6px 13px; }
+        .dm-search-button { width: 100%; }
+        .dm-layout { grid-template-columns: 1fr; }
+        .dm-filter-panel { position: static; }
+        .dm-results-panel { padding: 16px; }
+        .dm-results-head { align-items: flex-start; flex-direction: column; gap: 4px; }
+        .dm-result-card { grid-template-columns: 38px minmax(0,1fr); padding: 14px; }
+        .dm-file-icon { height: 38px; width: 38px; }
+    }
+</style>
+
+<div class="dm-search-page">
+    <div class="dm-breadcrumb">
+        <a href="/app/document-manager"><i class="fa fa-arrow-left"></i>&nbsp; Document Manager</a>
+        <span>/</span><span>Tìm kiếm tài liệu</span>
+    </div>
+
+    <section class="dm-hero">
+        <div class="dm-eyebrow"><span class="dm-eyebrow-dot"></span> Kho lưu trữ số</div>
+        <h1>Tìm kiếm tài liệu</h1>
+        <p class="dm-hero-copy">Tra cứu nhanh tiêu đề, số văn bản, tác giả và toàn bộ nội dung đã được trích xuất từ tài liệu.</p>
+        <form id="search-form" role="search">
+            <div class="dm-search-box">
+                <i class="fa fa-search" aria-hidden="true"></i>
+                <input class="dm-search-input" id="query" name="query" type="search"
+                       autocomplete="off" placeholder="Nhập từ khóa, số văn bản hoặc nội dung cần tìm..."
+                       aria-label="Từ khóa tìm kiếm">
+                <button class="dm-search-button" id="search-button" type="submit">
+                    <i class="fa fa-search" aria-hidden="true"></i> Tìm kiếm
+                </button>
+            </div>
+            <p class="dm-search-hint">Nhấn Enter để tìm kiếm · Kết quả được tìm trong cả nội dung tệp PDF, DOCX và XLSX</p>
+        </form>
+    </section>
+
+    <div class="dm-layout">
+        <aside class="dm-panel dm-filter-panel" aria-label="Bộ lọc tìm kiếm">
+            <div class="dm-panel-title"><i class="fa fa-sliders"></i> Bộ lọc tìm kiếm</div>
+            <div class="dm-field">
+                <label for="fonds">Phông lưu trữ</label>
+                <select class="dm-select" name="fonds" id="fonds">
+                    <option value="">Tất cả phông lưu trữ</option>
+                    {% for f in fonds_list %}
+                    <option value="{{ f.name }}">{{ f.fonds_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="dm-field">
+                <label for="confidentiality_level">Mức độ mật</label>
+                <select class="dm-select" name="confidentiality_level" id="confidentiality_level">
+                    <option value="">Tất cả mức độ</option>
+                    {% for c in confidentiality_levels %}
+                    <option value="{{ c.name }}">{{ c.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="dm-field">
+                <label for="file_type">Loại tệp</label>
+                <select class="dm-select" name="file_type" id="file_type">
+                    <option value="">Tất cả loại tệp</option>
+                    <option value="PDF">PDF</option><option value="DOCX">DOCX</option>
+                    <option value="XLSX">XLSX</option><option value="JPG">JPG</option>
+                    <option value="PNG">PNG</option><option value="TIFF">TIFF</option>
+                    <option value="Khác">Khác</option>
+                </select>
+            </div>
+            <div class="dm-field">
+                <label for="sort_by">Sắp xếp</label>
+                <select class="dm-select" name="sort_by" id="sort_by">
+                    <option value="">Liên quan nhất</option>
+                    <option value="newest">Ngày mới nhất</option>
+                    <option value="oldest">Ngày cũ nhất</option>
+                    <option value="modified">Cập nhật gần đây</option>
+                </select>
+            </div>
+            <div class="dm-field">
+                <label for="page_size">Số kết quả mỗi trang</label>
+                <select class="dm-select" name="page_size" id="page_size">
+                    <option value="10">10 kết quả</option>
+                    <option value="20" selected>20 kết quả</option>
+                    <option value="50">50 kết quả</option>
+                </select>
+            </div>
+            <button class="dm-reset-button" id="reset-filters" type="button"><i class="fa fa-undo"></i>&nbsp; Xóa bộ lọc</button>
+        </aside>
+
+        <main class="dm-panel dm-results-panel" aria-live="polite" aria-busy="false">
+            <div class="dm-results-head">
+                <h2 class="dm-results-title" id="results-title">Kết quả tìm kiếm</h2>
+                <span class="dm-result-count" id="result-count"></span>
+            </div>
+            <div id="search-results">
+                <div class="dm-state">
+                    <div class="dm-state-icon"><i class="fa fa-file-text-o"></i></div>
+                    <h2>Bắt đầu tra cứu tài liệu</h2>
+                    <p>Nhập từ khóa ở phía trên. Bạn có thể lọc theo phông lưu trữ, mức độ mật và loại tệp.</p>
+                </div>
+            </div>
+            <nav class="dm-pagination" id="pagination" aria-label="Phân trang kết quả"></nav>
+        </main>
+    </div>
+</div>
+
+<div class="dm-preview-overlay" id="preview-modal" hidden>
+    <section class="dm-preview-dialog" role="dialog" aria-modal="true" aria-labelledby="preview-title">
+        <header class="dm-preview-header">
+            <div class="dm-preview-heading">
+                <h2 id="preview-title">Xem trước tài liệu</h2>
+                <div class="dm-preview-filename" id="preview-filename"></div>
+            </div>
+            <button class="dm-preview-close" id="preview-close" type="button" aria-label="Đóng xem trước">&times;</button>
+        </header>
+        <div class="dm-preview-body" id="preview-body"></div>
+        <footer class="dm-preview-footer">
+            <a class="dm-action-button" id="preview-open-document" href="#"><i class="fa fa-external-link"></i> Mở tài liệu</a>
+            <a class="dm-action-button dm-preview-primary" id="preview-download" href="#"><i class="fa fa-download"></i> Tải xuống</a>
+        </footer>
+    </section>
+</div>
+
+<script>
+(function () {
+    const form = document.getElementById("search-form");
+    const queryInput = document.getElementById("query");
+    const results = document.getElementById("search-results");
+    const resultsPanel = document.querySelector(".dm-results-panel");
+    const resultCount = document.getElementById("result-count");
+    const pagination = document.getElementById("pagination");
+    const previewModal = document.getElementById("preview-modal");
+    const previewBody = document.getElementById("preview-body");
+    const filterIds = ["fonds", "confidentiality_level", "file_type", "sort_by", "page_size"];
+    let currentPage = 1;
+    let latestRequest = 0;
+
+    function escapeHTML(value) {
+        return String(value == null ? "" : value).replace(/[&<>"']/g, function (char) {
+            return {"&":"&amp;", "<":"&lt;", ">":"&gt;", "\"":"&quot;", "'":"&#039;"}[char];
+        });
+    }
+
+    function safeHighlighted(value) {
+        return escapeHTML(value).replace(/&lt;mark&gt;/g, "<mark>").replace(/&lt;\/mark&gt;/g, "</mark>");
+    }
+
+    function currentArgs() {
+        return {
+            query: queryInput.value.trim(),
+            fonds: document.getElementById("fonds").value,
+            confidentiality_level: document.getElementById("confidentiality_level").value,
+            file_type: document.getElementById("file_type").value,
+            sort_by: document.getElementById("sort_by").value,
+            page: currentPage,
+            page_size: document.getElementById("page_size").value
+        };
+    }
+
+    function updateURL(args) {
+        const params = new URLSearchParams();
+        Object.keys(args).forEach(function (key) {
+            if (args[key] && !(key === "page" && Number(args[key]) === 1)) params.set(key, args[key]);
+        });
+        history.replaceState(null, "", location.pathname + (params.toString() ? "?" + params.toString() : ""));
+    }
+
+    function showLoading() {
+        resultsPanel.setAttribute("aria-busy", "true");
+        resultCount.textContent = "Đang tìm kiếm...";
+        pagination.innerHTML = "";
+        results.innerHTML = [1,2,3].map(function () {
+            return '<div class="dm-skeleton-card"><div class="dm-skeleton dm-skeleton-icon"></div>' +
+                '<div><div class="dm-skeleton dm-skeleton-line" style="width:52%"></div>' +
+                '<div class="dm-skeleton dm-skeleton-line" style="width:94%"></div>' +
+                '<div class="dm-skeleton dm-skeleton-line" style="width:68%"></div></div></div>';
+        }).join("");
+    }
+
+    function showState(icon, title, copy) {
+        results.innerHTML = '<div class="dm-state"><div class="dm-state-icon"><i class="fa ' + icon + '"></i></div>' +
+            '<h2>' + escapeHTML(title) + '</h2><p>' + escapeHTML(copy) + '</p></div>';
+        pagination.innerHTML = "";
+    }
+
+    function formatDate(value) {
+        if (!value) return "";
+        const parts = String(value).slice(0, 10).split("-");
+        return parts.length === 3 ? parts[2] + "/" + parts[1] + "/" + parts[0] : value;
+    }
+
+    function renderResults(data) {
+        resultsPanel.setAttribute("aria-busy", "false");
+        const docs = data.data || [];
+        const total = Number(data.total || 0);
+        resultCount.textContent = total.toLocaleString("vi-VN") + " tài liệu phù hợp";
+        if (!docs.length) {
+            showState("fa-search", "Không tìm thấy tài liệu", "Thử dùng từ khóa ngắn hơn hoặc xóa bớt bộ lọc tìm kiếm.");
+            resultCount.textContent = "0 tài liệu phù hợp";
+            return;
+        }
+
+        results.innerHTML = docs.map(function (doc) {
+            const formatted = doc._formatted || {};
+            const title = safeHighlighted(formatted.document_title || doc.document_title || doc.id || "Tài liệu không có tiêu đề");
+            const snippet = formatted.content_text
+                ? '<p class="dm-snippet">' + safeHighlighted(formatted.content_text) + '</p>'
+                : '<p class="dm-snippet">Không có nội dung trích xuất để hiển thị.</p>';
+            const fileType = escapeHTML(doc.file_type || "Tệp");
+            const href = "/app/archive-document/" + encodeURIComponent(doc.id || "");
+            const meta = [];
+            if (doc.fonds_name || doc.fonds) meta.push('<span class="dm-meta-item"><i class="fa fa-archive"></i>' + escapeHTML(doc.fonds_name || doc.fonds) + '</span>');
+            if (doc.archival_file_title || doc.archival_file) meta.push('<span class="dm-meta-item"><i class="fa fa-folder-o"></i>' + escapeHTML(doc.archival_file_title || doc.archival_file) + '</span>');
+            if (doc.document_number) meta.push('<span class="dm-meta-item"><i class="fa fa-hashtag"></i>' + escapeHTML(doc.document_number) + '</span>');
+            if (doc.document_date) meta.push('<span class="dm-meta-item"><i class="fa fa-calendar-o"></i>' + escapeHTML(formatDate(doc.document_date)) + '</span>');
+            if (doc.author) meta.push('<span class="dm-meta-item"><i class="fa fa-user-o"></i>' + escapeHTML(doc.author) + '</span>');
+            meta.push('<span class="dm-badge">' + fileType + '</span>');
+            if (doc.confidentiality_level) meta.push('<span class="dm-badge dm-badge-security"><i class="fa fa-lock"></i>&nbsp;' + escapeHTML(doc.confidentiality_level) + '</span>');
+
+            return '<article class="dm-result-card"><div class="dm-file-icon">' + fileType + '</div><div>' +
+                '<a class="dm-result-title" href="' + href + '">' + title + '</a>' + snippet +
+                '<div class="dm-meta">' + meta.join("") + '</div>' +
+                '<div class="dm-result-actions"><button class="dm-action-button" type="button" data-preview="' + escapeHTML(doc.id || "") + '"><i class="fa fa-eye"></i> Xem trước</button>' +
+                '<a class="dm-action-button" href="' + href + '"><i class="fa fa-external-link"></i> Chi tiết</a></div></div></article>';
+        }).join("");
+
+        renderPagination(total, Number(data.page_size || 20));
+    }
+
+    function renderPagination(total, pageSize) {
+        const totalPages = Math.max(1, Math.ceil(total / pageSize));
+        if (totalPages <= 1) { pagination.innerHTML = ""; return; }
+        pagination.innerHTML = '<button class="dm-page-button" data-page="' + (currentPage - 1) + '" ' + (currentPage <= 1 ? "disabled" : "") + ' aria-label="Trang trước"><i class="fa fa-chevron-left"></i></button>' +
+            '<span class="dm-page-current">Trang ' + currentPage + ' / ' + totalPages + '</span>' +
+            '<button class="dm-page-button" data-page="' + (currentPage + 1) + '" ' + (currentPage >= totalPages ? "disabled" : "") + ' aria-label="Trang sau"><i class="fa fa-chevron-right"></i></button>';
+    }
+
+    function runSearch() {
+        const args = currentArgs();
+        if (!args.query) {
+            queryInput.focus();
+            showState("fa-keyboard-o", "Nhập từ khóa cần tìm", "Từ khóa có thể là tiêu đề, số văn bản, tác giả hoặc một đoạn trong nội dung tài liệu.");
+            resultCount.textContent = "";
+            return;
+        }
+        const requestId = ++latestRequest;
+        updateURL(args);
+        showLoading();
+        frappe.call({
+            method: "document_manager.document_manager.api.search.search_fulltext",
+            args: args,
+            callback: function (response) {
+                if (requestId !== latestRequest) return;
+                const data = response.message || {};
+                if (data.error) {
+                    resultsPanel.setAttribute("aria-busy", "false");
+                    resultCount.textContent = "";
+                    showState("fa-exclamation-triangle", "Chưa thể tìm kiếm", "Dịch vụ tìm kiếm đang tạm thời không khả dụng. Vui lòng thử lại sau.");
+                    return;
+                }
+                renderResults(data);
+            },
+            error: function () {
+                if (requestId !== latestRequest) return;
+                resultsPanel.setAttribute("aria-busy", "false");
+                resultCount.textContent = "";
+                showState("fa-exclamation-triangle", "Có lỗi xảy ra", "Không thể kết nối tới dịch vụ tìm kiếm. Vui lòng thử lại.");
+            }
+        });
+    }
+
+    function closePreview() {
+        previewModal.hidden = true;
+        previewBody.innerHTML = "";
+        document.body.classList.remove("dm-modal-open");
+    }
+
+    function openPreview(docName) {
+        previewModal.hidden = false;
+        document.body.classList.add("dm-modal-open");
+        document.getElementById("preview-title").textContent = "Đang tải bản xem trước...";
+        document.getElementById("preview-filename").textContent = "";
+        document.getElementById("preview-open-document").href = "#";
+        document.getElementById("preview-download").href = "#";
+        previewBody.innerHTML = '<div class="dm-state"><div class="dm-state-icon"><i class="fa fa-spinner fa-spin"></i></div><h2>Đang chuẩn bị tài liệu</h2><p>Vui lòng chờ trong giây lát.</p></div>';
+
+        frappe.call({
+            method: "document_manager.document_manager.api.file_access.get_preview",
+            args: {doc_name: docName},
+            callback: function (response) {
+                const data = response.message;
+                if (!data) {
+                    previewBody.innerHTML = '<div class="dm-state"><h2>Không thể xem trước</h2><p>Không nhận được thông tin tài liệu.</p></div>';
+                    return;
+                }
+                document.getElementById("preview-title").textContent = data.title || "Xem trước tài liệu";
+                document.getElementById("preview-filename").textContent = (data.filename || "") + " · " + (data.file_type || "");
+                document.getElementById("preview-open-document").href = data.document_url;
+                document.getElementById("preview-download").href = data.download_url;
+
+                if (data.kind === "inline") {
+                    if (["JPG", "PNG"].indexOf(data.file_type) !== -1) {
+                        previewBody.innerHTML = '<div class="dm-preview-image-wrap"><img class="dm-preview-image" alt="Bản xem trước tài liệu"></div>';
+                        previewBody.querySelector("img").src = data.preview_url;
+                    } else {
+                        previewBody.innerHTML = '<iframe class="dm-preview-frame" title="Bản xem trước tài liệu"></iframe>';
+                        previewBody.querySelector("iframe").src = data.preview_url;
+                    }
+                } else if (data.kind === "text") {
+                    previewBody.innerHTML = '<div class="dm-preview-text-wrap"><div class="dm-preview-notice"></div><pre class="dm-preview-text"></pre></div>';
+                    previewBody.querySelector(".dm-preview-notice").textContent = data.notice || "";
+                    previewBody.querySelector(".dm-preview-text").textContent = data.content || "";
+                } else {
+                    previewBody.innerHTML = '<div class="dm-state"><div class="dm-state-icon"><i class="fa fa-file-o"></i></div><h2>Chưa hỗ trợ xem trực tiếp</h2><p></p></div>';
+                    previewBody.querySelector("p").textContent = data.notice || "Bạn có thể tải tệp gốc xuống để xem.";
+                }
+            },
+            error: function () {
+                previewBody.innerHTML = '<div class="dm-state"><div class="dm-state-icon"><i class="fa fa-lock"></i></div><h2>Không thể xem trước</h2><p>Bạn không có quyền xem hoặc tài liệu hiện không khả dụng.</p></div>';
+            }
+        });
+    }
+
+    form.addEventListener("submit", function (event) { event.preventDefault(); currentPage = 1; runSearch(); });
+    filterIds.forEach(function (id) {
+        document.getElementById(id).addEventListener("change", function () {
+            if (queryInput.value.trim()) { currentPage = 1; runSearch(); }
+        });
+    });
+    document.getElementById("reset-filters").addEventListener("click", function () {
+        filterIds.forEach(function (id) { document.getElementById(id).value = id === "page_size" ? "20" : ""; });
+        currentPage = 1;
+        if (queryInput.value.trim()) runSearch();
+    });
+    pagination.addEventListener("click", function (event) {
+        const button = event.target.closest("[data-page]");
+        if (!button || button.disabled) return;
+        currentPage = Number(button.dataset.page);
+        runSearch();
+        document.querySelector(".dm-results-panel").scrollIntoView({behavior: "smooth", block: "start"});
+    });
+    results.addEventListener("click", function (event) {
+        const button = event.target.closest("[data-preview]");
+        if (button) openPreview(button.dataset.preview);
+    });
+    document.getElementById("preview-close").addEventListener("click", closePreview);
+    previewModal.addEventListener("click", function (event) { if (event.target === previewModal) closePreview(); });
+    document.addEventListener("keydown", function (event) { if (event.key === "Escape" && !previewModal.hidden) closePreview(); });
+
+    const params = new URLSearchParams(location.search);
+    queryInput.value = params.get("query") || "";
+    filterIds.forEach(function (id) {
+        const value = params.get(id);
+        if (value && Array.from(document.getElementById(id).options).some(function (o) { return o.value === value; })) {
+            document.getElementById(id).value = value;
+        }
+    });
+    currentPage = Math.max(1, Number(params.get("page") || 1));
+    if (queryInput.value.trim()) runSearch();
+})();
+</script>
+{%- endblock -%}

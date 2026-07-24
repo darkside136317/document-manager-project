@@ -1,0 +1,62 @@
+{
+  "name": "Confidentiality Level",
+  "module": "Document Manager",
+  "doctype": "DocType",
+  "document_type": "Setup",
+  "engine": "InnoDB",
+  "naming_rule": "By fieldname",
+  "autoname": "field:level_name",
+  "is_submittable": 0,
+  "allow_rename": 1,
+  "quick_entry": 1,
+  "track_changes": 1,
+  "fields": [
+    {
+      "fieldname": "level_name",
+      "fieldtype": "Data",
+      "label": "Tên mức độ mật",
+      "reqd": 1,
+      "unique": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "level_code",
+      "fieldtype": "Data",
+      "label": "Mã mức độ",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "column_break_1",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "priority",
+      "fieldtype": "Int",
+      "label": "Thứ tự ưu tiên",
+      "description": "Số nhỏ = ít mật (1=Thường, 2=Mật, 3=Tối mật)",
+      "default": "1",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "description",
+      "fieldtype": "Small Text",
+      "label": "Mô tả"
+    }
+  ],
+  "permissions": [
+    {
+      "role": "Document Admin",
+      "read": 1, "write": 1, "create": 1, "delete": 1, "print": 1, "export": 1, "import": 1, "share": 1, "report": 1
+    },
+    {
+      "role": "Cataloger",
+      "read": 1
+    },
+    {
+      "role": "Reading Room Officer",
+      "read": 1
+    }
+  ],
+  "sort_field": "priority",
+  "sort_order": "ASC"
+}

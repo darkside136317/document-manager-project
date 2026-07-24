@@ -1,0 +1,98 @@
+{
+  "name": "Catalog",
+  "module": "Document Manager",
+  "doctype": "DocType",
+  "document_type": "Document",
+  "engine": "InnoDB",
+  "naming_rule": "Expression",
+  "autoname": "format:CAT-{####}",
+  "is_submittable": 0,
+  "allow_rename": 1,
+  "track_changes": 1,
+  "fields": [
+    {
+      "fieldname": "catalog_title",
+      "fieldtype": "Data",
+      "label": "Tên mục lục tài liệu",
+      "reqd": 1,
+      "in_list_view": 1,
+      "in_standard_filter": 1,
+      "bold": 1
+    },
+    {
+      "fieldname": "catalog_number",
+      "fieldtype": "Data",
+      "label": "Số mục lục",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "column_break_1",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "record_group",
+      "fieldtype": "Link",
+      "label": "Khối tài liệu",
+      "options": "Record Group",
+      "reqd": 1,
+      "in_list_view": 1,
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "fonds",
+      "fieldtype": "Link",
+      "label": "Phông lưu trữ",
+      "options": "Fonds",
+      "read_only": 1,
+      "fetch_from": "record_group.fonds",
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "section_time",
+      "fieldtype": "Section Break",
+      "label": "Thời gian"
+    },
+    {
+      "fieldname": "start_year",
+      "fieldtype": "Int",
+      "label": "Năm bắt đầu"
+    },
+    {
+      "fieldname": "end_year",
+      "fieldtype": "Int",
+      "label": "Năm kết thúc"
+    },
+    {
+      "fieldname": "section_description",
+      "fieldtype": "Section Break",
+      "label": "Mô tả"
+    },
+    {
+      "fieldname": "description",
+      "fieldtype": "Text Editor",
+      "label": "Mô tả chi tiết"
+    }
+  ],
+  "permissions": [
+    {
+      "role": "Document Admin",
+      "read": 1, "write": 1, "create": 1, "delete": 1, "print": 1, "export": 1, "import": 1, "share": 1, "report": 1
+    },
+    {
+      "role": "Cataloger",
+      "read": 1, "write": 1, "create": 1, "delete": 1
+    },
+    {
+      "role": "Reading Room Officer",
+      "read": 1
+    },
+    {
+      "role": "Reader",
+      "read": 1
+    }
+  ],
+  "sort_field": "modified",
+  "sort_order": "DESC",
+  "title_field": "catalog_title",
+  "search_fields": "catalog_title,catalog_number,record_group,fonds"
+}

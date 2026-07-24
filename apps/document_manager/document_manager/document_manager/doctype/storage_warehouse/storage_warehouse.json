@@ -1,0 +1,125 @@
+{
+  "name": "Storage Warehouse",
+  "module": "Document Manager",
+  "doctype": "DocType",
+  "document_type": "Setup",
+  "engine": "InnoDB",
+  "naming_rule": "By fieldname",
+  "autoname": "field:warehouse_name",
+  "is_tree": 1,
+  "nsm_parent_field": "parent_warehouse",
+  "is_submittable": 0,
+  "allow_rename": 1,
+  "track_changes": 1,
+  "fields": [
+    {
+      "fieldname": "warehouse_name",
+      "fieldtype": "Data",
+      "label": "Tên kho/phòng/giá/hộp",
+      "reqd": 1,
+      "in_list_view": 1,
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "warehouse_code",
+      "fieldtype": "Data",
+      "label": "Mã kho",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "column_break_1",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "warehouse_type",
+      "fieldtype": "Select",
+      "label": "Loại",
+      "options": "\nKho\nPhòng\nGiá\nHộp",
+      "in_list_view": 1,
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "parent_warehouse",
+      "fieldtype": "Link",
+      "label": "Thuộc kho/phòng cha",
+      "options": "Storage Warehouse",
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "is_group",
+      "fieldtype": "Check",
+      "label": "Là nhóm (có phần tử con)",
+      "default": "1"
+    },
+    {
+      "fieldname": "section_details",
+      "fieldtype": "Section Break",
+      "label": "Thông tin chi tiết"
+    },
+    {
+      "fieldname": "location",
+      "fieldtype": "Small Text",
+      "label": "Vị trí"
+    },
+    {
+      "fieldname": "capacity",
+      "fieldtype": "Data",
+      "label": "Sức chứa"
+    },
+    {
+      "fieldname": "column_break_2",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "archival_agency",
+      "fieldtype": "Link",
+      "label": "Cơ quan lưu trữ",
+      "options": "Archival Agency",
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "description",
+      "fieldtype": "Small Text",
+      "label": "Mô tả"
+    },
+    {
+      "fieldname": "lft",
+      "fieldtype": "Int",
+      "label": "Left",
+      "hidden": 1
+    },
+    {
+      "fieldname": "rgt",
+      "fieldtype": "Int",
+      "label": "Right",
+      "hidden": 1
+    },
+    {
+      "fieldname": "old_parent",
+      "fieldtype": "Link",
+      "label": "Old Parent",
+      "options": "Storage Warehouse",
+      "hidden": 1
+    }
+  ],
+  "permissions": [
+    {
+      "role": "Document Admin",
+      "read": 1, "write": 1, "create": 1, "delete": 1, "print": 1, "export": 1, "import": 1, "share": 1, "report": 1
+    },
+    {
+      "role": "Cataloger",
+      "read": 1, "write": 1, "create": 1
+    },
+    {
+      "role": "Preservation Officer",
+      "read": 1
+    },
+    {
+      "role": "Reading Room Officer",
+      "read": 1
+    }
+  ],
+  "sort_field": "warehouse_name",
+  "sort_order": "ASC"
+}

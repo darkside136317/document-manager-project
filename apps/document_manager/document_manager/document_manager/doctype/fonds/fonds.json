@@ -1,0 +1,163 @@
+{
+  "name": "Fonds",
+  "module": "Document Manager",
+  "doctype": "DocType",
+  "document_type": "Document",
+  "engine": "InnoDB",
+  "naming_rule": "Expression",
+  "autoname": "format:FONDS-{####}",
+  "is_submittable": 0,
+  "allow_rename": 1,
+  "track_changes": 1,
+  "fields": [
+    {
+      "fieldname": "fonds_name",
+      "fieldtype": "Data",
+      "label": "Tên phông lưu trữ",
+      "reqd": 1,
+      "in_list_view": 1,
+      "in_standard_filter": 1,
+      "bold": 1
+    },
+    {
+      "fieldname": "fonds_code",
+      "fieldtype": "Data",
+      "label": "Mã phông",
+      "unique": 1,
+      "in_list_view": 1,
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "column_break_1",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "archival_agency",
+      "fieldtype": "Link",
+      "label": "Cơ quan hình thành phông",
+      "options": "Archival Agency",
+      "reqd": 1,
+      "in_list_view": 1,
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "status",
+      "fieldtype": "Select",
+      "label": "Trạng thái",
+      "options": "Đang xử lý\nĐã hoàn thành\nĐã đóng",
+      "default": "Đang xử lý",
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "section_time",
+      "fieldtype": "Section Break",
+      "label": "Thời gian tài liệu"
+    },
+    {
+      "fieldname": "start_year",
+      "fieldtype": "Int",
+      "label": "Năm bắt đầu",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "end_year",
+      "fieldtype": "Int",
+      "label": "Năm kết thúc",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "column_break_2",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "total_shelf_meters",
+      "fieldtype": "Float",
+      "label": "Tổng số mét giá",
+      "precision": 2
+    },
+    {
+      "fieldname": "total_boxes",
+      "fieldtype": "Int",
+      "label": "Tổng số hộp"
+    },
+    {
+      "fieldname": "total_files",
+      "fieldtype": "Int",
+      "label": "Tổng số hồ sơ",
+      "read_only": 1,
+      "description": "Tự động cập nhật"
+    },
+    {
+      "fieldname": "section_classification",
+      "fieldtype": "Section Break",
+      "label": "Phân loại"
+    },
+    {
+      "fieldname": "document_type_category",
+      "fieldtype": "Link",
+      "label": "Loại hình tài liệu",
+      "options": "Document Type Category",
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "document_group",
+      "fieldtype": "Link",
+      "label": "Nhóm tài liệu",
+      "options": "Document Group",
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "column_break_3",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "classification_scheme",
+      "fieldtype": "Link",
+      "label": "Khung phân loại",
+      "options": "Classification Scheme"
+    },
+    {
+      "fieldname": "section_description",
+      "fieldtype": "Section Break",
+      "label": "Mô tả"
+    },
+    {
+      "fieldname": "description",
+      "fieldtype": "Text Editor",
+      "label": "Mô tả chi tiết"
+    },
+    {
+      "fieldname": "section_history",
+      "fieldtype": "Section Break",
+      "label": "Lịch sử",
+      "collapsible": 1
+    },
+    {
+      "fieldname": "history",
+      "fieldtype": "Text Editor",
+      "label": "Lịch sử phông"
+    }
+  ],
+  "permissions": [
+    {
+      "role": "Document Admin",
+      "read": 1, "write": 1, "create": 1, "delete": 1, "print": 1, "export": 1, "import": 1, "share": 1, "report": 1
+    },
+    {
+      "role": "Cataloger",
+      "read": 1, "write": 1, "create": 1, "delete": 0
+    },
+    {
+      "role": "Reading Room Officer",
+      "read": 1
+    },
+    {
+      "role": "Reader",
+      "read": 1
+    }
+  ],
+  "sort_field": "modified",
+  "sort_order": "DESC",
+  "title_field": "fonds_name",
+  "search_fields": "fonds_name,fonds_code,archival_agency"
+}

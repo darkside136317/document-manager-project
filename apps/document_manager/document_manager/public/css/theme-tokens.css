@@ -1,0 +1,55 @@
+/*
+ * DOCUMENT MANAGER — BRAND TOKENS
+ * --------------------------------------------------------------------------
+ * Thay UI nhanh: chỉ chỉnh các biến trong file này. Không cần sửa component,
+ * JavaScript hoặc backend. Bảng màu mặc định lấy cảm hứng từ kho lưu trữ số:
+ * navy (tin cậy), teal (công nghệ) và vàng đồng (di sản/tài liệu).
+ */
+
+:root {
+    /* Brand */
+    --dm-primary: #16657a;
+    --dm-primary-hover: #104f60;
+    --dm-primary-dark: #0d3f4d;
+    --dm-primary-soft: #e9f6f8;
+    --dm-accent: #c8953d;
+    --dm-accent-soft: #fff7e8;
+    --dm-brand-navy: #102f46;
+    --dm-brand-gradient: linear-gradient(128deg, #102f46 0%, #155f75 58%, #16849a 100%);
+
+    /* Semantic colors */
+    --dm-success: #16845b;
+    --dm-success-soft: #eaf8f1;
+    --dm-warning: #b36a12;
+    --dm-warning-soft: #fff7e8;
+    --dm-danger: #c2414f;
+    --dm-danger-soft: #fff0f2;
+    --dm-info: #2867b2;
+    --dm-info-soft: #edf5ff;
+
+    /* Surfaces and text */
+    --dm-ink: #172330;
+    --dm-ink-soft: #344454;
+    --dm-muted: #667788;
+    --dm-subtle: #8a98a8;
+    --dm-border: #dce4ea;
+    --dm-border-strong: #c7d2db;
+    --dm-surface: #ffffff;
+    --dm-surface-muted: #f8fafb;
+    --dm-background: #f3f6f8;
+
+    /* Typography */
+    --dm-font-sans: "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial, sans-serif;
+    --dm-font-mono: "Cascadia Code", Consolas, monospace;
+
+    /* Shape, spacing and depth */
+    --dm-radius-sm: 8px;
+    --dm-radius-md: 12px;
+    --dm-radius-lg: 18px;
+    --dm-radius-xl: 24px;
+    --dm-shadow-sm: 0 2px 8px rgba(16, 47, 70, 0.06);
+    --dm-shadow-md: 0 10px 28px rgba(16, 47, 70, 0.10);
+    --dm-shadow-lg: 0 24px 60px rgba(16, 47, 70, 0.16);
+    --dm-focus-ring: 0 0 0 3px rgba(22, 101, 122, 0.16);
+    --dm-transition: 180ms ease;
+}

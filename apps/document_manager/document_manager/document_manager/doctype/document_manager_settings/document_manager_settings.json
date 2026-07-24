@@ -1,0 +1,30 @@
+{
+  "name": "Document Manager Settings", "module": "Document Manager", "doctype": "DocType",
+  "issingle": 1, "engine": "InnoDB", "track_changes": 1,
+  "fields": [
+    {"fieldname": "section_mongodb", "fieldtype": "Section Break", "label": "MongoDB Atlas"},
+    {"fieldname": "mongodb_atlas_uri", "fieldtype": "Password", "label": "MongoDB Atlas URI", "description": "mongodb+srv://..."},
+    {"fieldname": "mongodb_database", "fieldtype": "Data", "label": "Database Name", "default": "docmanager_files"},
+    {"fieldname": "column_break_mongo", "fieldtype": "Column Break"},
+    {"fieldname": "mongodb_status", "fieldtype": "Data", "label": "Trạng thái kết nối", "read_only": 1},
+    {"fieldname": "section_meili", "fieldtype": "Section Break", "label": "Meilisearch"},
+    {"fieldname": "meilisearch_host", "fieldtype": "Data", "label": "Meilisearch Host", "default": "http://localhost:7700"},
+    {"fieldname": "meilisearch_master_key", "fieldtype": "Password", "label": "Master Key"},
+    {"fieldname": "column_break_meili", "fieldtype": "Column Break"},
+    {"fieldname": "meilisearch_status", "fieldtype": "Data", "label": "Trạng thái kết nối", "read_only": 1},
+    {"fieldname": "total_indexed", "fieldtype": "Int", "label": "Số tài liệu đã index", "read_only": 1},
+    {"fieldname": "section_backup", "fieldtype": "Section Break", "label": "Sao lưu tự động"},
+    {"fieldname": "auto_backup_enabled", "fieldtype": "Check", "label": "Bật sao lưu tự động", "default": "1"},
+    {"fieldname": "backup_frequency", "fieldtype": "Select", "label": "Tần suất", "options": "Hàng ngày\nHàng tuần\nHàng tháng", "default": "Hàng tuần"},
+    {"fieldname": "column_break_backup", "fieldtype": "Column Break"},
+    {"fieldname": "backup_retention_days", "fieldtype": "Int", "label": "Giữ backup (ngày)", "default": "30"},
+    {"fieldname": "auto_integrity_check", "fieldtype": "Check", "label": "Bật kiểm tra tự động", "default": "1"},
+    {"fieldname": "section_log", "fieldtype": "Section Break", "label": "Log"},
+    {"fieldname": "log_retention_days", "fieldtype": "Int", "label": "Giữ log (ngày)", "default": "90"},
+    {"fieldname": "enable_activity_log", "fieldtype": "Check", "label": "Bật Business Activity Log", "default": "1"}
+  ],
+  "permissions": [
+    {"role": "Document Admin", "read": 1, "write": 1, "create": 1},
+    {"role": "System Manager", "read": 1, "write": 1, "create": 1}
+  ]
+}

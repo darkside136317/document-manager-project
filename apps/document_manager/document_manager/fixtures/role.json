@@ -1,0 +1,7 @@
+[
+  {"doctype": "Role", "name": "Document Admin", "role_name": "Document Admin", "desk_access": 1, "is_custom": 1},
+  {"doctype": "Role", "name": "Cataloger", "role_name": "Cataloger", "desk_access": 1, "is_custom": 1},
+  {"doctype": "Role", "name": "Reading Room Officer", "role_name": "Reading Room Officer", "desk_access": 1, "is_custom": 1},
+  {"doctype": "Role", "name": "Preservation Officer", "role_name": "Preservation Officer", "desk_access": 1, "is_custom": 1},
+  {"doctype": "Role", "name": "Reader", "role_name": "Reader", "desk_access": 0, "is_custom": 1}
+]

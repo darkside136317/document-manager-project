@@ -1,0 +1,40 @@
+{
+  "name": "Reader",
+  "module": "Document Manager",
+  "doctype": "DocType",
+  "document_type": "Document",
+  "engine": "InnoDB",
+  "naming_rule": "Expression",
+  "autoname": "format:RDR-{####}",
+  "is_submittable": 0,
+  "track_changes": 1,
+  "fields": [
+    {"fieldname": "full_name", "fieldtype": "Data", "label": "Họ và tên", "reqd": 1, "in_list_view": 1, "in_standard_filter": 1, "bold": 1},
+    {"fieldname": "user", "fieldtype": "Link", "label": "Tài khoản User", "options": "User", "unique": 1, "in_list_view": 1},
+    {"fieldname": "column_break_1", "fieldtype": "Column Break"},
+    {"fieldname": "email", "fieldtype": "Data", "label": "Email", "options": "Email", "in_list_view": 1},
+    {"fieldname": "phone", "fieldtype": "Data", "label": "Điện thoại", "options": "Phone"},
+    {"fieldname": "id_number", "fieldtype": "Data", "label": "Số CMND/CCCD"},
+    {"fieldname": "section_org", "fieldtype": "Section Break", "label": "Đơn vị công tác"},
+    {"fieldname": "organization", "fieldtype": "Data", "label": "Cơ quan/Đơn vị"},
+    {"fieldname": "position", "fieldtype": "Data", "label": "Chức vụ"},
+    {"fieldname": "column_break_2", "fieldtype": "Column Break"},
+    {"fieldname": "address", "fieldtype": "Small Text", "label": "Địa chỉ"},
+    {"fieldname": "section_access", "fieldtype": "Section Break", "label": "Quyền khai thác"},
+    {"fieldname": "max_confidentiality_priority", "fieldtype": "Int", "label": "Mức mật tối đa được xem", "default": "1", "description": "1=Thường, 2=Mật, 3=Tối mật. Phụ thuộc vào quyền được cấp."},
+    {"fieldname": "reader_group", "fieldtype": "Data", "label": "Nhóm độc giả", "in_standard_filter": 1},
+    {"fieldname": "column_break_3", "fieldtype": "Column Break"},
+    {"fieldname": "is_active", "fieldtype": "Check", "label": "Đang hoạt động", "default": "1", "in_standard_filter": 1},
+    {"fieldname": "registration_date", "fieldtype": "Date", "label": "Ngày đăng ký", "default": "Today"},
+    {"fieldname": "section_notes", "fieldtype": "Section Break", "label": "Ghi chú", "collapsible": 1},
+    {"fieldname": "notes", "fieldtype": "Small Text", "label": "Ghi chú"}
+  ],
+  "permissions": [
+    {"role": "Document Admin", "read": 1, "write": 1, "create": 1, "delete": 1, "print": 1, "export": 1, "import": 1, "share": 1, "report": 1},
+    {"role": "Reading Room Officer", "read": 1, "write": 1, "create": 1, "delete": 0},
+    {"role": "Reader", "read": 1, "write": 1, "create": 0, "if_owner": 1}
+  ],
+  "sort_field": "modified", "sort_order": "DESC",
+  "title_field": "full_name",
+  "search_fields": "full_name,email,phone,organization"
+}

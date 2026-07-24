@@ -1,0 +1,22 @@
+{
+  "name": "Integrity Check", "module": "Document Manager", "doctype": "DocType",
+  "document_type": "Document", "engine": "InnoDB",
+  "naming_rule": "Expression", "autoname": "format:IC-{YYYY}{MM}{DD}-{###}",
+  "is_submittable": 0, "track_changes": 1,
+  "fields": [
+    {"fieldname": "check_type", "fieldtype": "Select", "label": "Loại kiểm tra", "options": "Toàn bộ\nChecksum\nLiên kết file-metadata\nFile bị thiếu", "reqd": 1, "in_list_view": 1},
+    {"fieldname": "status", "fieldtype": "Select", "label": "Trạng thái", "options": "Đang chờ\nĐang chạy\nHoàn thành\nPhát hiện lỗi", "default": "Đang chờ", "in_list_view": 1, "read_only": 1},
+    {"fieldname": "column_break_1", "fieldtype": "Column Break"},
+    {"fieldname": "started_at", "fieldtype": "Datetime", "label": "Bắt đầu", "read_only": 1},
+    {"fieldname": "completed_at", "fieldtype": "Datetime", "label": "Hoàn thành", "read_only": 1},
+    {"fieldname": "total_checked", "fieldtype": "Int", "label": "Tổng đã kiểm tra", "read_only": 1},
+    {"fieldname": "errors_found", "fieldtype": "Int", "label": "Lỗi phát hiện", "read_only": 1},
+    {"fieldname": "section_result", "fieldtype": "Section Break", "label": "Chi tiết lỗi"},
+    {"fieldname": "error_details", "fieldtype": "Long Text", "label": "Chi tiết lỗi", "read_only": 1}
+  ],
+  "permissions": [
+    {"role": "Document Admin", "read": 1, "write": 1, "create": 1, "delete": 1, "report": 1},
+    {"role": "Preservation Officer", "read": 1, "write": 1, "create": 1}
+  ],
+  "sort_field": "modified", "sort_order": "DESC"
+}

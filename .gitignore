@@ -1,0 +1,40 @@
+# Environment (contains secrets)
+.env
+docker/.env
+
+# Frappe sites data (generated at runtime)
+sites/
+
+# Python
+*.pyc
+__pycache__/
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Node
+node_modules/
+
+# Logs
+logs/
+*.log
+
+# Redis config (generated)
+config/pids/
+config/redis*.conf
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Docker volumes data (if mounted locally)
+docker/volumes/

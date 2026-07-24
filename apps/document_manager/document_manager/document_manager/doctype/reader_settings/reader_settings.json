@@ -1,0 +1,19 @@
+{
+  "name": "Reader Settings", "module": "Document Manager", "doctype": "DocType",
+  "issingle": 1, "engine": "InnoDB", "track_changes": 1,
+  "fields": [
+    {"fieldname": "max_requests_per_day", "fieldtype": "Int", "label": "Số phiếu yêu cầu tối đa/ngày", "default": "5"},
+    {"fieldname": "max_copy_requests_per_day", "fieldtype": "Int", "label": "Số phiếu sao chụp tối đa/ngày", "default": "3"},
+    {"fieldname": "column_break_1", "fieldtype": "Column Break"},
+    {"fieldname": "document_hold_days", "fieldtype": "Int", "label": "Thời gian giữ tài liệu (ngày)", "default": "7"},
+    {"fieldname": "auto_return_overdue", "fieldtype": "Check", "label": "Tự động nhắc trả quá hạn", "default": "1"},
+    {"fieldname": "section_registration", "fieldtype": "Section Break", "label": "Đăng ký"},
+    {"fieldname": "allow_self_registration", "fieldtype": "Check", "label": "Cho phép tự đăng ký", "default": "1"},
+    {"fieldname": "default_confidentiality_priority", "fieldtype": "Int", "label": "Mức mật mặc định cho độc giả mới", "default": "1"},
+    {"fieldname": "require_approval", "fieldtype": "Check", "label": "Yêu cầu duyệt đăng ký", "default": "1"}
+  ],
+  "permissions": [
+    {"role": "Document Admin", "read": 1, "write": 1, "create": 1},
+    {"role": "Reading Room Officer", "read": 1, "write": 1}
+  ]
+}
