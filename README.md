@@ -49,46 +49,6 @@ Phông lưu trữ (Fonds)
 - 20GB+ dung lượng đĩa cho dữ liệu
 - Tài khoản MongoDB Atlas (free tier hoặc paid)
 
-## Hướng dẫn cài đặt
-
-### 1. Clone repository
-
-```bash
-git clone <your-repo-url>
-cd document-manager-project
-```
-
-### 2. Cấu hình môi trường
-
-```bash
-cp docker/.env.example docker/.env
-# Sửa docker/.env với các giá trị thực tế (mật khẩu, keys...)
-```
-
-### 3. Khởi động Docker
-
-```bash
-cd docker
-docker compose up -d
-```
-
-### 4. Chờ site được tạo
-
-```bash
-# Theo dõi log tạo site
-docker compose logs -f create-site
-
-# Sau khi site tạo xong, truy cập:
-# Frappe Desk: http://localhost:8080
-# Meilisearch: http://localhost:7700
-```
-
-### 5. Đăng nhập Admin
-
-- **URL**: http://localhost:8080
-- **User**: Administrator
-- **Password**: giá trị `ADMIN_PASSWORD` trong `.env`
-
 ## Cấu trúc thư mục
 
 ```
@@ -117,16 +77,6 @@ document-manager-project/
 ├── .gitignore
 └── README.md
 ```
-
-## Tiến độ xây dựng
-
-Xem chi tiết tại: [docs/build-log/00-tong-quan-tien-do.md](docs/build-log/00-tong-quan-tien-do.md)
-
-## Quy tắc Git
-
-- **Branch**: `main` → `develop` → `feature/<tên-tính-năng>`
-- **Commit**: Conventional Commits (`feat:`, `fix:`, `chore:`, `docs:`)
-- **Không commit**: `sites/`, `.env`, `node_modules/`
 
 ## License
 
