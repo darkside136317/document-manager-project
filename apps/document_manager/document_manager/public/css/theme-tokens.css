@@ -1,55 +1,58 @@
 /*
  * DOCUMENT MANAGER — BRAND TOKENS
  * --------------------------------------------------------------------------
- * Thay UI nhanh: chỉ chỉnh các biến trong file này. Không cần sửa component,
- * JavaScript hoặc backend. Bảng màu mặc định lấy cảm hứng từ kho lưu trữ số:
- * navy (tin cậy), teal (công nghệ) và vàng đồng (di sản/tài liệu).
+ * Tông màu chủ đạo: Xanh Navy (tin cậy) & Vàng Đồng (giá trị cốt lõi).
+ * Tích hợp Glassmorphism (hiệu ứng kính mờ) cho giao diện cao cấp.
  */
 
 :root {
-    /* Brand */
-    --dm-primary: #16657a;
-    --dm-primary-hover: #104f60;
-    --dm-primary-dark: #0d3f4d;
-    --dm-primary-soft: #e9f6f8;
-    --dm-accent: #c8953d;
-    --dm-accent-soft: #fff7e8;
-    --dm-brand-navy: #102f46;
-    --dm-brand-gradient: linear-gradient(128deg, #102f46 0%, #155f75 58%, #16849a 100%);
+    /* Brand Colors - Navy & Gold */
+    --dm-primary: #0a1f35;
+    --dm-primary-hover: #133254;
+    --dm-primary-dark: #05101a;
+    --dm-primary-soft: #edf2f7;
+    
+    --dm-accent: #d4af37;
+    --dm-accent-hover: #e6c555;
+    --dm-accent-soft: #fcf8eb;
+    
+    --dm-brand-navy: #0a1f35;
+    --dm-brand-gradient: linear-gradient(135deg, #0a1f35 0%, #173d63 100%);
+    --dm-glass-bg: rgba(255, 255, 255, 0.85);
+    --dm-glass-border: rgba(255, 255, 255, 0.4);
 
     /* Semantic colors */
-    --dm-success: #16845b;
-    --dm-success-soft: #eaf8f1;
-    --dm-warning: #b36a12;
-    --dm-warning-soft: #fff7e8;
-    --dm-danger: #c2414f;
-    --dm-danger-soft: #fff0f2;
-    --dm-info: #2867b2;
-    --dm-info-soft: #edf5ff;
+    --dm-success: #10b981;
+    --dm-success-soft: #ecfdf5;
+    --dm-warning: #f59e0b;
+    --dm-warning-soft: #fffbeb;
+    --dm-danger: #ef4444;
+    --dm-danger-soft: #fef2f2;
+    --dm-info: #3b82f6;
+    --dm-info-soft: #eff6ff;
 
     /* Surfaces and text */
-    --dm-ink: #172330;
-    --dm-ink-soft: #344454;
-    --dm-muted: #667788;
-    --dm-subtle: #8a98a8;
-    --dm-border: #dce4ea;
-    --dm-border-strong: #c7d2db;
+    --dm-ink: #1e293b;
+    --dm-ink-soft: #475569;
+    --dm-muted: #64748b;
+    --dm-subtle: #94a3b8;
+    --dm-border: #e2e8f0;
+    --dm-border-strong: #cbd5e1;
     --dm-surface: #ffffff;
-    --dm-surface-muted: #f8fafb;
-    --dm-background: #f3f6f8;
-
-    /* Typography */
-    --dm-font-sans: "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial, sans-serif;
-    --dm-font-mono: "Cascadia Code", Consolas, monospace;
+    --dm-surface-muted: #f8fafc;
+    --dm-background: #f1f5f9;
 
     /* Shape, spacing and depth */
     --dm-radius-sm: 8px;
     --dm-radius-md: 12px;
-    --dm-radius-lg: 18px;
+    --dm-radius-lg: 16px;
     --dm-radius-xl: 24px;
-    --dm-shadow-sm: 0 2px 8px rgba(16, 47, 70, 0.06);
-    --dm-shadow-md: 0 10px 28px rgba(16, 47, 70, 0.10);
-    --dm-shadow-lg: 0 24px 60px rgba(16, 47, 70, 0.16);
-    --dm-focus-ring: 0 0 0 3px rgba(22, 101, 122, 0.16);
-    --dm-transition: 180ms ease;
+    
+    /* Premium Shadows */
+    --dm-shadow-sm: 0 2px 4px rgba(10, 31, 53, 0.04);
+    --dm-shadow-md: 0 4px 12px rgba(10, 31, 53, 0.08);
+    --dm-shadow-lg: 0 12px 32px rgba(10, 31, 53, 0.12);
+    --dm-shadow-glow: 0 0 20px rgba(212, 175, 55, 0.3);
+    
+    --dm-transition: 250ms cubic-bezier(0.4, 0, 0.2, 1);
 }

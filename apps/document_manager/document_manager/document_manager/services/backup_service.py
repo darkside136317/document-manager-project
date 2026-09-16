@@ -12,6 +12,21 @@ import hashlib
 import frappe
 
 
+def schedule_integrity_check():
+    """Create and queue the configured weekly integrity check."""
+    settings = frappe.get_single("Document Manager Settings")
+    if not settings.auto_integrity_check:
+        return
+
+    check = frappe.get_doc(
+        {
+            "doctype": "Integrity Check",
+            "check_type": "Toàn bộ",
+        }
+    ).insert(ignore_permissions=True)
+    check.run_check()
+
+
 def run_backup(batch_name: str, backup_type: str):
     """Run backup job (enqueued from BackupBatch.run_backup)."""
     batch = frappe.get_doc("Backup Batch", batch_name)

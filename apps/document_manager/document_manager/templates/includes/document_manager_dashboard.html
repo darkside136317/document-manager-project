@@ -1,103 +1,214 @@
-<section class="dm-dashboard" aria-label="Tổng quan Document Manager">
-    <div class="dm-dashboard-hero">
-        <div class="dm-dashboard-hero__content">
-            <div class="dm-dashboard-eyebrow">
-                <span class="dm-dashboard-eyebrow__dot"></span>
-                TRUNG TÂM LƯU TRỮ SỐ
+<section class="dm-workspace-container" aria-label="Giao diện làm việc Document Manager">
+    <!-- Hero Header: Welcome & System Status -->
+    <header class="dm-hero-glass">
+        <div class="dm-hero-glass__bg"></div>
+        <div class="dm-hero-glass__content">
+            <div class="dm-hero-meta">
+                <span class="dm-badge dm-badge--primary"><i class="fa fa-home"></i> KHÔNG GIAN LÀM VIỆC SỐ</span>
+                <span class="dm-date" data-dm-date></span>
             </div>
-            <h1>Quản lý tài liệu tập trung, an toàn và dễ khai thác</h1>
-            <p>
-                Theo dõi toàn bộ vòng đời hồ sơ từ biên mục, lưu trữ,
-                tìm kiếm toàn văn đến khai thác và bảo quản dữ liệu.
-            </p>
-            <div class="dm-dashboard-actions">
-                <a class="dm-dashboard-btn dm-dashboard-btn--primary" href="/search">
-                    <i class="fa fa-search"></i> Tìm kiếm tài liệu
-                </a>
-                <button class="dm-dashboard-btn dm-dashboard-btn--secondary" type="button" data-dm-new-document>
-                    <i class="fa fa-plus"></i> Thêm tài liệu
-                </button>
+            <h1 class="dm-hero-title">Chào mừng trở lại, <span data-dm-user class="text-accent">Người dùng</span></h1>
+            <p class="dm-hero-subtitle">Hệ thống quản lý, biên mục và khai thác tài liệu lưu trữ toàn diện.</p>
+            
+            <div class="dm-hero-metrics">
+                <div class="dm-hero-metric">
+                    <div class="dm-metric-icon"><i class="fa fa-folder-open"></i></div>
+                    <div class="dm-metric-data">
+                        <strong data-dm-stat="archival_files">0</strong>
+                        <span>Hồ sơ lưu trữ</span>
+                    </div>
+                </div>
+                <div class="dm-hero-metric">
+                    <div class="dm-metric-icon bg-gold"><i class="fa fa-file-text"></i></div>
+                    <div class="dm-metric-data">
+                        <strong data-dm-stat="documents">0</strong>
+                        <span>Văn bản / Tài liệu</span>
+                    </div>
+                </div>
+                <div class="dm-hero-metric">
+                    <div class="dm-metric-icon bg-green"><i class="fa fa-users"></i></div>
+                    <div class="dm-metric-data">
+                        <strong data-dm-stat="readers">0</strong>
+                        <span>Độc giả</span>
+                    </div>
+                </div>
+                <div class="dm-hero-metric">
+                    <div class="dm-metric-icon bg-purple"><i class="fa fa-search"></i></div>
+                    <div class="dm-metric-data">
+                        <strong><span data-dm-index-label>0%</span></strong>
+                        <span>Tài liệu đã Index</span>
+                    </div>
+                </div>
             </div>
         </div>
-        <div class="dm-dashboard-hero__aside">
-            <div class="dm-dashboard-date" data-dm-date></div>
-            <div class="dm-dashboard-welcome">
-                Xin chào, <strong data-dm-user>Người dùng</strong>
+    </header>
+
+    <!-- Quick Actions (High Priority) -->
+    <div class="dm-section-heading mt-4">
+        <h2><i class="fa fa-bolt text-gold"></i> Tác vụ nhanh</h2>
+        <span class="dm-heading-line"></span>
+    </div>
+    <div class="dm-quick-actions-grid">
+        <a href="/search" class="dm-action-card highlight">
+            <div class="dm-action-icon"><i class="fa fa-search"></i></div>
+            <div class="dm-action-text">
+                <h3>Tra cứu toàn văn</h3>
+                <p>Tìm kiếm trong nội dung tài liệu</p>
             </div>
-            <div class="dm-dashboard-security">
-                <i class="fa fa-shield"></i>
-                <span>Dữ liệu được bảo vệ và kiểm soát truy cập</span>
+            <i class="fa fa-angle-right dm-action-arrow"></i>
+        </a>
+        <a href="#" data-dm-new-doctype="Archival File" class="dm-action-card">
+            <div class="dm-action-icon bg-navy"><i class="fa fa-folder-open"></i></div>
+            <div class="dm-action-text">
+                <h3>Lập hồ sơ mới</h3>
+                <p>Khởi tạo hồ sơ lưu trữ</p>
+            </div>
+            <i class="fa fa-angle-right dm-action-arrow"></i>
+        </a>
+        <a href="#" data-dm-new-doctype="Archive Document" class="dm-action-card">
+            <div class="dm-action-icon bg-gold"><i class="fa fa-file-text-o"></i></div>
+            <div class="dm-action-text">
+                <h3>Biên mục tài liệu</h3>
+                <p>Ghi nhận tài liệu, văn bản</p>
+            </div>
+            <i class="fa fa-angle-right dm-action-arrow"></i>
+        </a>
+        <a href="/app/usage-request" class="dm-action-card">
+            <div class="dm-action-icon bg-purple"><i class="fa fa-check-square-o"></i></div>
+            <div class="dm-action-text">
+                <h3>Duyệt yêu cầu</h3>
+                <p>Xử lý yêu cầu từ độc giả</p>
+            </div>
+            <i class="fa fa-angle-right dm-action-arrow"></i>
+        </a>
+    </div>
+
+    <!-- Main Workspace Area -->
+    <div class="dm-main-grid">
+        <!-- Left Column: Module Navigation -->
+        <div class="dm-modules-container">
+            <!-- Biên mục và Quản lý -->
+            <div class="dm-module-card">
+                <div class="dm-module-header">
+                    <i class="fa fa-archive"></i>
+                    <h3>Biên mục & Quản lý hồ sơ</h3>
+                </div>
+                <div class="dm-module-links">
+                    <a href="/app/fonds">Phông lưu trữ</a>
+                    <a href="/app/record-group">Khối tài liệu</a>
+                    <a href="/app/catalog">Mục lục tài liệu</a>
+                    <a href="/app/archival-file">Hồ sơ lưu trữ</a>
+                    <a href="/app/archive-document">Văn bản / Tài liệu</a>
+                </div>
+            </div>
+
+            <!-- Độc giả và Khai thác -->
+            <div class="dm-module-card">
+                <div class="dm-module-header">
+                    <i class="fa fa-users"></i>
+                    <h3>Độc giả & Khai thác</h3>
+                </div>
+                <div class="dm-module-links">
+                    <a href="/app/reader">Hồ sơ Độc giả</a>
+                    <a href="/app/usage-request">Phiếu Y/C Khai thác</a>
+                    <a href="/app/copy-request">Phiếu Y/C Sao chụp</a>
+                    <a href="/app/reader-feedback">Phản hồi độc giả</a>
+                </div>
+            </div>
+
+            <!-- Bảo quản & Hệ thống -->
+            <div class="dm-module-card">
+                <div class="dm-module-header">
+                    <i class="fa fa-shield"></i>
+                    <h3>Bảo quản & Kiểm tra</h3>
+                </div>
+                <div class="dm-module-links">
+                    <a href="/app/integrity-check">Kiểm tra toàn vẹn</a>
+                    <a href="/app/backup-batch">Sao lưu dữ liệu</a>
+                    <a href="/app/restore-batch">Khôi phục dữ liệu</a>
+                </div>
+            </div>
+
+            <!-- Thống kê báo cáo -->
+            <div class="dm-module-card">
+                <div class="dm-module-header">
+                    <i class="fa fa-bar-chart"></i>
+                    <h3>Thống kê & Báo cáo</h3>
+                </div>
+                <div class="dm-module-links">
+                    <a href="/app/query-report/Thong%20Ke%20Tai%20Lieu">Thống kê tài liệu</a>
+                    <a href="/app/query-report/Thong%20Ke%20Khai%20Thac">Thống kê khai thác</a>
+                </div>
+            </div>
+
+            <!-- Danh mục dùng chung -->
+            <div class="dm-module-card">
+                <div class="dm-module-header">
+                    <i class="fa fa-list"></i>
+                    <h3>Danh mục Dùng chung</h3>
+                </div>
+                <div class="dm-module-links">
+                    <a href="/app/archival-agency">Cơ quan lưu trữ</a>
+                    <a href="/app/classification-scheme">Bảng phân loại</a>
+                    <a href="/app/document-group">Nhóm tài liệu</a>
+                    <a href="/app/document-type-category">Loại tài liệu</a>
+                    <a href="/app/confidentiality-level">Mức độ mật</a>
+                    <a href="/app/storage-warehouse">Kho lưu trữ</a>
+                    <a href="/app/quick-entry-dictionary">Từ điển nhập nhanh</a>
+                </div>
+            </div>
+
+            <!-- Quản trị -->
+            <div class="dm-module-card">
+                <div class="dm-module-header">
+                    <i class="fa fa-cogs"></i>
+                    <h3>Quản trị Hệ thống</h3>
+                </div>
+                <div class="dm-module-links">
+                    <a href="/app/document-manager-settings">Thiết lập hệ thống</a>
+                    <a href="/app/reader-settings">Thiết lập độc giả</a>
+                    <a href="/app/organization-info">Thông tin tổ chức</a>
+                    <a href="/app/business-activity-log">Nhật ký nghiệp vụ</a>
+                </div>
             </div>
         </div>
-    </div>
 
-    <div class="dm-dashboard-metrics">
-        <a class="dm-dashboard-metric" href="/app/fonds">
-            <span class="dm-dashboard-metric__icon dm-dashboard-metric__icon--navy"><i class="fa fa-archive"></i></span>
-            <span><strong data-dm-stat="fonds">—</strong><small>Phông lưu trữ</small></span>
-            <i class="fa fa-arrow-right dm-dashboard-metric__arrow"></i>
-        </a>
-        <a class="dm-dashboard-metric" href="/app/archival-file">
-            <span class="dm-dashboard-metric__icon dm-dashboard-metric__icon--teal"><i class="fa fa-folder-open"></i></span>
-            <span><strong data-dm-stat="archival_files">—</strong><small>Hồ sơ lưu trữ</small></span>
-            <i class="fa fa-arrow-right dm-dashboard-metric__arrow"></i>
-        </a>
-        <a class="dm-dashboard-metric" href="/app/archive-document">
-            <span class="dm-dashboard-metric__icon dm-dashboard-metric__icon--gold"><i class="fa fa-file-text"></i></span>
-            <span><strong data-dm-stat="documents">—</strong><small>Văn bản, tài liệu</small></span>
-            <i class="fa fa-arrow-right dm-dashboard-metric__arrow"></i>
-        </a>
-        <a class="dm-dashboard-metric" href="/app/reader">
-            <span class="dm-dashboard-metric__icon dm-dashboard-metric__icon--green"><i class="fa fa-users"></i></span>
-            <span><strong data-dm-stat="readers">—</strong><small>Độc giả</small></span>
-            <i class="fa fa-arrow-right dm-dashboard-metric__arrow"></i>
-        </a>
-    </div>
+        <!-- Right Column: Alerts & Recent Activity -->
+        <aside class="dm-sidebar">
+            <div class="dm-sidebar-widget dm-alerts-widget">
+                <h3 class="dm-widget-title"><i class="fa fa-bell-o"></i> Hàng đợi & Cảnh báo</h3>
+                <div class="dm-alert-list">
+                    <a href="/app/usage-request?workflow_state=Chờ duyệt" class="dm-alert-item warning">
+                        <div class="dm-alert-icon"><i class="fa fa-clock-o"></i></div>
+                        <div class="dm-alert-content">
+                            <strong><span data-dm-stat="pending_usage">0</span> Phiếu yêu cầu khai thác</strong>
+                            <span>Đang chờ phê duyệt</span>
+                        </div>
+                    </a>
+                    <a href="/app/copy-request?workflow_state=Chờ duyệt" class="dm-alert-item warning">
+                        <div class="dm-alert-icon"><i class="fa fa-copy"></i></div>
+                        <div class="dm-alert-content">
+                            <strong><span data-dm-stat="pending_copy">0</span> Phiếu yêu cầu sao chụp</strong>
+                            <span>Đang chờ phê duyệt</span>
+                        </div>
+                    </a>
+                    <a href="/app/integrity-check?status=Phát hiện lỗi" class="dm-alert-item danger">
+                        <div class="dm-alert-icon"><i class="fa fa-exclamation-triangle"></i></div>
+                        <div class="dm-alert-content">
+                            <strong><span data-dm-stat="integrity_errors">0</span> Lỗi toàn vẹn dữ liệu</strong>
+                            <span>Cần kiểm tra ngay</span>
+                        </div>
+                    </a>
+                </div>
+            </div>
 
-    <div class="dm-dashboard-grid">
-        <article class="dm-dashboard-panel dm-dashboard-panel--operations">
-            <div class="dm-dashboard-panel__head">
-                <div>
-                    <span class="dm-dashboard-kicker">VẬN HÀNH HỆ THỐNG</span>
-                    <h2>Tình trạng xử lý</h2>
+            <div class="dm-sidebar-widget dm-recent-widget">
+                <h3 class="dm-widget-title"><i class="fa fa-history"></i> Tài liệu mới cập nhật</h3>
+                <div class="dm-recent-list" data-dm-recent>
+                    <div class="dm-loading-spinner"><i class="fa fa-circle-o-notch fa-spin"></i> Đang tải...</div>
                 </div>
-                <a href="/app/archive-document">Xem tài liệu <i class="fa fa-angle-right"></i></a>
+                <a href="/app/archive-document" class="dm-view-all">Xem tất cả tài liệu <i class="fa fa-arrow-right"></i></a>
             </div>
-            <div class="dm-dashboard-index">
-                <div class="dm-dashboard-index__top">
-                    <span><i class="fa fa-bolt"></i> Tiến độ lập chỉ mục tìm kiếm</span>
-                    <strong data-dm-index-label>—</strong>
-                </div>
-                <div class="dm-dashboard-progress"><span data-dm-index-bar style="width:0%"></span></div>
-                <small><span data-dm-stat="indexed_documents">—</span> tài liệu đã sẵn sàng tìm kiếm toàn văn</small>
-            </div>
-            <div class="dm-dashboard-alerts">
-                <a href="/app/usage-request?workflow_state=Chờ duyệt">
-                    <span class="dm-dashboard-alert__icon"><i class="fa fa-clock-o"></i></span>
-                    <span><strong data-dm-stat="pending_usage">—</strong><small>Yêu cầu khai thác chờ duyệt</small></span>
-                </a>
-                <a href="/app/copy-request?workflow_state=Chờ duyệt">
-                    <span class="dm-dashboard-alert__icon"><i class="fa fa-copy"></i></span>
-                    <span><strong data-dm-stat="pending_copy">—</strong><small>Yêu cầu sao chụp chờ duyệt</small></span>
-                </a>
-                <a href="/app/integrity-check?status=Phát hiện lỗi">
-                    <span class="dm-dashboard-alert__icon"><i class="fa fa-check-circle-o"></i></span>
-                    <span><strong data-dm-stat="integrity_errors">—</strong><small>Phiên kiểm tra phát hiện lỗi</small></span>
-                </a>
-            </div>
-        </article>
-
-        <article class="dm-dashboard-panel dm-dashboard-panel--recent">
-            <div class="dm-dashboard-panel__head">
-                <div>
-                    <span class="dm-dashboard-kicker">HOẠT ĐỘNG GẦN ĐÂY</span>
-                    <h2>Tài liệu mới cập nhật</h2>
-                </div>
-                <a href="/app/archive-document">Xem tất cả <i class="fa fa-angle-right"></i></a>
-            </div>
-            <div class="dm-dashboard-recent-list" data-dm-recent>
-                <div class="dm-dashboard-loading"><i class="fa fa-spinner fa-spin"></i> Đang tải dữ liệu...</div>
-            </div>
-        </article>
+        </aside>
     </div>
 </section>

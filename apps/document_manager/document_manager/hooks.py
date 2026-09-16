@@ -24,6 +24,9 @@ app_include_css = [
     "/assets/document_manager/css/theme-tokens.css",
     "/assets/document_manager/css/document-manager-ui.css",
 ]
+page_include_js = {
+    "workspace": "/assets/document_manager/js/document-manager-dashboard.js"
+}
 web_include_css = [
     "/assets/document_manager/css/theme-tokens.css",
     "/assets/document_manager/css/document-manager-ui.css",
@@ -88,7 +91,7 @@ scheduler_events = {
     "cron": {
         # Integrity check every Sunday at 2 AM
         "0 2 * * 0": [
-            "document_manager.document_manager.services.backup_service.run_integrity_check",
+            "document_manager.document_manager.services.backup_service.schedule_integrity_check",
         ],
     },
 }

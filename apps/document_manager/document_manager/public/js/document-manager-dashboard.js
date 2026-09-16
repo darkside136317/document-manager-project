@@ -56,6 +56,13 @@
             });
         }
 
+        root.querySelectorAll("[data-dm-new-doctype]").forEach(function (link) {
+            link.addEventListener("click", function (event) {
+                event.preventDefault();
+                frappe.new_doc(link.dataset.dmNewDoctype);
+            });
+        });
+
         frappe.call({
             method: "document_manager.document_manager.api.dashboard.get_workspace_summary",
             callback: function (response) {
@@ -81,4 +88,53 @@
     }
 
     window.DocumentManagerDashboard = {init: init};
+
+    // Inject into Frappe Workspace automatically
+    function injectDashboardIntoWorkspace() {
+        const route = frappe.get_route();
+        const route0 = route[0] ? route[0].toLowerCase() : "";
+        if (( (route0 === "workspace" || route0 === "workspaces") && route[1] === "Document Manager") || route0 === "document-manager") {
+            let attempts = 0;
+            const checkExist = setInterval(function() {
+                const container = document.querySelector(".workspace-page .layout-main-section") || document.querySelector(".layout-main-section");
+                
+                // If container is found and Vue has rendered the standard blocks
+                if (container && container.children.length > 0) {
+                    clearInterval(checkExist);
+                    if (!container.querySelector(".dm-workspace-container")) {
+                        frappe.db.get_value("Custom HTML Block", "Document Manager Overview", ["html", "style"])
+                            .then(r => {
+                                if (r && r.message) {
+                                    // Hide all standard blocks
+                                    Array.from(container.children).forEach(c => {
+                                        c.style.display = "none";
+                                    });
+                                    
+                                    const wrapper = document.createElement("div");
+                                    wrapper.className = "dm-workspace-container";
+                                    wrapper.innerHTML = "<style>" + (r.message.style || "") + "</style>" + (r.message.html || "");
+                                    container.appendChild(wrapper);
+                                    
+                                    init(wrapper);
+                                }
+                            });
+                    }
+                }
+                
+                attempts++;
+                if (attempts > 20) {
+                    clearInterval(checkExist); // Stop checking after 10 seconds
+                }
+            }, 500); // Check every 500ms
+        }
+    }
+
+    if (window.frappe) {
+        if (frappe.router) {
+            frappe.router.on("change", injectDashboardIntoWorkspace);
+        }
+        $(document).on("page-change", injectDashboardIntoWorkspace);
+        // Run once on load
+        setTimeout(injectDashboardIntoWorkspace, 500);
+    }
 })();

@@ -52,6 +52,8 @@ services:
         bench set-config -g redis_socketio "redis://$$REDIS_QUEUE";
         bench set-config -g meilisearch_host "$$MEILISEARCH_HOST";
         bench set-config -g meilisearch_master_key "$$MEILISEARCH_MASTER_KEY";
+        bench set-config -g mongodb_atlas_uri "$$MONGODB_ATLAS_URI";
+        bench set-config -g mongodb_database "$$MONGODB_DATABASE";
         bench set-config -gp socketio_port $$SOCKETIO_PORT;
     environment:
       DB_HOST: ${DB_HOST:-db}
@@ -60,6 +62,8 @@ services:
       REDIS_QUEUE: ${REDIS_QUEUE:-redis-queue:6379}
       MEILISEARCH_HOST: ${MEILISEARCH_HOST:-http://meilisearch:7700}
       MEILISEARCH_MASTER_KEY: ${MEILISEARCH_MASTER_KEY:?}
+      MONGODB_ATLAS_URI: ${MONGODB_ATLAS_URI:?}
+      MONGODB_DATABASE: ${MONGODB_DATABASE:-docmanager_files}
       SOCKETIO_PORT: "9000"
     volumes:
       - sites:/home/frappe/frappe-bench/sites

@@ -300,6 +300,26 @@
     let currentPage = 1;
     let latestRequest = 0;
 
+    // Website pages do not always load the Desk-only `frappe.call` helper.
+    // Call whitelisted methods through the public Frappe HTTP endpoint instead.
+    function callAPI(method, args) {
+        const url = new URL("/api/method/" + method, window.location.origin);
+        Object.keys(args || {}).forEach(function (key) {
+            const value = args[key];
+            if (value !== undefined && value !== null) url.searchParams.set(key, value);
+        });
+        return fetch(url.toString(), {
+            credentials: "same-origin",
+            headers: {"Accept": "application/json"}
+        }).then(function (response) {
+            if (!response.ok) throw new Error("Request failed: " + response.status);
+            return response.json();
+        }).then(function (payload) {
+            if (payload.exc) throw new Error(payload._error_message || "Frappe API error");
+            return payload.message;
+        });
+    }
+
     function escapeHTML(value) {
         return String(value == null ? "" : value).replace(/[&<>"']/g, function (char) {
             return {"&":"&amp;", "<":"&lt;", ">":"&gt;", "\"":"&quot;", "'":"&#039;"}[char];
@@ -322,12 +342,14 @@
         };
     }
 
-    function updateURL(args) {
+    function updateURL(args, historyMode) {
+        if (!historyMode) return;
         const params = new URLSearchParams();
         Object.keys(args).forEach(function (key) {
             if (args[key] && !(key === "page" && Number(args[key]) === 1)) params.set(key, args[key]);
         });
-        history.replaceState(null, "", location.pathname + (params.toString() ? "?" + params.toString() : ""));
+        const url = location.pathname + (params.toString() ? "?" + params.toString() : "");
+        history[historyMode + "State"]({searchArgs: args}, "", url);
     }
 
     function showLoading() {
@@ -400,7 +422,7 @@
             '<button class="dm-page-button" data-page="' + (currentPage + 1) + '" ' + (currentPage >= totalPages ? "disabled" : "") + ' aria-label="Trang sau"><i class="fa fa-chevron-right"></i></button>';
     }
 
-    function runSearch() {
+    function runSearch(historyMode) {
         const args = currentArgs();
         if (!args.query) {
             queryInput.focus();
@@ -409,14 +431,12 @@
             return;
         }
         const requestId = ++latestRequest;
-        updateURL(args);
+        updateURL(args, historyMode || "replace");
         showLoading();
-        frappe.call({
-            method: "document_manager.document_manager.api.search.search_fulltext",
-            args: args,
-            callback: function (response) {
+        callAPI("document_manager.document_manager.api.search.search_fulltext", args)
+            .then(function (data) {
                 if (requestId !== latestRequest) return;
-                const data = response.message || {};
+                data = data || {};
                 if (data.error) {
                     resultsPanel.setAttribute("aria-busy", "false");
                     resultCount.textContent = "";
@@ -424,14 +444,17 @@
                     return;
                 }
                 renderResults(data);
-            },
-            error: function () {
+                // Keep the rendered result with this history entry.  This makes
+                // Back/Forward immediate and also avoids losing a result list
+                // after opening a document and returning to this page.
+                history.replaceState({searchArgs: args, searchData: data}, "", location.href);
+            })
+            .catch(function () {
                 if (requestId !== latestRequest) return;
                 resultsPanel.setAttribute("aria-busy", "false");
                 resultCount.textContent = "";
                 showState("fa-exclamation-triangle", "Có lỗi xảy ra", "Không thể kết nối tới dịch vụ tìm kiếm. Vui lòng thử lại.");
-            }
-        });
+            });
     }
 
     function closePreview() {
@@ -449,11 +472,8 @@
         document.getElementById("preview-download").href = "#";
         previewBody.innerHTML = '<div class="dm-state"><div class="dm-state-icon"><i class="fa fa-spinner fa-spin"></i></div><h2>Đang chuẩn bị tài liệu</h2><p>Vui lòng chờ trong giây lát.</p></div>';
 
-        frappe.call({
-            method: "document_manager.document_manager.api.file_access.get_preview",
-            args: {doc_name: docName},
-            callback: function (response) {
-                const data = response.message;
+        callAPI("document_manager.document_manager.api.file_access.get_preview", {doc_name: docName})
+            .then(function (data) {
                 if (!data) {
                     previewBody.innerHTML = '<div class="dm-state"><h2>Không thể xem trước</h2><p>Không nhận được thông tin tài liệu.</p></div>';
                     return;
@@ -479,29 +499,28 @@
                     previewBody.innerHTML = '<div class="dm-state"><div class="dm-state-icon"><i class="fa fa-file-o"></i></div><h2>Chưa hỗ trợ xem trực tiếp</h2><p></p></div>';
                     previewBody.querySelector("p").textContent = data.notice || "Bạn có thể tải tệp gốc xuống để xem.";
                 }
-            },
-            error: function () {
+            })
+            .catch(function () {
                 previewBody.innerHTML = '<div class="dm-state"><div class="dm-state-icon"><i class="fa fa-lock"></i></div><h2>Không thể xem trước</h2><p>Bạn không có quyền xem hoặc tài liệu hiện không khả dụng.</p></div>';
-            }
-        });
+            });
     }
 
-    form.addEventListener("submit", function (event) { event.preventDefault(); currentPage = 1; runSearch(); });
+    form.addEventListener("submit", function (event) { event.preventDefault(); currentPage = 1; runSearch("push"); });
     filterIds.forEach(function (id) {
         document.getElementById(id).addEventListener("change", function () {
-            if (queryInput.value.trim()) { currentPage = 1; runSearch(); }
+            if (queryInput.value.trim()) { currentPage = 1; runSearch("push"); }
         });
     });
     document.getElementById("reset-filters").addEventListener("click", function () {
         filterIds.forEach(function (id) { document.getElementById(id).value = id === "page_size" ? "20" : ""; });
         currentPage = 1;
-        if (queryInput.value.trim()) runSearch();
+        if (queryInput.value.trim()) runSearch("push");
     });
     pagination.addEventListener("click", function (event) {
         const button = event.target.closest("[data-page]");
         if (!button || button.disabled) return;
         currentPage = Number(button.dataset.page);
-        runSearch();
+        runSearch("push");
         document.querySelector(".dm-results-panel").scrollIntoView({behavior: "smooth", block: "start"});
     });
     results.addEventListener("click", function (event) {
@@ -512,16 +531,35 @@
     previewModal.addEventListener("click", function (event) { if (event.target === previewModal) closePreview(); });
     document.addEventListener("keydown", function (event) { if (event.key === "Escape" && !previewModal.hidden) closePreview(); });
 
-    const params = new URLSearchParams(location.search);
-    queryInput.value = params.get("query") || "";
-    filterIds.forEach(function (id) {
-        const value = params.get(id);
-        if (value && Array.from(document.getElementById(id).options).some(function (o) { return o.value === value; })) {
-            document.getElementById(id).value = value;
+    function loadSearchFromURL() {
+        const params = new URLSearchParams(location.search);
+        queryInput.value = params.get("query") || "";
+        filterIds.forEach(function (id) {
+            const value = params.get(id);
+            document.getElementById(id).value = id === "page_size" ? "20" : "";
+            if (value && Array.from(document.getElementById(id).options).some(function (o) { return o.value === value; })) {
+                document.getElementById(id).value = value;
+            }
+        });
+        currentPage = Math.max(1, Number(params.get("page") || 1));
+    }
+
+    window.addEventListener("popstate", function (event) {
+        ++latestRequest; // Ignore an in-flight response for the page being left.
+        loadSearchFromURL();
+        const state = event.state || {};
+        if (state.searchData && queryInput.value.trim()) {
+            renderResults(state.searchData);
+        } else if (queryInput.value.trim()) {
+            runSearch(null);
+        } else {
+            resultCount.textContent = "";
+            showState("fa-keyboard-o", "Nhập từ khóa cần tìm", "Từ khóa có thể là tiêu đề, số văn bản, tác giả hoặc một đoạn trong nội dung tài liệu.");
         }
     });
-    currentPage = Math.max(1, Number(params.get("page") || 1));
-    if (queryInput.value.trim()) runSearch();
+
+    loadSearchFromURL();
+    if (queryInput.value.trim()) runSearch("replace");
 })();
 </script>
 {%- endblock -%}
