@@ -1,12 +1,5 @@
 /* Document Manager UI - Premium Glassmorphism Dashboard */
 
-/* 1. HIDE FRAPPE DEFAULT BLOCKS IN THIS SPECIFIC WORKSPACE */
-div[data-page-route="Workspaces/Document Manager"] .frappe-shortcut-widget,
-div[data-page-route="Workspaces/Document Manager"] .widget-group[data-widget-group="shortcut"],
-div[data-page-route="Workspaces/Document Manager"] .widget-group-head,
-div[data-page-route="Workspaces/Document Manager"] .onboarding-widget-box {
-    display: none !important;
-}
 
 /* Base Utility Classes */
 .text-accent { color: var(--dm-accent); }

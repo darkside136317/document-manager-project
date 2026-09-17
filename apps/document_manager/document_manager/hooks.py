@@ -24,9 +24,7 @@ app_include_css = [
     "/assets/document_manager/css/theme-tokens.css",
     "/assets/document_manager/css/document-manager-ui.css",
 ]
-page_include_js = {
-    "workspace": "/assets/document_manager/js/document-manager-dashboard.js"
-}
+
 web_include_css = [
     "/assets/document_manager/css/theme-tokens.css",
     "/assets/document_manager/css/document-manager-ui.css",

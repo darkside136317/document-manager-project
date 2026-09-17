@@ -1,0 +1,391 @@
+frappe.pages['dm-dashboard'].on_page_load = function(wrapper) {
+    console.log("DM DASHBOARD JS LOADED", wrapper);
+    var page = frappe.ui.make_app_page({
+        parent: wrapper,
+        title: 'Document Manager Dashboard',
+        single_column: true
+    });
+
+    const dashboardHtml = `
+<section class="dm-workspace-container" aria-label="Giao diện làm việc Document Manager">
+    <header class="dm-hero-glass">
+        <div class="dm-hero-glass__bg"></div>
+        <div class="dm-hero-glass__content">
+            <div class="dm-hero-meta">
+                <span class="dm-badge dm-badge--primary"><i class="fa fa-home"></i> KHÔNG GIAN LÀM VIỆC SỐ</span>
+                <span class="dm-date" data-dm-date></span>
+            </div>
+            <h1 class="dm-hero-title">Chào mừng trở lại, <span data-dm-user class="text-accent">Người dùng</span></h1>
+            <p class="dm-hero-subtitle">Hệ thống quản lý, biên mục và khai thác tài liệu lưu trữ toàn diện.</p>
+            
+            <div class="dm-hero-metrics">
+                <div class="dm-hero-metric">
+                    <div class="dm-metric-icon"><i class="fa fa-folder-open"></i></div>
+                    <div class="dm-metric-data">
+                        <strong data-dm-stat="archival_files">0</strong>
+                        <span>Hồ sơ lưu trữ</span>
+                    </div>
+                </div>
+                <div class="dm-hero-metric">
+                    <div class="dm-metric-icon bg-gold"><i class="fa fa-file-text"></i></div>
+                    <div class="dm-metric-data">
+                        <strong data-dm-stat="documents">0</strong>
+                        <span>Văn bản / Tài liệu</span>
+                    </div>
+                </div>
+                <div class="dm-hero-metric">
+                    <div class="dm-metric-icon bg-green"><i class="fa fa-users"></i></div>
+                    <div class="dm-metric-data">
+                        <strong data-dm-stat="readers">0</strong>
+                        <span>Độc giả</span>
+                    </div>
+                </div>
+                <div class="dm-hero-metric">
+                    <div class="dm-metric-icon bg-purple"><i class="fa fa-search"></i></div>
+                    <div class="dm-metric-data">
+                        <strong><span data-dm-index-label>0%</span></strong>
+                        <span>Tài liệu đã Index</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="dm-section-heading mt-4">
+        <h2><i class="fa fa-bolt text-gold"></i> Tác vụ nhanh</h2>
+        <span class="dm-heading-line"></span>
+    </div>
+    
+    <div class="dm-quick-search-wrapper mb-4" style="position: relative;">
+        <input type="text" id="dm-quick-search-input" class="form-control" placeholder="Tra cứu toàn văn tài liệu (Nhập từ khóa và ấn Enter)..." autocomplete="off" style="padding: 15px 20px; font-size: 16px; border-radius: 8px; border: 2px solid var(--gold-primary); box-shadow: 0 4px 15px rgba(184, 151, 88, 0.2);">
+        <i class="fa fa-search" style="position: absolute; right: 20px; top: 18px; font-size: 18px; color: var(--gold-primary);"></i>
+        <div id="dm-quick-search-dropdown" class="dropdown-menu" style="width: 100%; display: none; padding: 0; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); border: 1px solid var(--navy-light);">
+            <ul class="list-unstyled mb-0" id="dm-quick-search-results">
+            </ul>
+        </div>
+    </div>
+
+    <div class="dm-quick-actions-grid">
+        <a href="#" data-dm-new-doctype="Archival File" class="dm-action-card highlight">
+            <div class="dm-action-icon bg-navy"><i class="fa fa-folder-open"></i></div>
+            <div class="dm-action-text">
+                <h3>Lập hồ sơ mới</h3>
+                <p>Khởi tạo hồ sơ lưu trữ</p>
+            </div>
+            <i class="fa fa-angle-right dm-action-arrow"></i>
+        </a>
+        <a href="#" data-dm-new-doctype="Archive Document" class="dm-action-card">
+            <div class="dm-action-icon bg-gold"><i class="fa fa-file-text-o"></i></div>
+            <div class="dm-action-text">
+                <h3>Biên mục tài liệu</h3>
+                <p>Ghi nhận tài liệu, văn bản</p>
+            </div>
+            <i class="fa fa-angle-right dm-action-arrow"></i>
+        </a>
+        <a href="/app/usage-request" class="dm-action-card">
+            <div class="dm-action-icon bg-purple"><i class="fa fa-check-square-o"></i></div>
+            <div class="dm-action-text">
+                <h3>Duyệt yêu cầu</h3>
+                <p>Xử lý yêu cầu từ độc giả</p>
+            </div>
+            <i class="fa fa-angle-right dm-action-arrow"></i>
+        </a>
+    </div>
+
+    <div class="dm-main-grid mt-4">
+        <div class="dm-modules-container">
+            <div class="dm-module-card">
+                <div class="dm-module-header">
+                    <i class="fa fa-archive"></i>
+                    <h3>Biên mục & Quản lý hồ sơ</h3>
+                </div>
+                <div class="dm-module-links">
+                    <a href="/app/fonds">Phông lưu trữ</a>
+                    <a href="/app/record-group">Khối tài liệu</a>
+                    <a href="/app/catalog">Mục lục tài liệu</a>
+                    <a href="/app/archival-file">Hồ sơ lưu trữ</a>
+                    <a href="/app/archive-document">Văn bản / Tài liệu</a>
+                </div>
+            </div>
+
+            <div class="dm-module-card">
+                <div class="dm-module-header">
+                    <i class="fa fa-users"></i>
+                    <h3>Độc giả & Khai thác</h3>
+                </div>
+                <div class="dm-module-links">
+                    <a href="/app/reader">Hồ sơ Độc giả</a>
+                    <a href="/app/usage-request">Phiếu Y/C Khai thác</a>
+                    <a href="/app/copy-request">Phiếu Y/C Sao chụp</a>
+                    <a href="/app/reader-feedback">Phản hồi độc giả</a>
+                </div>
+            </div>
+
+            <div class="dm-module-card">
+                <div class="dm-module-header">
+                    <i class="fa fa-shield"></i>
+                    <h3>Bảo quản & Kiểm tra</h3>
+                </div>
+                <div class="dm-module-links">
+                    <a href="/app/integrity-check">Kiểm tra toàn vẹn</a>
+                    <a href="/app/backup-batch">Sao lưu dữ liệu</a>
+                    <a href="/app/restore-batch">Khôi phục dữ liệu</a>
+                </div>
+            </div>
+
+            <div class="dm-module-card">
+                <div class="dm-module-header">
+                    <i class="fa fa-bar-chart"></i>
+                    <h3>Thống kê & Báo cáo</h3>
+                </div>
+                <div class="dm-module-links">
+                    <a href="/app/query-report/Thong%20Ke%20Tai%20Lieu">Thống kê tài liệu</a>
+                    <a href="/app/query-report/Thong%20Ke%20Khai%20Thac">Thống kê khai thác</a>
+                </div>
+            </div>
+
+            <div class="dm-module-card">
+                <div class="dm-module-header">
+                    <i class="fa fa-list"></i>
+                    <h3>Danh mục Dùng chung</h3>
+                </div>
+                <div class="dm-module-links">
+                    <a href="/app/archival-agency">Cơ quan lưu trữ</a>
+                    <a href="/app/classification-scheme">Bảng phân loại</a>
+                    <a href="/app/document-group">Nhóm tài liệu</a>
+                    <a href="/app/document-type-category">Loại tài liệu</a>
+                    <a href="/app/confidentiality-level">Mức độ mật</a>
+                    <a href="/app/storage-warehouse">Kho lưu trữ</a>
+                    <a href="/app/quick-entry-dictionary">Từ điển nhập nhanh</a>
+                </div>
+            </div>
+
+            <div class="dm-module-card">
+                <div class="dm-module-header">
+                    <i class="fa fa-cogs"></i>
+                    <h3>Quản trị Hệ thống</h3>
+                </div>
+                <div class="dm-module-links">
+                    <a href="/app/document-manager-settings">Thiết lập hệ thống</a>
+                    <a href="/app/reader-settings">Thiết lập độc giả</a>
+                    <a href="/app/organization-info">Thông tin tổ chức</a>
+                    <a href="/app/business-activity-log">Nhật ký nghiệp vụ</a>
+                </div>
+            </div>
+        </div>
+
+        <aside class="dm-sidebar">
+            <div class="dm-sidebar-widget dm-alerts-widget">
+                <h3 class="dm-widget-title"><i class="fa fa-bell-o"></i> Hàng đợi & Cảnh báo</h3>
+                <div class="dm-alert-list">
+                    <a href="/app/usage-request?workflow_state=Chờ duyệt" class="dm-alert-item warning">
+                        <div class="dm-alert-icon"><i class="fa fa-clock-o"></i></div>
+                        <div class="dm-alert-content">
+                            <strong><span data-dm-stat="pending_usage">0</span> Phiếu yêu cầu khai thác</strong>
+                            <span>Đang chờ phê duyệt</span>
+                        </div>
+                    </a>
+                    <a href="/app/copy-request?workflow_state=Chờ duyệt" class="dm-alert-item warning">
+                        <div class="dm-alert-icon"><i class="fa fa-copy"></i></div>
+                        <div class="dm-alert-content">
+                            <strong><span data-dm-stat="pending_copy">0</span> Phiếu yêu cầu sao chụp</strong>
+                            <span>Đang chờ phê duyệt</span>
+                        </div>
+                    </a>
+                    <a href="/app/integrity-check?status=Phát hiện lỗi" class="dm-alert-item danger">
+                        <div class="dm-alert-icon"><i class="fa fa-exclamation-triangle"></i></div>
+                        <div class="dm-alert-content">
+                            <strong><span data-dm-stat="integrity_errors">0</span> Lỗi toàn vẹn dữ liệu</strong>
+                            <span>Cần kiểm tra ngay</span>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
+            <div class="dm-sidebar-widget dm-recent-widget">
+                <h3 class="dm-widget-title"><i class="fa fa-history"></i> Tài liệu mới cập nhật</h3>
+                <div class="dm-recent-list" data-dm-recent>
+                    <div class="dm-loading-spinner"><i class="fa fa-circle-o-notch fa-spin"></i> Đang tải...</div>
+                </div>
+                <a href="/app/archive-document" class="dm-view-all">Xem tất cả tài liệu <i class="fa fa-arrow-right"></i></a>
+            </div>
+        </aside>
+    </div>
+</section>`;
+    
+    $(page.main).html(dashboardHtml);
+
+
+    function escapeHTML(value) {
+        return String(value == null ? "" : value).replace(/[&<>"']/g, function (character) {
+            return {"&":"&amp;", "<":"&lt;", ">":"&gt;", "\"":"&quot;", "'":"&#039;"}[character];
+        });
+    }
+
+    function formatNumber(value) {
+        return Number(value || 0).toLocaleString("vi-VN");
+    }
+
+    function formatRelativeDate(value) {
+        if (!value) return "";
+        const date = new Date(String(value).replace(" ", "T"));
+        if (Number.isNaN(date.getTime())) return "";
+        return date.toLocaleDateString("vi-VN", {day: "2-digit", month: "2-digit", year: "numeric"});
+    }
+
+    function renderRecent(documents) {
+        const target = wrapper.querySelector("[data-dm-recent]");
+        if (!target) return;
+        if (!documents || !documents.length) {
+            target.innerHTML = '<div class="dm-dashboard-empty"><i class="fa fa-inbox"></i><span>Chưa có tài liệu gần đây</span></div>';
+            return;
+        }
+
+        target.innerHTML = documents.map(function (doc) {
+            const fileType = escapeHTML(doc.file_type || "Tệp");
+            const statusClass = doc.search_index_status === "Đã index" ? "is-ready" : "is-pending";
+            return '<a class="dm-dashboard-recent-item" href="/app/archive-document/' + encodeURIComponent(doc.name) + '">' +
+                '<span class="dm-dashboard-filetype">' + fileType + '</span>' +
+                '<span class="dm-dashboard-recent-item__main"><strong>' + escapeHTML(doc.document_title || doc.name) +
+                '</strong><small>' + escapeHTML(doc.name) + ' · ' + formatRelativeDate(doc.modified) + '</small></span>' +
+                '<span class="dm-dashboard-index-state ' + statusClass + '"><i class="fa fa-circle"></i>' +
+                escapeHTML(doc.search_index_status || "Chưa index") + '</span></a>';
+        }).join("");
+    }
+
+    function initDashboard() {
+        const user = frappe.session.user_fullname || frappe.session.user || "Người dùng";
+        const userNode = wrapper.querySelector("[data-dm-user]");
+        const dateNode = wrapper.querySelector("[data-dm-date]");
+        if (userNode) userNode.textContent = user;
+        if (dateNode) {
+            dateNode.textContent = new Date().toLocaleDateString("vi-VN", {
+                weekday: "long", day: "2-digit", month: "2-digit", year: "numeric"
+            });
+        }
+
+        const createButton = wrapper.querySelector("[data-dm-new-document]");
+        if (createButton) {
+            createButton.addEventListener("click", function () {
+                frappe.new_doc("Archive Document");
+            });
+        }
+
+        wrapper.querySelectorAll("[data-dm-new-doctype]").forEach(function (link) {
+            link.addEventListener("click", function (event) {
+                event.preventDefault();
+                frappe.new_doc(link.dataset.dmNewDoctype);
+            });
+        });
+
+        frappe.call({
+            method: "document_manager.document_manager.api.dashboard.get_workspace_summary",
+            callback: function (response) {
+                const data = response.message || {};
+                wrapper.querySelectorAll("[data-dm-stat]").forEach(function (node) {
+                    node.textContent = formatNumber(data[node.dataset.dmStat]);
+                });
+
+                const percent = Math.max(0, Math.min(100, Number(data.index_percent || 0)));
+                const bar = wrapper.querySelector("[data-dm-index-bar]");
+                const label = wrapper.querySelector("[data-dm-index-label]");
+                if (bar) bar.style.width = percent + "%";
+                if (label) label.textContent = percent + "%";
+                renderRecent(data.recent_documents || []);
+            },
+            error: function () {
+                const target = wrapper.querySelector("[data-dm-recent]");
+                if (target) {
+                    target.innerHTML = '<div class="dm-dashboard-empty"><i class="fa fa-exclamation-circle"></i><span>Chưa thể tải dữ liệu tổng quan</span></div>';
+                }
+            }
+        });
+    }
+
+    function setupQuickSearch() {
+        const searchInput = wrapper.querySelector("#dm-quick-search-input");
+        const searchDropdown = wrapper.querySelector("#dm-quick-search-dropdown");
+        const searchResults = wrapper.querySelector("#dm-quick-search-results");
+        
+        if (!searchInput || !searchDropdown || !searchResults) return;
+
+        let debounceTimer;
+
+        // Handle Enter key for full search
+        searchInput.addEventListener("keydown", function(e) {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                const query = searchInput.value.trim();
+                if (query) {
+                    window.location.href = '/search?q=' + encodeURIComponent(query);
+                }
+            }
+        });
+
+        // Handle typing for auto-complete
+        searchInput.addEventListener("input", function() {
+            clearTimeout(debounceTimer);
+            const query = searchInput.value.trim();
+            
+            if (!query) {
+                searchDropdown.style.display = "none";
+                return;
+            }
+
+            debounceTimer = setTimeout(() => {
+                frappe.call({
+                    method: "document_manager.document_manager.api.search.search_fulltext",
+                    args: {
+                        query: query,
+                        page: 1,
+                        page_size: 5
+                    },
+                    callback: function(r) {
+                        const data = r.message || { data: [] };
+                        const hits = data.data;
+                        
+                        if (hits && hits.length > 0) {
+                            searchResults.innerHTML = hits.map(hit => {
+                                const title = escapeHTML(hit.document_title || hit.name);
+                                const fileType = escapeHTML(hit.file_type || "Tài liệu");
+                                return `
+                                    <li>
+                                        <a href="/app/archive-document/${encodeURIComponent(hit.name)}" style="display: block; padding: 10px 15px; text-decoration: none; border-bottom: 1px solid #f0f4f8; color: var(--text-color);">
+                                            <div style="font-weight: 500; color: var(--navy-primary);">${title}</div>
+                                            <div style="font-size: 12px; color: #6b7280; margin-top: 4px;">
+                                                <span class="badge" style="background: var(--gold-light); color: var(--gold-dark);">${fileType}</span>
+                                                ${escapeHTML(hit.name)}
+                                            </div>
+                                        </a>
+                                    </li>
+                                `;
+                            }).join("");
+                            searchDropdown.style.display = "block";
+                        } else {
+                            searchResults.innerHTML = `<li style="padding: 15px; text-align: center; color: #6b7280;">Không tìm thấy tài liệu nào phù hợp</li>`;
+                            searchDropdown.style.display = "block";
+                        }
+                    }
+                });
+            }, 300);
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener("click", function(e) {
+            if (!searchInput.contains(e.target) && !searchDropdown.contains(e.target)) {
+                searchDropdown.style.display = "none";
+            }
+        });
+    }
+
+    // Since Frappe renders the HTML after page_load is bound in some versions,
+    // we use a slight delay or rely on the HTML being ready.
+    // The safest is to ensure page.main has the content.
+    frappe.require('/assets/document_manager/css/document-manager-ui.css', function() {
+        // Wait for DOM to be populated with our HTML
+        setTimeout(() => {
+            initDashboard();
+            setupQuickSearch();
+        }, 100);
+    });
+}

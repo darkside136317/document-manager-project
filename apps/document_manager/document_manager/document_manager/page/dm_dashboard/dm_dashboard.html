@@ -43,21 +43,23 @@
         </div>
     </header>
 
-    <!-- Quick Actions (High Priority) -->
+    <!-- Quick Search & Actions -->
     <div class="dm-section-heading mt-4">
         <h2><i class="fa fa-bolt text-gold"></i> Tác vụ nhanh</h2>
         <span class="dm-heading-line"></span>
     </div>
+    
+    <div class="dm-quick-search-wrapper mb-4" style="position: relative;">
+        <input type="text" id="dm-quick-search-input" class="form-control" placeholder="Tra cứu toàn văn tài liệu (Nhập từ khóa và ấn Enter)..." autocomplete="off" style="padding: 15px 20px; font-size: 16px; border-radius: 8px; border: 2px solid var(--gold-primary); box-shadow: 0 4px 15px rgba(184, 151, 88, 0.2);">
+        <i class="fa fa-search" style="position: absolute; right: 20px; top: 18px; font-size: 18px; color: var(--gold-primary);"></i>
+        <div id="dm-quick-search-dropdown" class="dropdown-menu" style="width: 100%; display: none; padding: 0; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); border: 1px solid var(--navy-light);">
+            <ul class="list-unstyled mb-0" id="dm-quick-search-results">
+            </ul>
+        </div>
+    </div>
+
     <div class="dm-quick-actions-grid">
-        <a href="/search" class="dm-action-card highlight">
-            <div class="dm-action-icon"><i class="fa fa-search"></i></div>
-            <div class="dm-action-text">
-                <h3>Tra cứu toàn văn</h3>
-                <p>Tìm kiếm trong nội dung tài liệu</p>
-            </div>
-            <i class="fa fa-angle-right dm-action-arrow"></i>
-        </a>
-        <a href="#" data-dm-new-doctype="Archival File" class="dm-action-card">
+        <a href="#" data-dm-new-doctype="Archival File" class="dm-action-card highlight">
             <div class="dm-action-icon bg-navy"><i class="fa fa-folder-open"></i></div>
             <div class="dm-action-text">
                 <h3>Lập hồ sơ mới</h3>
@@ -84,7 +86,7 @@
     </div>
 
     <!-- Main Workspace Area -->
-    <div class="dm-main-grid">
+    <div class="dm-main-grid mt-4">
         <!-- Left Column: Module Navigation -->
         <div class="dm-modules-container">
             <!-- Biên mục và Quản lý -->
