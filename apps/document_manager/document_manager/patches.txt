@@ -1,2 +1,3 @@
 # patches — database migration patches
-document_manager.patches.remove_workspace.execute
+document_manager.patches.remove_workspace
+document_manager.patches.remove_dm_dashboard_page

@@ -1,0 +1,779 @@
+{%- extends "templates/web.html" -%}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block page_content %}
+<style>
+    @import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css');
+    
+    /* =========================================
+       PREMIUM GRAY THEME - DASHBOARD
+       ========================================= */
+    :root {
+        /* Core Gray Palette */
+        --c-gray-50: #f9fafb;
+        --c-gray-100: #f3f4f6;
+        --c-gray-200: #e5e7eb;
+        --c-gray-300: #d1d5db;
+        --c-gray-400: #9ca3af;
+        --c-gray-500: #6b7280;
+        --c-gray-600: #4b5563;
+        --c-gray-700: #374151;
+        --c-gray-800: #1f2937;
+        --c-gray-900: #111827;
+
+        /* Brand Mapping */
+        --brand-primary: var(--c-gray-800);
+        --brand-accent: var(--c-gray-500);
+        --brand-bg: var(--c-gray-50);
+        --brand-surface: #ffffff;
+        --brand-border: var(--c-gray-200);
+        
+        --text-main: var(--c-gray-900);
+        --text-muted: var(--c-gray-500);
+        
+        /* Radii & Shadows */
+        --radius-sm: 8px;
+        --radius-md: 12px;
+        --radius-lg: 16px;
+        --radius-xl: 24px;
+        
+        --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025);
+        --shadow-hover: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.02);
+    }
+
+    body {
+        background-color: var(--brand-bg);
+        color: var(--text-main);
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    .dm-portal-wrapper {
+        max-width: 1280px;
+        margin: 0 auto;
+        padding: 24px 16px 60px;
+    }
+
+    /* --- HERO SECTION (DARK GRAY GLASSMORPHISM) --- */
+    .dm-hero {
+        position: relative;
+        background: linear-gradient(135deg, var(--c-gray-800) 0%, var(--c-gray-900) 100%);
+        border-radius: var(--radius-xl);
+        padding: 48px;
+        color: #fff;
+        overflow: hidden;
+        box-shadow: var(--shadow-lg);
+        margin-bottom: 32px;
+    }
+    
+    /* Subtle background pattern/glow */
+    .dm-hero::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -10%;
+        width: 600px;
+        height: 600px;
+        background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 60%);
+        border-radius: 50%;
+        pointer-events: none;
+    }
+
+    .dm-hero-header {
+        position: relative;
+        z-index: 2;
+        margin-bottom: 40px;
+    }
+    
+    .dm-hero-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        padding: 6px 14px;
+        border-radius: 99px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        margin-bottom: 20px;
+    }
+
+    .dm-hero-title {
+        font-size: 2.25rem;
+        font-weight: 700;
+        margin: 0 0 8px 0;
+        letter-spacing: -0.02em;
+    }
+    
+    .dm-hero-subtitle {
+        font-size: 1.1rem;
+        color: var(--c-gray-400);
+        margin: 0;
+        max-width: 600px;
+        line-height: 1.5;
+    }
+
+    /* --- METRICS GRID --- */
+    .dm-metrics {
+        position: relative;
+        z-index: 2;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 20px;
+    }
+
+    .dm-metric-card {
+        background: rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: var(--radius-lg);
+        padding: 24px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        transition: transform 0.3s ease, background 0.3s ease;
+    }
+
+    .dm-metric-card:hover {
+        transform: translateY(-2px);
+        background: rgba(255, 255, 255, 0.08);
+    }
+
+    .dm-metric-icon {
+        width: 52px;
+        height: 52px;
+        border-radius: var(--radius-md);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        background: rgba(255, 255, 255, 0.1);
+        color: #fff;
+    }
+
+    .dm-metric-info h4 {
+        margin: 0;
+        font-size: 1.75rem;
+        font-weight: 700;
+        line-height: 1.2;
+    }
+
+    .dm-metric-info p {
+        margin: 4px 0 0;
+        font-size: 0.85rem;
+        color: var(--c-gray-400);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-weight: 600;
+    }
+
+    /* --- QUICK SEARCH & ACTIONS --- */
+    .dm-actions-section {
+        margin-bottom: 40px;
+    }
+    
+    .dm-search-bar {
+        position: relative;
+        max-width: 800px;
+        margin: 0 auto 32px;
+    }
+
+    .dm-search-input {
+        width: 100%;
+        padding: 18px 24px 18px 56px;
+        font-size: 1.1rem;
+        background: var(--brand-surface);
+        border: 2px solid transparent;
+        border-radius: 99px;
+        box-shadow: var(--shadow-md);
+        color: var(--text-main);
+        transition: all 0.3s ease;
+    }
+
+    .dm-search-input:focus {
+        outline: none;
+        border-color: var(--c-gray-300);
+        box-shadow: var(--shadow-lg);
+    }
+    
+    .dm-search-icon {
+        position: absolute;
+        left: 24px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--c-gray-400);
+        font-size: 1.2rem;
+    }
+
+    .dm-quick-links {
+        display: flex;
+        gap: 16px;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .dm-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 24px;
+        background: var(--brand-surface);
+        color: var(--brand-primary);
+        font-weight: 600;
+        border-radius: 99px;
+        text-decoration: none !important;
+        box-shadow: var(--shadow-sm);
+        border: 1px solid var(--brand-border);
+        transition: all 0.2s ease;
+    }
+
+    .dm-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+        background: var(--c-gray-50);
+        border-color: var(--c-gray-300);
+    }
+    
+    .dm-btn.primary {
+        background: var(--brand-primary);
+        color: #fff;
+        border: none;
+    }
+    .dm-btn.primary:hover {
+        background: var(--c-gray-700);
+    }
+
+    /* --- MAIN LAYOUT --- */
+    .dm-layout {
+        display: grid;
+        grid-template-columns: 1fr 340px;
+        gap: 32px;
+    }
+
+    @media (max-width: 992px) {
+        .dm-layout { grid-template-columns: 1fr; }
+    }
+
+    /* --- MODULES GRID --- */
+    .dm-modules {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 20px;
+    }
+
+    .dm-card {
+        background: var(--brand-surface);
+        border: 1px solid var(--brand-border);
+        border-radius: var(--radius-lg);
+        padding: 24px;
+        box-shadow: var(--shadow-sm);
+        transition: box-shadow 0.3s ease, transform 0.3s ease;
+    }
+
+    .dm-card:hover {
+        box-shadow: var(--shadow-lg);
+        transform: translateY(-3px);
+    }
+
+    .dm-card-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 20px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid var(--brand-border);
+    }
+
+    .dm-card-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: var(--c-gray-100);
+        color: var(--c-gray-600);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+    }
+
+    .dm-card-title {
+        margin: 0;
+        font-size: 1.05rem;
+        font-weight: 600;
+        color: var(--text-main);
+    }
+
+    .dm-nav-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .dm-nav-list a {
+        display: flex;
+        align-items: center;
+        color: var(--c-gray-600);
+        text-decoration: none;
+        font-size: 0.95rem;
+        transition: color 0.2s ease, transform 0.2s ease;
+    }
+    
+    .dm-nav-list a::before {
+        content: '\f105'; /* FontAwesome angle-right */
+        font-family: 'FontAwesome';
+        margin-right: 8px;
+        font-size: 0.8em;
+        color: var(--c-gray-400);
+        transition: transform 0.2s;
+    }
+
+    .dm-nav-list a:hover {
+        color: var(--brand-primary);
+        font-weight: 500;
+    }
+    .dm-nav-list a:hover::before {
+        color: var(--brand-primary);
+        transform: translateX(3px);
+    }
+
+    /* --- SIDEBAR WIDGETS --- */
+    .dm-widget {
+        background: var(--brand-surface);
+        border: 1px solid var(--brand-border);
+        border-radius: var(--radius-lg);
+        padding: 24px;
+        margin-bottom: 24px;
+        box-shadow: var(--shadow-sm);
+    }
+    
+    .dm-widget-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        margin: 0 0 20px 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--text-main);
+    }
+
+    .dm-alert-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 12px;
+        border-radius: var(--radius-md);
+        background: var(--c-gray-50);
+        text-decoration: none !important;
+        margin-bottom: 12px;
+        border: 1px solid transparent;
+        transition: all 0.2s ease;
+    }
+    .dm-alert-item:hover {
+        background: var(--brand-surface);
+        border-color: var(--c-gray-300);
+        box-shadow: var(--shadow-sm);
+    }
+    .dm-alert-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        background: var(--c-gray-200);
+        color: var(--c-gray-700);
+    }
+    
+    .dm-alert-content strong {
+        display: block;
+        color: var(--text-main);
+        font-size: 0.95rem;
+        margin-bottom: 2px;
+    }
+    .dm-alert-content span {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+    }
+    
+    /* Specific alert colors (subdued) */
+    .dm-alert-item.warning .dm-alert-icon { background: #fef3c7; color: #d97706; }
+    .dm-alert-item.danger .dm-alert-icon { background: #fee2e2; color: #dc2626; }
+
+    /* Recent Items */
+    .dm-recent-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 0;
+        border-bottom: 1px solid var(--c-gray-100);
+        text-decoration: none !important;
+    }
+    .dm-recent-item:last-child { border-bottom: none; }
+    
+    .dm-recent-badge {
+        font-size: 0.7rem;
+        font-weight: 700;
+        padding: 4px 8px;
+        border-radius: 6px;
+        background: var(--c-gray-100);
+        color: var(--c-gray-600);
+        min-width: 45px;
+        text-align: center;
+    }
+    
+    .dm-recent-main {
+        flex: 1;
+        min-width: 0;
+    }
+    .dm-recent-main strong {
+        display: block;
+        font-size: 0.9rem;
+        color: var(--text-main);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .dm-recent-main small {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+    }
+    
+    .dm-recent-status {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--c-gray-300);
+    }
+    .dm-recent-status.is-ready { background: #10b981; }
+    
+    /* Quick Search Dropdown */
+    #dm-quick-search-dropdown {
+        width: 100%;
+        display: none;
+        padding: 0;
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-lg);
+        border: 1px solid var(--brand-border);
+        position: absolute;
+        top: 100%;
+        left: 0;
+        margin-top: 8px;
+        background: var(--brand-surface);
+        z-index: 1050;
+        max-height: 400px;
+        overflow-y: auto;
+    }
+    
+    #dm-quick-search-results li a {
+        display: block;
+        padding: 12px 20px;
+        text-decoration: none;
+        border-bottom: 1px solid var(--c-gray-100);
+        color: inherit;
+        transition: background 0.2s;
+    }
+    #dm-quick-search-results li a:hover {
+        background: var(--c-gray-50);
+    }
+</style>
+
+<div class="dm-portal-wrapper">
+    
+    <!-- HERO SECTION -->
+    <section class="dm-hero">
+        <div class="dm-hero-header">
+            <div class="dm-hero-badge"><i class="fa fa-server"></i> TRUNG TÂM DỮ LIỆU</div>
+            <h1 class="dm-hero-title">Chào mừng trở lại, {{ frappe.session.user_fullname or frappe.session.user }}</h1>
+            <p class="dm-hero-subtitle">Hệ thống quản lý, biên mục và khai thác tài liệu lưu trữ toàn diện.</p>
+        </div>
+
+        <div class="dm-metrics">
+            <div class="dm-metric-card">
+                <div class="dm-metric-icon"><i class="fa fa-folder-open"></i></div>
+                <div class="dm-metric-info">
+                    <h4>{{ '{:,.0f}'.format(summary.archival_files).replace(',', '.') }}</h4>
+                    <p>Hồ sơ lưu trữ</p>
+                </div>
+            </div>
+            <div class="dm-metric-card">
+                <div class="dm-metric-icon"><i class="fa fa-file-text"></i></div>
+                <div class="dm-metric-info">
+                    <h4>{{ '{:,.0f}'.format(summary.documents).replace(',', '.') }}</h4>
+                    <p>Văn bản / Tài liệu</p>
+                </div>
+            </div>
+            <div class="dm-metric-card">
+                <div class="dm-metric-icon"><i class="fa fa-users"></i></div>
+                <div class="dm-metric-info">
+                    <h4>{{ '{:,.0f}'.format(summary.readers).replace(',', '.') }}</h4>
+                    <p>Độc giả</p>
+                </div>
+            </div>
+            <div class="dm-metric-card">
+                <div class="dm-metric-icon"><i class="fa fa-search"></i></div>
+                <div class="dm-metric-info">
+                    <h4>{{ summary.index_percent|int }}%</h4>
+                    <p>Đã lập chỉ mục</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- QUICK ACTIONS & SEARCH -->
+    <section class="dm-actions-section">
+        <div class="dm-search-bar">
+            <i class="fa fa-search dm-search-icon"></i>
+            <input type="text" id="dm-quick-search-input" class="dm-search-input" placeholder="Tra cứu toàn văn tài liệu (Nhập từ khóa và ấn Enter)..." autocomplete="off">
+            <div id="dm-quick-search-dropdown">
+                <ul id="dm-quick-search-results" style="list-style: none; margin: 0; padding: 0;"></ul>
+            </div>
+        </div>
+        
+        <div class="dm-quick-links">
+            <a href="/app/archival-file/new-archival-file" class="dm-btn primary"><i class="fa fa-plus"></i> Lập hồ sơ mới</a>
+            <a href="/app/archive-document/new-archive-document" class="dm-btn"><i class="fa fa-file-text-o"></i> Biên mục tài liệu</a>
+            <a href="/app/usage-request" class="dm-btn"><i class="fa fa-check-square-o"></i> Duyệt yêu cầu khai thác</a>
+        </div>
+    </section>
+
+    <!-- MAIN LAYOUT -->
+    <div class="dm-layout">
+        
+        <!-- LEFT: MODULES GRID -->
+        <div class="dm-modules">
+            
+            <div class="dm-card">
+                <div class="dm-card-header">
+                    <div class="dm-card-icon"><i class="fa fa-archive"></i></div>
+                    <h3 class="dm-card-title">Biên mục &amp; Quản lý hồ sơ</h3>
+                </div>
+                <ul class="dm-nav-list">
+                    <li><a href="/app/fonds">Phông lưu trữ</a></li>
+                    <li><a href="/app/record-group">Khối tài liệu</a></li>
+                    <li><a href="/app/catalog">Mục lục tài liệu</a></li>
+                    <li><a href="/app/archival-file">Hồ sơ lưu trữ</a></li>
+                    <li><a href="/app/archive-document">Văn bản / Tài liệu</a></li>
+                </ul>
+            </div>
+            
+            <div class="dm-card">
+                <div class="dm-card-header">
+                    <div class="dm-card-icon"><i class="fa fa-users"></i></div>
+                    <h3 class="dm-card-title">Độc giả &amp; Khai thác</h3>
+                </div>
+                <ul class="dm-nav-list">
+                    <li><a href="/app/reader">Hồ sơ Độc giả</a></li>
+                    <li><a href="/app/usage-request">Phiếu Y/C Khai thác</a></li>
+                    <li><a href="/app/copy-request">Phiếu Y/C Sao chụp</a></li>
+                    <li><a href="/app/reader-feedback">Phản hồi độc giả</a></li>
+                </ul>
+            </div>
+            
+            <div class="dm-card">
+                <div class="dm-card-header">
+                    <div class="dm-card-icon"><i class="fa fa-shield"></i></div>
+                    <h3 class="dm-card-title">Bảo quản &amp; Kiểm tra</h3>
+                </div>
+                <ul class="dm-nav-list">
+                    <li><a href="/app/integrity-check">Kiểm tra toàn vẹn</a></li>
+                    <li><a href="/app/backup-batch">Sao lưu dữ liệu</a></li>
+                    <li><a href="/app/restore-batch">Khôi phục dữ liệu</a></li>
+                </ul>
+            </div>
+            
+            <div class="dm-card">
+                <div class="dm-card-header">
+                    <div class="dm-card-icon"><i class="fa fa-bar-chart"></i></div>
+                    <h3 class="dm-card-title">Thống kê &amp; Báo cáo</h3>
+                </div>
+                <ul class="dm-nav-list">
+                    <li><a href="/app/query-report/Thong%20Ke%20Tai%20Lieu">Thống kê tài liệu</a></li>
+                    <li><a href="/app/query-report/Thong%20Ke%20Khai%20Thac">Thống kê khai thác</a></li>
+                </ul>
+            </div>
+            
+            <div class="dm-card">
+                <div class="dm-card-header">
+                    <div class="dm-card-icon"><i class="fa fa-list"></i></div>
+                    <h3 class="dm-card-title">Danh mục Dùng chung</h3>
+                </div>
+                <ul class="dm-nav-list">
+                    <li><a href="/app/archival-agency">Cơ quan lưu trữ</a></li>
+                    <li><a href="/app/classification-scheme">Bảng phân loại</a></li>
+                    <li><a href="/app/document-group">Nhóm tài liệu</a></li>
+                    <li><a href="/app/document-type-category">Loại tài liệu</a></li>
+                    <li><a href="/app/confidentiality-level">Mức độ mật</a></li>
+                    <li><a href="/app/storage-warehouse">Kho lưu trữ</a></li>
+                    <li><a href="/app/quick-entry-dictionary">Từ điển nhập nhanh</a></li>
+                </ul>
+            </div>
+            
+            <div class="dm-card">
+                <div class="dm-card-header">
+                    <div class="dm-card-icon"><i class="fa fa-cogs"></i></div>
+                    <h3 class="dm-card-title">Quản trị Hệ thống</h3>
+                </div>
+                <ul class="dm-nav-list">
+                    <li><a href="/app/document-manager-settings">Thiết lập hệ thống</a></li>
+                    <li><a href="/app/reader-settings">Thiết lập độc giả</a></li>
+                    <li><a href="/app/organization-info">Thông tin tổ chức</a></li>
+                    <li><a href="/app/business-activity-log">Nhật ký nghiệp vụ</a></li>
+                </ul>
+            </div>
+
+        </div>
+        
+        <!-- RIGHT: SIDEBAR -->
+        <aside>
+            <div class="dm-widget">
+                <h3 class="dm-widget-title"><i class="fa fa-bell-o"></i> Hàng đợi &amp; Cảnh báo</h3>
+                
+                <a href="/app/usage-request?workflow_state=Chờ duyệt" class="dm-alert-item warning">
+                    <div class="dm-alert-icon"><i class="fa fa-clock-o"></i></div>
+                    <div class="dm-alert-content">
+                        <strong>{{ summary.pending_usage }} Phiếu yêu cầu khai thác</strong>
+                        <span>Đang chờ phê duyệt</span>
+                    </div>
+                </a>
+                
+                <a href="/app/copy-request?workflow_state=Chờ duyệt" class="dm-alert-item warning">
+                    <div class="dm-alert-icon"><i class="fa fa-copy"></i></div>
+                    <div class="dm-alert-content">
+                        <strong>{{ summary.pending_copy }} Phiếu yêu cầu sao chụp</strong>
+                        <span>Đang chờ phê duyệt</span>
+                    </div>
+                </a>
+                
+                <a href="/app/integrity-check?status=Phát hiện lỗi" class="dm-alert-item danger">
+                    <div class="dm-alert-icon"><i class="fa fa-exclamation-triangle"></i></div>
+                    <div class="dm-alert-content">
+                        <strong>{{ summary.integrity_errors }} Lỗi toàn vẹn dữ liệu</strong>
+                        <span>Cần kiểm tra ngay</span>
+                    </div>
+                </a>
+            </div>
+
+            <div class="dm-widget">
+                <h3 class="dm-widget-title"><i class="fa fa-history"></i> Tài liệu mới cập nhật</h3>
+                <div style="display: flex; flex-direction: column;">
+                    {% if summary.recent_documents %}
+                        {% for doc in summary.recent_documents %}
+                            {% set status_class = "is-ready" if doc.search_index_status == "Đã index" else "is-pending" %}
+                            {% set file_type = doc.file_type or "Tệp" %}
+                            <a class="dm-recent-item" href="/app/archive-document/{{ doc.name|urlencode }}">
+                                <span class="dm-recent-badge">{{ file_type }}</span>
+                                <div class="dm-recent-main">
+                                    <strong>{{ doc.document_title or doc.name }}</strong>
+                                    <small>{{ doc.name }} · {{ frappe.format_date(doc.modified) }}</small>
+                                </div>
+                                <div class="dm-recent-status {{ status_class }}" title="{{ doc.search_index_status or 'Chưa index' }}"></div>
+                            </a>
+                        {% endfor %}
+                    {% else %}
+                        <div style="text-align: center; color: var(--text-muted); padding: 20px 0;">
+                            <i class="fa fa-inbox" style="font-size: 24px; margin-bottom: 8px;"></i>
+                            <div style="font-size: 0.9rem;">Chưa có tài liệu gần đây</div>
+                        </div>
+                    {% endif %}
+                </div>
+                <div style="margin-top: 16px; text-align: center;">
+                    <a href="/app/archive-document" style="color: var(--brand-primary); font-size: 0.9rem; font-weight: 600; text-decoration: none;">
+                        Xem tất cả tài liệu <i class="fa fa-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+        </aside>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Quick Search Autocomplete logic
+    var searchInput = document.getElementById("dm-quick-search-input");
+    var searchDropdown = document.getElementById("dm-quick-search-dropdown");
+    var searchResults = document.getElementById("dm-quick-search-results");
+
+    if (!searchInput || !searchDropdown || !searchResults) return;
+
+    function escapeHTML(value) {
+        return String(value == null ? "" : value).replace(/[&<>"']/g, function (c) {
+            return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[c];
+        });
+    }
+
+    let debounceTimer;
+
+    searchInput.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            const query = searchInput.value.trim();
+            if (query) {
+                window.location.href = "/search?query=" + encodeURIComponent(query);
+            }
+        }
+    });
+
+    searchInput.addEventListener("input", function () {
+        clearTimeout(debounceTimer);
+        const query = searchInput.value.trim();
+
+        if (!query) {
+            searchDropdown.style.display = "none";
+            return;
+        }
+
+        debounceTimer = setTimeout(function () {
+            const url = new URL("/api/method/document_manager.document_manager.api.search.search_fulltext", window.location.origin);
+            url.searchParams.set("query", query);
+            url.searchParams.set("page", 1);
+            url.searchParams.set("page_size", 5);
+
+            fetch(url.toString(), {
+                credentials: "same-origin",
+                headers: {"Accept": "application/json"}
+            }).then(function(res) {
+                return res.json();
+            }).then(function(payload) {
+                const hits = (payload.message || { data: [] }).data;
+
+                if (hits && hits.length > 0) {
+                    searchResults.innerHTML = hits.map(function (hit) {
+                        const title = escapeHTML(hit.document_title || hit.name);
+                        const fileType = escapeHTML(hit.file_type || "Tài liệu");
+                        return (
+                            '<li><a href="/app/archive-document/' + encodeURIComponent(hit.name) + '">' +
+                            '<div style="font-weight:600; color:var(--text-main);">' + title + '</div>' +
+                            '<div style="font-size:12px;color:var(--text-muted);margin-top:4px;">' +
+                            '<span style="background:var(--c-gray-100);padding:2px 6px;border-radius:4px;color:var(--c-gray-700);font-weight:600;font-size:10px;margin-right:6px;">' + fileType + '</span> ' + escapeHTML(hit.name) +
+                            '</div></a></li>'
+                        );
+                    }).join("");
+                } else {
+                    searchResults.innerHTML = '<li style="padding:15px;text-align:center;color:var(--text-muted);">Không tìm thấy tài liệu nào phù hợp</li>';
+                }
+                searchDropdown.style.display = "block";
+            }).catch(function(err) {
+                console.error(err);
+            });
+        }, 300);
+    });
+
+    document.addEventListener("click", function (e) {
+        if (!searchInput.contains(e.target) && !searchDropdown.contains(e.target)) {
+            searchDropdown.style.display = "none";
+        }
+    });
+});
+</script>
+{% endblock %}
