@@ -1,13 +1,25 @@
-frappe.pages['dm-dashboard'].on_page_load = function(wrapper) {
-    console.log("DM DASHBOARD JS LOADED", wrapper);
+/**
+ * dm_dashboard.js — Document Manager Dashboard Page
+ *
+ * Frappe Standard Page: HTML được render bởi JS vào page.main.
+ * CSS được load toàn cục qua hooks.py (app_include_css) — không cần frappe.require().
+ * API calls tới document_manager.document_manager.api.dashboard và api.search.
+ */
+
+frappe.pages['dm-dashboard'].on_page_load = function (wrapper) {
     var page = frappe.ui.make_app_page({
         parent: wrapper,
         title: 'Document Manager Dashboard',
         single_column: true
     });
 
-    const dashboardHtml = `
+    // =========================================================================
+    // Template HTML — inject vào page.main
+    // =========================================================================
+
+    $(page.main).html(`
 <section class="dm-workspace-container" aria-label="Giao diện làm việc Document Manager">
+    <!-- Hero Header -->
     <header class="dm-hero-glass">
         <div class="dm-hero-glass__bg"></div>
         <div class="dm-hero-glass__content">
@@ -17,7 +29,7 @@ frappe.pages['dm-dashboard'].on_page_load = function(wrapper) {
             </div>
             <h1 class="dm-hero-title">Chào mừng trở lại, <span data-dm-user class="text-accent">Người dùng</span></h1>
             <p class="dm-hero-subtitle">Hệ thống quản lý, biên mục và khai thác tài liệu lưu trữ toàn diện.</p>
-            
+
             <div class="dm-hero-metrics">
                 <div class="dm-hero-metric">
                     <div class="dm-metric-icon"><i class="fa fa-folder-open"></i></div>
@@ -51,17 +63,21 @@ frappe.pages['dm-dashboard'].on_page_load = function(wrapper) {
         </div>
     </header>
 
+    <!-- Quick Search & Actions -->
     <div class="dm-section-heading mt-4">
         <h2><i class="fa fa-bolt text-gold"></i> Tác vụ nhanh</h2>
         <span class="dm-heading-line"></span>
     </div>
-    
+
     <div class="dm-quick-search-wrapper mb-4" style="position: relative;">
-        <input type="text" id="dm-quick-search-input" class="form-control" placeholder="Tra cứu toàn văn tài liệu (Nhập từ khóa và ấn Enter)..." autocomplete="off" style="padding: 15px 20px; font-size: 16px; border-radius: 8px; border: 2px solid var(--gold-primary); box-shadow: 0 4px 15px rgba(184, 151, 88, 0.2);">
-        <i class="fa fa-search" style="position: absolute; right: 20px; top: 18px; font-size: 18px; color: var(--gold-primary);"></i>
-        <div id="dm-quick-search-dropdown" class="dropdown-menu" style="width: 100%; display: none; padding: 0; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); border: 1px solid var(--navy-light);">
-            <ul class="list-unstyled mb-0" id="dm-quick-search-results">
-            </ul>
+        <input type="text" id="dm-quick-search-input" class="form-control"
+            placeholder="Tra cứu toàn văn tài liệu (Nhập từ khóa và ấn Enter)..."
+            autocomplete="off"
+            style="padding: 15px 20px; font-size: 16px; border-radius: 8px; border: 2px solid var(--dm-accent, #b8975a); box-shadow: 0 4px 15px rgba(184,151,88,0.2);">
+        <i class="fa fa-search" style="position: absolute; right: 20px; top: 18px; font-size: 18px; color: var(--dm-accent, #b8975a);"></i>
+        <div id="dm-quick-search-dropdown" class="dropdown-menu"
+            style="width: 100%; display: none; padding: 0; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); border: 1px solid #d1d5db;">
+            <ul class="list-unstyled mb-0" id="dm-quick-search-results"></ul>
         </div>
     </div>
 
@@ -92,13 +108,11 @@ frappe.pages['dm-dashboard'].on_page_load = function(wrapper) {
         </a>
     </div>
 
+    <!-- Main Grid: Modules + Sidebar -->
     <div class="dm-main-grid mt-4">
         <div class="dm-modules-container">
             <div class="dm-module-card">
-                <div class="dm-module-header">
-                    <i class="fa fa-archive"></i>
-                    <h3>Biên mục & Quản lý hồ sơ</h3>
-                </div>
+                <div class="dm-module-header"><i class="fa fa-archive"></i><h3>Biên mục &amp; Quản lý hồ sơ</h3></div>
                 <div class="dm-module-links">
                     <a href="/app/fonds">Phông lưu trữ</a>
                     <a href="/app/record-group">Khối tài liệu</a>
@@ -107,12 +121,8 @@ frappe.pages['dm-dashboard'].on_page_load = function(wrapper) {
                     <a href="/app/archive-document">Văn bản / Tài liệu</a>
                 </div>
             </div>
-
             <div class="dm-module-card">
-                <div class="dm-module-header">
-                    <i class="fa fa-users"></i>
-                    <h3>Độc giả & Khai thác</h3>
-                </div>
+                <div class="dm-module-header"><i class="fa fa-users"></i><h3>Độc giả &amp; Khai thác</h3></div>
                 <div class="dm-module-links">
                     <a href="/app/reader">Hồ sơ Độc giả</a>
                     <a href="/app/usage-request">Phiếu Y/C Khai thác</a>
@@ -120,35 +130,23 @@ frappe.pages['dm-dashboard'].on_page_load = function(wrapper) {
                     <a href="/app/reader-feedback">Phản hồi độc giả</a>
                 </div>
             </div>
-
             <div class="dm-module-card">
-                <div class="dm-module-header">
-                    <i class="fa fa-shield"></i>
-                    <h3>Bảo quản & Kiểm tra</h3>
-                </div>
+                <div class="dm-module-header"><i class="fa fa-shield"></i><h3>Bảo quản &amp; Kiểm tra</h3></div>
                 <div class="dm-module-links">
                     <a href="/app/integrity-check">Kiểm tra toàn vẹn</a>
                     <a href="/app/backup-batch">Sao lưu dữ liệu</a>
                     <a href="/app/restore-batch">Khôi phục dữ liệu</a>
                 </div>
             </div>
-
             <div class="dm-module-card">
-                <div class="dm-module-header">
-                    <i class="fa fa-bar-chart"></i>
-                    <h3>Thống kê & Báo cáo</h3>
-                </div>
+                <div class="dm-module-header"><i class="fa fa-bar-chart"></i><h3>Thống kê &amp; Báo cáo</h3></div>
                 <div class="dm-module-links">
                     <a href="/app/query-report/Thong%20Ke%20Tai%20Lieu">Thống kê tài liệu</a>
                     <a href="/app/query-report/Thong%20Ke%20Khai%20Thac">Thống kê khai thác</a>
                 </div>
             </div>
-
             <div class="dm-module-card">
-                <div class="dm-module-header">
-                    <i class="fa fa-list"></i>
-                    <h3>Danh mục Dùng chung</h3>
-                </div>
+                <div class="dm-module-header"><i class="fa fa-list"></i><h3>Danh mục Dùng chung</h3></div>
                 <div class="dm-module-links">
                     <a href="/app/archival-agency">Cơ quan lưu trữ</a>
                     <a href="/app/classification-scheme">Bảng phân loại</a>
@@ -159,12 +157,8 @@ frappe.pages['dm-dashboard'].on_page_load = function(wrapper) {
                     <a href="/app/quick-entry-dictionary">Từ điển nhập nhanh</a>
                 </div>
             </div>
-
             <div class="dm-module-card">
-                <div class="dm-module-header">
-                    <i class="fa fa-cogs"></i>
-                    <h3>Quản trị Hệ thống</h3>
-                </div>
+                <div class="dm-module-header"><i class="fa fa-cogs"></i><h3>Quản trị Hệ thống</h3></div>
                 <div class="dm-module-links">
                     <a href="/app/document-manager-settings">Thiết lập hệ thống</a>
                     <a href="/app/reader-settings">Thiết lập độc giả</a>
@@ -176,7 +170,7 @@ frappe.pages['dm-dashboard'].on_page_load = function(wrapper) {
 
         <aside class="dm-sidebar">
             <div class="dm-sidebar-widget dm-alerts-widget">
-                <h3 class="dm-widget-title"><i class="fa fa-bell-o"></i> Hàng đợi & Cảnh báo</h3>
+                <h3 class="dm-widget-title"><i class="fa fa-bell-o"></i> Hàng đợi &amp; Cảnh báo</h3>
                 <div class="dm-alert-list">
                     <a href="/app/usage-request?workflow_state=Chờ duyệt" class="dm-alert-item warning">
                         <div class="dm-alert-icon"><i class="fa fa-clock-o"></i></div>
@@ -211,14 +205,15 @@ frappe.pages['dm-dashboard'].on_page_load = function(wrapper) {
             </div>
         </aside>
     </div>
-</section>`;
-    
-    $(page.main).html(dashboardHtml);
+</section>`);
 
+    // =========================================================================
+    // Utility helpers
+    // =========================================================================
 
     function escapeHTML(value) {
-        return String(value == null ? "" : value).replace(/[&<>"']/g, function (character) {
-            return {"&":"&amp;", "<":"&lt;", ">":"&gt;", "\"":"&quot;", "'":"&#039;"}[character];
+        return String(value == null ? "" : value).replace(/[&<>"']/g, function (c) {
+            return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[c];
         });
     }
 
@@ -230,12 +225,17 @@ frappe.pages['dm-dashboard'].on_page_load = function(wrapper) {
         if (!value) return "";
         const date = new Date(String(value).replace(" ", "T"));
         if (Number.isNaN(date.getTime())) return "";
-        return date.toLocaleDateString("vi-VN", {day: "2-digit", month: "2-digit", year: "numeric"});
+        return date.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit", year: "numeric" });
     }
+
+    // =========================================================================
+    // Render: Danh sách tài liệu gần đây (sidebar)
+    // =========================================================================
 
     function renderRecent(documents) {
         const target = wrapper.querySelector("[data-dm-recent]");
         if (!target) return;
+
         if (!documents || !documents.length) {
             target.innerHTML = '<div class="dm-dashboard-empty"><i class="fa fa-inbox"></i><span>Chưa có tài liệu gần đây</span></div>';
             return;
@@ -244,19 +244,28 @@ frappe.pages['dm-dashboard'].on_page_load = function(wrapper) {
         target.innerHTML = documents.map(function (doc) {
             const fileType = escapeHTML(doc.file_type || "Tệp");
             const statusClass = doc.search_index_status === "Đã index" ? "is-ready" : "is-pending";
-            return '<a class="dm-dashboard-recent-item" href="/app/archive-document/' + encodeURIComponent(doc.name) + '">' +
+            return (
+                '<a class="dm-dashboard-recent-item" href="/app/archive-document/' + encodeURIComponent(doc.name) + '">' +
                 '<span class="dm-dashboard-filetype">' + fileType + '</span>' +
-                '<span class="dm-dashboard-recent-item__main"><strong>' + escapeHTML(doc.document_title || doc.name) +
+                '<span class="dm-dashboard-recent-item__main"><strong>' +
+                escapeHTML(doc.document_title || doc.name) +
                 '</strong><small>' + escapeHTML(doc.name) + ' · ' + formatRelativeDate(doc.modified) + '</small></span>' +
                 '<span class="dm-dashboard-index-state ' + statusClass + '"><i class="fa fa-circle"></i>' +
-                escapeHTML(doc.search_index_status || "Chưa index") + '</span></a>';
+                escapeHTML(doc.search_index_status || "Chưa index") + '</span></a>'
+            );
         }).join("");
     }
 
+    // =========================================================================
+    // Init: Tên người dùng, ngày hiện tại, sự kiện click tạo mới
+    // =========================================================================
+
     function initDashboard() {
         const user = frappe.session.user_fullname || frappe.session.user || "Người dùng";
+
         const userNode = wrapper.querySelector("[data-dm-user]");
         const dateNode = wrapper.querySelector("[data-dm-date]");
+
         if (userNode) userNode.textContent = user;
         if (dateNode) {
             dateNode.textContent = new Date().toLocaleDateString("vi-VN", {
@@ -264,33 +273,33 @@ frappe.pages['dm-dashboard'].on_page_load = function(wrapper) {
             });
         }
 
-        const createButton = wrapper.querySelector("[data-dm-new-document]");
-        if (createButton) {
-            createButton.addEventListener("click", function () {
-                frappe.new_doc("Archive Document");
-            });
-        }
-
+        // Quick-action: tạo mới DocType
         wrapper.querySelectorAll("[data-dm-new-doctype]").forEach(function (link) {
             link.addEventListener("click", function (event) {
                 event.preventDefault();
                 frappe.new_doc(link.dataset.dmNewDoctype);
             });
         });
+    }
 
+    // =========================================================================
+    // Fetch: Thống kê & dữ liệu từ API server
+    // =========================================================================
+
+    function loadStats() {
         frappe.call({
             method: "document_manager.document_manager.api.dashboard.get_workspace_summary",
             callback: function (response) {
                 const data = response.message || {};
+
                 wrapper.querySelectorAll("[data-dm-stat]").forEach(function (node) {
                     node.textContent = formatNumber(data[node.dataset.dmStat]);
                 });
 
                 const percent = Math.max(0, Math.min(100, Number(data.index_percent || 0)));
-                const bar = wrapper.querySelector("[data-dm-index-bar]");
                 const label = wrapper.querySelector("[data-dm-index-label]");
-                if (bar) bar.style.width = percent + "%";
                 if (label) label.textContent = percent + "%";
+
                 renderRecent(data.recent_documents || []);
             },
             error: function () {
@@ -302,90 +311,83 @@ frappe.pages['dm-dashboard'].on_page_load = function(wrapper) {
         });
     }
 
+    // =========================================================================
+    // Quick Search: auto-complete dropdown + Enter redirect
+    // =========================================================================
+
     function setupQuickSearch() {
         const searchInput = wrapper.querySelector("#dm-quick-search-input");
         const searchDropdown = wrapper.querySelector("#dm-quick-search-dropdown");
         const searchResults = wrapper.querySelector("#dm-quick-search-results");
-        
+
         if (!searchInput || !searchDropdown || !searchResults) return;
 
         let debounceTimer;
 
-        // Handle Enter key for full search
-        searchInput.addEventListener("keydown", function(e) {
+        searchInput.addEventListener("keydown", function (e) {
             if (e.key === "Enter") {
                 e.preventDefault();
                 const query = searchInput.value.trim();
                 if (query) {
-                    window.location.href = '/search?q=' + encodeURIComponent(query);
+                    window.location.href = "/search?q=" + encodeURIComponent(query);
                 }
             }
         });
 
-        // Handle typing for auto-complete
-        searchInput.addEventListener("input", function() {
+        searchInput.addEventListener("input", function () {
             clearTimeout(debounceTimer);
             const query = searchInput.value.trim();
-            
+
             if (!query) {
                 searchDropdown.style.display = "none";
                 return;
             }
 
-            debounceTimer = setTimeout(() => {
+            debounceTimer = setTimeout(function () {
                 frappe.call({
                     method: "document_manager.document_manager.api.search.search_fulltext",
-                    args: {
-                        query: query,
-                        page: 1,
-                        page_size: 5
-                    },
-                    callback: function(r) {
-                        const data = r.message || { data: [] };
-                        const hits = data.data;
-                        
+                    args: { query: query, page: 1, page_size: 5 },
+                    callback: function (r) {
+                        const hits = (r.message || { data: [] }).data;
+
                         if (hits && hits.length > 0) {
-                            searchResults.innerHTML = hits.map(hit => {
+                            searchResults.innerHTML = hits.map(function (hit) {
                                 const title = escapeHTML(hit.document_title || hit.name);
                                 const fileType = escapeHTML(hit.file_type || "Tài liệu");
-                                return `
-                                    <li>
-                                        <a href="/app/archive-document/${encodeURIComponent(hit.name)}" style="display: block; padding: 10px 15px; text-decoration: none; border-bottom: 1px solid #f0f4f8; color: var(--text-color);">
-                                            <div style="font-weight: 500; color: var(--navy-primary);">${title}</div>
-                                            <div style="font-size: 12px; color: #6b7280; margin-top: 4px;">
-                                                <span class="badge" style="background: var(--gold-light); color: var(--gold-dark);">${fileType}</span>
-                                                ${escapeHTML(hit.name)}
-                                            </div>
-                                        </a>
-                                    </li>
-                                `;
+                                return (
+                                    '<li><a href="/app/archive-document/' + encodeURIComponent(hit.name) + '" ' +
+                                    'style="display:block;padding:10px 15px;text-decoration:none;border-bottom:1px solid #f0f4f8;color:inherit;">' +
+                                    '<div style="font-weight:500;">' + title + '</div>' +
+                                    '<div style="font-size:12px;color:#6b7280;margin-top:4px;">' +
+                                    '<span class="badge">' + fileType + '</span> ' + escapeHTML(hit.name) +
+                                    '</div></a></li>'
+                                );
                             }).join("");
-                            searchDropdown.style.display = "block";
                         } else {
-                            searchResults.innerHTML = `<li style="padding: 15px; text-align: center; color: #6b7280;">Không tìm thấy tài liệu nào phù hợp</li>`;
-                            searchDropdown.style.display = "block";
+                            searchResults.innerHTML = '<li style="padding:15px;text-align:center;color:#6b7280;">Không tìm thấy tài liệu nào phù hợp</li>';
                         }
+                        searchDropdown.style.display = "block";
                     }
                 });
             }, 300);
         });
 
-        // Close dropdown when clicking outside
-        document.addEventListener("click", function(e) {
+        document.addEventListener("click", function (e) {
             if (!searchInput.contains(e.target) && !searchDropdown.contains(e.target)) {
                 searchDropdown.style.display = "none";
             }
         });
     }
 
-    // Since Frappe renders the HTML after page_load is bound in some versions,
-    // we use a slight delay or rely on the HTML being ready.
-    // The safest is to ensure page.main has the content.
+    // =========================================================================
+    // Bootstrap
+    // CSS được load riêng cho page qua frappe.require để đảm bảo UI không bị vỡ.
+    // HTML đã được inject vào page.main ở trên.
+    // =========================================================================
+
     frappe.require('/assets/document_manager/css/document-manager-ui.css', function() {
-        // Wait for DOM to be populated with our HTML
-        setTimeout(() => {
-            initDashboard();
-            setupQuickSearch();
-        }, 100);
+        initDashboard();
+        loadStats();
+        setupQuickSearch();
     });
-}
+};
