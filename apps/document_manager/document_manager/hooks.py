@@ -89,6 +89,7 @@ scheduler_events = {
     "daily": [
         "document_manager.document_manager.services.search_index.reconcile_index",
         "document_manager.document_manager.doctype.business_activity_log.business_activity_log.cleanup_old_logs",
+        "document_manager.document_manager.doctype.archival_file.archival_file.check_retention_periods",
     ],
     "cron": {
         # Integrity check every Sunday at 2 AM

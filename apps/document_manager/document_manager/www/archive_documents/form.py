@@ -27,12 +27,20 @@ def get_context(context):
         context.page_title = 'Thêm Văn bản mới'
         
     archival_files = frappe.get_all('Archival File', fields=['name', 'file_title', 'catalog', 'record_group', 'fonds', 'confidentiality_level'])
+    
+    attachments = []
+    if docname:
+        attachments = frappe.get_all('File', filters={
+            'attached_to_doctype': 'Archive Document',
+            'attached_to_name': docname
+        }, fields=['name', 'file_name', 'file_url'])
         
     context.update({
         'doc': doc,
         'docname': docname,
         'can_edit': can_edit,
         'archival_files': archival_files,
+        'attachments': attachments,
         'page_icon': 'fa-file-text-o',
         'breadcrumbs': [
             {'label': 'Hồ sơ & Tài liệu'},

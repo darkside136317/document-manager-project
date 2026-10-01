@@ -104,16 +104,38 @@ def _read_frappe_file(file_url: str) -> bytes | None:
 
 
 def _extract_text_pdf(content: bytes) -> str:
-    """Extract text from PDF using pdfplumber."""
+    """Extract text from PDF using pdfplumber. Fallback to OCR if scanned."""
+    text_parts = []
     try:
         import pdfplumber
-        text_parts = []
         with pdfplumber.open(io.BytesIO(content)) as pdf:
             for page in pdf.pages:
                 page_text = page.extract_text()
                 if page_text:
                     text_parts.append(page_text)
-        return "\n".join(text_parts)
+                    
+        extracted_text = "\n".join(text_parts).strip()
+        
+        # If very little text was extracted, it might be a scanned document (image-based PDF)
+        if len(extracted_text) < 100:
+            frappe.logger().info("PDF text extraction yielded little text. Attempting OCR fallback...")
+            try:
+                import pytesseract
+                from pdf2image import convert_from_bytes
+                
+                images = convert_from_bytes(content)
+                ocr_text = []
+                for img in images:
+                    # lang='vie+eng' for Vietnamese and English
+                    text = pytesseract.image_to_string(img, lang='vie+eng')
+                    ocr_text.append(text)
+                return "\n".join(ocr_text).strip()
+            except ImportError:
+                frappe.log_error("OCR modules (pytesseract, pdf2image) not installed.", "OCR Error")
+            except Exception as e:
+                frappe.log_error(f"OCR processing failed: {e}", "OCR Error")
+                
+        return extracted_text
     except Exception as e:
         frappe.log_error(f"PDF text extraction failed: {e}", "Text Extraction Error")
         return ""

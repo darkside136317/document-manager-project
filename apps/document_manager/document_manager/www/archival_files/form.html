@@ -102,6 +102,24 @@
                 <label class="dm-form-label">Số tờ</label>
                 <input type="number" id="total_pages" class="dm-form-control" value="{{ doc.total_pages or '' }}" {% if not can_edit %}disabled{% endif %}>
             </div>
+            
+            <div class="dm-form-group">
+                <label class="dm-form-label">Thời hạn bảo quản (Năm)</label>
+                <input type="number" id="retention_years" class="dm-form-control" value="{{ doc.retention_years or 0 }}" {% if not can_edit %}disabled{% endif %} title="Số năm bảo quản kể từ ngày kết thúc hồ sơ">
+            </div>
+            
+            <div class="dm-form-group">
+                <label class="dm-form-label">Trạng thái tiêu hủy</label>
+                <style>
+                    .disposal-warning { color: var(--brand-danger) !important; font-weight: bold !important; }
+                </style>
+                {% set disposal_class = "disposal-warning" if (doc and doc.disposal_status == 'Cảnh báo tiêu hủy') else "" %}
+                <select id="disposal_status" class="dm-form-control {{ disposal_class }}" disabled style="background-color: var(--c-gray-100);">
+                    <option value="Bình thường" {% if not doc or doc.disposal_status == 'Bình thường' %}selected{% endif %}>Bình thường</option>
+                    <option value="Cảnh báo tiêu hủy" {% if doc and doc.disposal_status == 'Cảnh báo tiêu hủy' %}selected{% endif %}>Cảnh báo tiêu hủy</option>
+                    <option value="Đã tiêu hủy" {% if doc and doc.disposal_status == 'Đã tiêu hủy' %}selected{% endif %}>Đã tiêu hủy</option>
+                </select>
+            </div>
         </div>
 
         <h3 style="color: var(--brand-primary); font-size: 1.1rem; border-bottom: 1px solid var(--brand-border); padding-bottom: 8px; margin-bottom: 16px; margin-top: 32px;">
@@ -165,14 +183,13 @@
                 end_date: document.getElementById('end_date').value || null,
                 confidentiality_level: document.getElementById('confidentiality_level').value || null,
                 total_pages: document.getElementById('total_pages').value || null,
+                retention_years: document.getElementById('retention_years').value || 0,
                 storage_warehouse: document.getElementById('storage_warehouse').value || null,
                 shelf_number: document.getElementById('shelf_number').value || null,
                 box_number: document.getElementById('box_number').value || null,
                 physical_location: document.getElementById('physical_location').value || null,
                 description: document.getElementById('description').value || null
             };
-            const docname = document.getElementById('docname').value;
-            const btnSave = document.getElementById('saveBtn');
             
             // Call shared save function
             window.dmSaveRecord('Archival File', docname, data, '/archival_files/form', btnSave);

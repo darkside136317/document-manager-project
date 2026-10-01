@@ -124,7 +124,35 @@ def download_file(doc_name):
         "Archive Document", doc.name, "last_accessed", frappe.utils.now(),
         update_modified=False,
     )
+    
+    _log_activity("Tải xuống", "Archive Document", doc.name, f"Tải xuống tệp gốc {filename}")
+    
     frappe.local.response.filename = filename
     frappe.local.response.filecontent = content
     frappe.local.response.type = "download"
     frappe.local.response.display_content_as = "attachment"
+
+@frappe.whitelist()
+def log_document_access(doc_name, action):
+    """Log document access from portal viewer."""
+    if action not in ["Xem", "Tải xuống"]:
+        action = "Xem"
+        
+    doc = _get_permitted_document(doc_name)
+    _log_activity(action, "Archive Document", doc.name, f"{action} tài liệu trên Portal")
+    return "OK"
+
+def _log_activity(activity_type, ref_doctype, ref_name, description):
+    try:
+        frappe.get_doc({
+            "doctype": "Business Activity Log",
+            "activity_type": activity_type if activity_type in ["Xem", "Tạo mới", "Cập nhật", "Xóa", "Tìm kiếm", "Tải xuống", "Xuất XML", "Nhập XML", "Sao lưu", "Phục hồi", "Kiểm tra"] else "Xem",
+            "reference_doctype": ref_doctype,
+            "reference_name": ref_name,
+            "user": frappe.session.user,
+            "ip_address": frappe.local.request_ip,
+            "description": description
+        }).insert(ignore_permissions=True)
+        frappe.db.commit()
+    except Exception as e:
+        frappe.log_error(f"Failed to log activity: {e}")

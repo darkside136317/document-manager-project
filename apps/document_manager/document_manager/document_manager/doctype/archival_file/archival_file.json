@@ -176,6 +176,29 @@
       "label": "Mô tả chi tiết"
     },
     {
+      "fieldname": "section_disposal",
+      "fieldtype": "Section Break",
+      "label": "Quản lý Tiêu hủy"
+    },
+    {
+      "fieldname": "retention_years",
+      "fieldtype": "Int",
+      "label": "Thời hạn bảo quản (Năm)",
+      "default": "0",
+      "description": "Số năm bảo quản kể từ ngày kết thúc hồ sơ"
+    },
+    {
+      "fieldname": "column_break_disposal",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "disposal_status",
+      "fieldtype": "Select",
+      "label": "Trạng thái",
+      "options": "Bình thường\nCảnh báo tiêu hủy\nĐã tiêu hủy",
+      "default": "Bình thường"
+    },
+    {
       "fieldname": "section_notes",
       "fieldtype": "Section Break",
       "label": "Ghi chú",

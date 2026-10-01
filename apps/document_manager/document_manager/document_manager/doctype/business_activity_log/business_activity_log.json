@@ -4,7 +4,7 @@
   "naming_rule": "Expression", "autoname": "format:LOG-{######}",
   "is_submittable": 0, "track_changes": 0, "in_create": 1,
   "fields": [
-    {"fieldname": "activity_type", "fieldtype": "Select", "label": "Loại hoạt động", "options": "Tạo mới\nCập nhật\nXóa\nTìm kiếm\nTải xuống\nXuất XML\nNhập XML\nSao lưu\nPhục hồi\nKiểm tra", "reqd": 1, "in_list_view": 1, "in_standard_filter": 1},
+    {"fieldname": "activity_type", "fieldtype": "Select", "label": "Loại hoạt động", "options": "Xem\nTạo mới\nCập nhật\nXóa\nTìm kiếm\nTải xuống\nXuất XML\nNhập XML\nSao lưu\nPhục hồi\nKiểm tra", "reqd": 1, "in_list_view": 1, "in_standard_filter": 1},
     {"fieldname": "reference_doctype", "fieldtype": "Data", "label": "Doctype", "in_list_view": 1, "in_standard_filter": 1},
     {"fieldname": "reference_name", "fieldtype": "Data", "label": "Tên bản ghi", "in_list_view": 1},
     {"fieldname": "column_break_1", "fieldtype": "Column Break"},

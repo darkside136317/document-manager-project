@@ -11,6 +11,13 @@
         </a>
     </div>
     <div class="dm-navbar-nav">
+        <div class="dm-navbar-search" style="position: relative; margin-right: 16px;">
+            <i class="fa fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--c-gray-400);"></i>
+            <input type="text" id="dm-global-search-input" placeholder="Tìm kiếm tài liệu..." style="padding: 8px 16px 8px 36px; border-radius: 20px; border: 1px solid var(--brand-border); background: var(--c-gray-50); font-size: 0.9rem; width: 300px; outline: none; transition: all 0.2s;" autocomplete="off" onfocus="this.style.background='white'; this.style.borderColor='var(--brand-primary)';" onblur="this.style.background='var(--c-gray-50)'; this.style.borderColor='var(--brand-border)';">
+            <div id="dm-global-search-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; margin-top: 8px; background: white; border: 1px solid var(--brand-border); border-radius: 8px; box-shadow: var(--shadow-lg); z-index: 1050; max-height: 400px; overflow-y: auto;">
+                <ul id="dm-global-search-results" style="list-style: none; margin: 0; padding: 0;"></ul>
+            </div>
+        </div>
         <a href="/dashboard" class="dm-nav-link"><i class="fa fa-home"></i> Trang chủ</a>
         <div class="dm-dropdown">
             <button class="dm-dropdown-toggle">
@@ -69,6 +76,85 @@
         {% block dm_content %}{% endblock %}
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var searchInput = document.getElementById("dm-global-search-input");
+    var searchDropdown = document.getElementById("dm-global-search-dropdown");
+    var searchResults = document.getElementById("dm-global-search-results");
+
+    if (!searchInput || !searchDropdown || !searchResults) return;
+
+    function escapeHTML(value) {
+        return String(value == null ? "" : value).replace(/[&<>"']/g, function (c) {
+            return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" }[c];
+        });
+    }
+
+    let debounceTimer;
+
+    searchInput.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            const query = searchInput.value.trim();
+            if (query) {
+                window.location.href = "/search?query=" + encodeURIComponent(query);
+            }
+        }
+    });
+
+    searchInput.addEventListener("input", function () {
+        clearTimeout(debounceTimer);
+        const query = searchInput.value.trim();
+
+        if (!query) {
+            searchDropdown.style.display = "none";
+            return;
+        }
+
+        debounceTimer = setTimeout(function () {
+            const url = new URL("/api/method/document_manager.document_manager.api.search.search_fulltext", window.location.origin);
+            url.searchParams.set("query", query);
+            url.searchParams.set("page", 1);
+            url.searchParams.set("page_size", 5);
+
+            fetch(url.toString(), {
+                credentials: "same-origin",
+                headers: {"Accept": "application/json"}
+            }).then(function(res) {
+                return res.json();
+            }).then(function(payload) {
+                const hits = (payload.message || { data: [] }).data;
+
+                if (hits && hits.length > 0) {
+                    searchResults.innerHTML = hits.map(function (hit) {
+                        const title = escapeHTML(hit.document_title || hit.id);
+                        const fileType = escapeHTML(hit.file_type || "Tài liệu");
+                        return (
+                            '<li><a href="/archive_documents/form?name=' + encodeURIComponent(hit.id) + '" style="display:block; padding:12px 16px; text-decoration:none; border-bottom:1px solid var(--c-gray-100); color:inherit;">' +
+                            '<div style="font-weight:600; color:var(--text-main); font-size: 0.9rem;">' + title + '</div>' +
+                            '<div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">' +
+                            '<span style="background:var(--c-gray-100); padding:2px 6px; border-radius:4px; color:var(--c-gray-700); font-weight:600; margin-right:6px;">' + fileType + '</span> ' + escapeHTML(hit.id) +
+                            '</div></a></li>'
+                        );
+                    }).join("");
+                } else {
+                    searchResults.innerHTML = '<li style="padding:15px;text-align:center;color:var(--text-muted);font-size:0.9rem;">Không tìm thấy tài liệu nào phù hợp</li>';
+                }
+                searchDropdown.style.display = "block";
+            }).catch(function(err) {
+                console.error(err);
+            });
+        }, 300);
+    });
+
+    document.addEventListener("click", function (e) {
+        if (!searchInput.contains(e.target) && !searchDropdown.contains(e.target)) {
+            searchDropdown.style.display = "none";
+        }
+    });
+});
+</script>
 
 {% block dm_scripts %}{% endblock %}
 {% endblock %}
