@@ -86,11 +86,7 @@
                 type_code: document.getElementById('type_code').value.trim() || null,
                 is_active: document.getElementById('is_active').checked ? 1 : 0,
                 description: document.getElementById('description').value || null
-            };
-            const docname = document.getElementById('docname').value;
-            const btnSave = document.getElementById('saveBtn');
-            
-            // Call shared save function
+            };// Call shared save function
             window.dmSaveRecord('Document Type Category', docname, data, '/document_type_categories/form', btnSave);
         };
     });

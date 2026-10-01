@@ -136,11 +136,7 @@
                 capacity: document.getElementById('capacity').value.trim() || null,
                 archival_agency: document.getElementById('archival_agency').value || null,
                 description: document.getElementById('description').value || null
-            };
-            const docname = document.getElementById('docname').value;
-            const btnSave = document.getElementById('saveBtn');
-            
-            // Call shared save function
+            };// Call shared save function
             window.dmSaveRecord('Storage Warehouse', docname, data, '/storage_warehouses/form', btnSave);
         };
     });

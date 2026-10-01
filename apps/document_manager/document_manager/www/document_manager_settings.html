@@ -1,0 +1,138 @@
+{% extends "templates/dm_portal_base.html" %}
+
+{% block page_actions %}
+{% if can_edit %}
+<button type="button" class="dm-btn primary" id="btnSave">
+    <i class="fa fa-save"></i> Lưu Thay Đổi
+</button>
+{% endif %}
+{% endblock %}
+
+{% block dm_content %}
+<div class="dm-card" style="padding: 24px;">
+    <form id="frmDocumentManagerSettings">
+        
+        <h3 class="dm-section-title"><i class="fa fa-database"></i> Cơ sở dữ liệu MongoDB Atlas</h3>
+        <div class="dm-form-grid">
+            <div class="dm-form-group">
+                <label class="dm-form-label">MongoDB Atlas URI</label>
+                <input type="password" name="mongodb_atlas_uri" class="dm-form-control" value="{{ doc.mongodb_atlas_uri or '' }}" {% if not can_edit %}disabled{% endif %}>
+            </div>
+            <div class="dm-form-group">
+                <label class="dm-form-label">Tên Database</label>
+                <input type="text" name="mongodb_database" class="dm-form-control" value="{{ doc.mongodb_database or 'docmanager_files' }}" {% if not can_edit %}disabled{% endif %}>
+            </div>
+            <div class="dm-form-group">
+                <label class="dm-form-label">Trạng thái kết nối</label>
+                <input type="text" class="dm-form-control" value="{{ doc.mongodb_status or 'Chưa kết nối' }}" disabled style="background-color: var(--c-gray-100);">
+            </div>
+        </div>
+
+        <h3 class="dm-section-title" style="margin-top: 32px;"><i class="fa fa-search"></i> Công cụ tìm kiếm Meilisearch</h3>
+        <div class="dm-form-grid">
+            <div class="dm-form-group">
+                <label class="dm-form-label">Meilisearch Host</label>
+                <input type="text" name="meilisearch_host" class="dm-form-control" value="{{ doc.meilisearch_host or 'http://localhost:7700' }}" {% if not can_edit %}disabled{% endif %}>
+            </div>
+            <div class="dm-form-group">
+                <label class="dm-form-label">Master Key</label>
+                <input type="password" name="meilisearch_master_key" class="dm-form-control" value="{{ doc.meilisearch_master_key or '' }}" {% if not can_edit %}disabled{% endif %}>
+            </div>
+            <div class="dm-form-group">
+                <label class="dm-form-label">Số tài liệu đã Index</label>
+                <input type="text" class="dm-form-control" value="{{ doc.total_indexed or '0' }}" disabled style="background-color: var(--c-gray-100);">
+            </div>
+        </div>
+
+        <h3 class="dm-section-title" style="margin-top: 32px;"><i class="fa fa-shield"></i> Sao lưu tự động</h3>
+        <div class="dm-form-grid">
+            <div class="dm-form-group" style="grid-column: 1 / -1;">
+                <label class="dm-checkbox-label">
+                    <input type="checkbox" name="auto_backup_enabled" value="1" {% if doc.auto_backup_enabled %}checked{% endif %} {% if not can_edit %}disabled{% endif %}>
+                    Bật sao lưu tự động
+                </label>
+            </div>
+            <div class="dm-form-group">
+                <label class="dm-form-label">Tần suất</label>
+                <select name="backup_frequency" class="dm-form-control" {% if not can_edit %}disabled{% endif %}>
+                    <option value="Hàng ngày" {% if doc.backup_frequency == 'Hàng ngày' %}selected{% endif %}>Hàng ngày</option>
+                    <option value="Hàng tuần" {% if doc.backup_frequency == 'Hàng tuần' %}selected{% endif %}>Hàng tuần</option>
+                    <option value="Hàng tháng" {% if doc.backup_frequency == 'Hàng tháng' %}selected{% endif %}>Hàng tháng</option>
+                </select>
+            </div>
+            <div class="dm-form-group">
+                <label class="dm-form-label">Giữ backup (ngày)</label>
+                <input type="number" name="backup_retention_days" class="dm-form-control" value="{{ doc.backup_retention_days or '30' }}" {% if not can_edit %}disabled{% endif %}>
+            </div>
+            <div class="dm-form-group" style="grid-column: 1 / -1;">
+                <label class="dm-checkbox-label">
+                    <input type="checkbox" name="auto_integrity_check" value="1" {% if doc.auto_integrity_check %}checked{% endif %} {% if not can_edit %}disabled{% endif %}>
+                    Bật tự động kiểm tra toàn vẹn
+                </label>
+            </div>
+        </div>
+
+        <h3 class="dm-section-title" style="margin-top: 32px;"><i class="fa fa-history"></i> Nhật ký hệ thống</h3>
+        <div class="dm-form-grid">
+            <div class="dm-form-group" style="grid-column: 1 / -1;">
+                <label class="dm-checkbox-label">
+                    <input type="checkbox" name="enable_activity_log" value="1" {% if doc.enable_activity_log %}checked{% endif %} {% if not can_edit %}disabled{% endif %}>
+                    Bật Business Activity Log (Ghi nhận mọi thao tác hệ thống)
+                </label>
+            </div>
+            <div class="dm-form-group">
+                <label class="dm-form-label">Giữ Log (ngày)</label>
+                <input type="number" name="log_retention_days" class="dm-form-control" value="{{ doc.log_retention_days or '90' }}" {% if not can_edit %}disabled{% endif %}>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block dm_scripts %}
+<div id="dm-context-data" data-can-edit="{{ 1 if can_edit else 0 }}" style="display: none;"></div>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        var contextEl = document.getElementById("dm-context-data");
+        var canEdit = contextEl && contextEl.getAttribute("data-can-edit") === "1";
+        
+        if (!canEdit) return;
+        var btnSave = document.getElementById("btnSave");
+        if(btnSave) {
+            btnSave.addEventListener("click", function() {
+                var form = document.getElementById("frmDocumentManagerSettings");
+                var formData = new FormData(form);
+                var data = {};
+                formData.forEach(function(value, key) { data[key] = value; });
+                
+                // Handle checkboxes
+                form.querySelectorAll('input[type="checkbox"]').forEach(function(cb) {
+                    data[cb.name] = cb.checked ? 1 : 0;
+                });
+                
+                btnSave.disabled = true;
+                btnSave.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Đang lưu...';
+                
+                frappe.call({
+                    type: "POST",
+                    method: "frappe.client.save",
+                    args: {
+                        doc: Object.assign({
+                            doctype: "Document Manager Settings",
+                            name: "Document Manager Settings"
+                        }, data)
+                    },
+                    callback: function(r) {
+                        btnSave.disabled = false;
+                        btnSave.innerHTML = '<i class="fa fa-save"></i> Lưu Thay Đổi';
+                        if(!r.exc) {
+                            frappe.msgprint({title: "Thành công", message: "Đã lưu thiết lập hệ thống", indicator: "green"});
+                            setTimeout(function() { window.location.reload(); }, 1500);
+                        }
+                    }
+                });
+            });
+        }
+    });
+</script>
+{% endblock %}

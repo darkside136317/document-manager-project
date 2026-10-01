@@ -2,84 +2,243 @@
 
 {% block head %}
 <script src="https://cdn.jsdelivr.net/npm/frappe-charts@1.6.2/dist/frappe-charts.min.iife.js"></script>
+<style>
+    /* Premium Animations & Styles for Reports */
+    .report-header-section {
+        background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.01) 100%);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 16px;
+        padding: 24px;
+        margin-bottom: 24px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    .report-header-section:hover {
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+    }
+
+    .report-stat-card {
+        background: linear-gradient(145deg, var(--c-gray-800), var(--c-gray-900));
+        border: 1px solid var(--c-gray-700);
+        border-radius: 16px;
+        padding: 24px;
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .report-stat-card::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 60%);
+        transform: rotate(45deg);
+        pointer-events: none;
+    }
+
+    .report-stat-card:hover {
+        transform: translateY(-8px) scale(1.02);
+        box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        border-color: var(--brand-primary);
+    }
+
+    .stat-icon-wrapper {
+        width: 64px;
+        height: 64px;
+        border-radius: 16px;
+        background: linear-gradient(135deg, var(--brand-primary), #6366f1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 28px;
+        color: white;
+        box-shadow: 0 8px 20px rgba(79, 70, 229, 0.3);
+        transition: transform 0.5s ease;
+    }
+
+    .report-stat-card:hover .stat-icon-wrapper {
+        transform: rotateY(180deg);
+    }
+
+    .stat-value {
+        margin: 0;
+        font-size: 2.5rem;
+        font-weight: 700;
+        background: linear-gradient(to right, #fff, #a5b4fc);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        line-height: 1.1;
+    }
+
+    .stat-label {
+        margin: 8px 0 0;
+        color: var(--text-muted);
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.85rem;
+        letter-spacing: 1px;
+    }
+
+    .chart-container {
+        background: var(--c-gray-900);
+        border: 1px solid var(--c-gray-800);
+        border-radius: 16px;
+        padding: 24px;
+        margin-bottom: 24px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+
+    .chart-title {
+        margin: 0 0 20px 0;
+        color: var(--text-main);
+        font-size: 1.2rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .chart-title i {
+        color: var(--brand-primary);
+    }
+
+    .table-container {
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        border: 1px solid var(--c-gray-800);
+    }
+
+    .dm-table th {
+        background: rgba(255,255,255,0.03) !important;
+        color: var(--text-muted) !important;
+        text-transform: uppercase;
+        font-size: 0.8rem;
+        letter-spacing: 1px;
+        border-bottom: 2px solid var(--c-gray-800) !important;
+    }
+
+    .dm-table tbody tr {
+        transition: background-color 0.2s ease;
+    }
+    
+    .dm-table tbody tr:hover {
+        background-color: rgba(255,255,255,0.02) !important;
+    }
+    
+    .filter-btn {
+        background: linear-gradient(135deg, var(--brand-primary), #4338ca);
+        border: none;
+        color: white;
+        height: 42px;
+        border-radius: 8px;
+        font-weight: 600;
+        padding: 0 24px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(79, 70, 229, 0.4);
+    }
+    
+    .filter-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(79, 70, 229, 0.6);
+    }
+</style>
 {% endblock %}
 
 {% block dm_content %}
-<div class="dm-card" style="margin-bottom: 24px; padding: 24px;">
-    <form method="GET" action="/reports/thong_ke_tai_lieu" style="display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap;">
-        <div style="flex: 1; min-width: 200px;">
-            <label class="dm-form-label">Phông lưu trữ</label>
-            <select name="fonds" class="dm-form-control">
-                <option value="">-- Tất cả --</option>
+<div class="report-header-section">
+    <form method="GET" action="/reports/thong_ke_tai_lieu" style="display: flex; gap: 20px; align-items: flex-end; flex-wrap: wrap;">
+        <div style="flex: 1; min-width: 220px;">
+            <label class="dm-form-label" style="color: #9ca3af;"><i class="fa fa-archive"></i> Phông lưu trữ</label>
+            <select name="fonds" class="dm-form-control" style="background: rgba(0,0,0,0.2); border-color: rgba(255,255,255,0.1);">
+                <option value="">-- Tất cả Phông --</option>
                 {% for f in fonds_options %}
-                <option value="{{ f.name }}" {% if filters.fonds == f.name %}selected{% endif %}>{{ f.name }} - {{ f.fonds_name }}</option>
+                <option value="{{ f.name }}" {% if filters.get('fonds') == f.name %}selected{% endif %}>{{ f.name }} - {{ f.fonds_name }}</option>
                 {% endfor %}
             </select>
         </div>
         
-        <div style="flex: 1; min-width: 200px;">
-            <label class="dm-form-label">Loại hình tài liệu</label>
-            <select name="document_type_category" class="dm-form-control">
-                <option value="">-- Tất cả --</option>
+        <div style="flex: 1; min-width: 220px;">
+            <label class="dm-form-label" style="color: #9ca3af;"><i class="fa fa-tags"></i> Loại hình tài liệu</label>
+            <select name="document_type_category" class="dm-form-control" style="background: rgba(0,0,0,0.2); border-color: rgba(255,255,255,0.1);">
+                <option value="">-- Tất cả Loại hình --</option>
                 {% for d in doc_type_options %}
-                <option value="{{ d.name }}" {% if filters.document_type_category == d.name %}selected{% endif %}>{{ d.type_name or d.name }}</option>
+                <option value="{{ d.name }}" {% if filters.get('document_type_category') == d.name %}selected{% endif %}>{{ d.type_name or d.name }}</option>
                 {% endfor %}
             </select>
         </div>
         
-        <div style="flex: 1; min-width: 200px;">
-            <label class="dm-form-label">Kho lưu trữ</label>
-            <select name="storage_warehouse" class="dm-form-control">
-                <option value="">-- Tất cả --</option>
+        <div style="flex: 1; min-width: 220px;">
+            <label class="dm-form-label" style="color: #9ca3af;"><i class="fa fa-building"></i> Kho lưu trữ</label>
+            <select name="storage_warehouse" class="dm-form-control" style="background: rgba(0,0,0,0.2); border-color: rgba(255,255,255,0.1);">
+                <option value="">-- Tất cả Kho --</option>
                 {% for w in warehouse_options %}
-                <option value="{{ w.name }}" {% if filters.storage_warehouse == w.name %}selected{% endif %}>{{ w.name }}</option>
+                <option value="{{ w.name }}" {% if filters.get('storage_warehouse') == w.name %}selected{% endif %}>{{ w.name }}</option>
                 {% endfor %}
             </select>
         </div>
 
-        <button type="submit" class="dm-btn primary" style="height: 42px;">Lọc báo cáo</button>
-        {% if filters %}
-        <a href="/reports/thong_ke_tai_lieu" class="dm-btn" style="height: 42px; color: var(--c-gray-500);"><i class="fa fa-times"></i> Xóa lọc</a>
-        {% endif %}
+        <div style="display: flex; gap: 12px; margin-top: 10px;">
+            <button type="submit" class="filter-btn">
+                <i class="fa fa-filter"></i> Lọc dữ liệu
+            </button>
+            {% if filters %}
+            <a href="/reports/thong_ke_tai_lieu" class="dm-btn" style="height: 42px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #9ca3af;">
+                <i class="fa fa-times"></i> Xóa lọc
+            </a>
+            {% endif %}
+        </div>
     </form>
 </div>
 
 <!-- Summary Widgets -->
-<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
-    <div class="dm-card" style="padding: 24px; display: flex; align-items: center; gap: 16px;">
-        <div style="width: 56px; height: 56px; border-radius: 50%; background: var(--c-gray-100); display: flex; align-items: center; justify-content: center; font-size: 24px; color: var(--brand-primary);">
-            <i class="fa fa-folder"></i>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; margin-bottom: 32px;">
+    <div class="report-stat-card">
+        <div class="stat-icon-wrapper">
+            <i class="fa fa-folder-open"></i>
         </div>
         <div>
-            <h3 style="margin: 0; font-size: 2rem; color: var(--text-main);">{{ total_files }}</h3>
-            <p style="margin: 4px 0 0; color: var(--text-muted); font-weight: 600; text-transform: uppercase; font-size: 0.85rem;">Tổng số Hồ sơ</p>
+            <h3 class="stat-value">{{ total_files }}</h3>
+            <p class="stat-label">Tổng số Hồ sơ</p>
         </div>
     </div>
     
-    <div class="dm-card" style="padding: 24px; display: flex; align-items: center; gap: 16px;">
-        <div style="width: 56px; height: 56px; border-radius: 50%; background: var(--c-gray-100); display: flex; align-items: center; justify-content: center; font-size: 24px; color: var(--brand-primary);">
-            <i class="fa fa-file-text"></i>
+    <div class="report-stat-card">
+        <div class="stat-icon-wrapper" style="background: linear-gradient(135deg, #10b981, #059669); box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);">
+            <i class="fa fa-file-text-o"></i>
         </div>
         <div>
-            <h3 style="margin: 0; font-size: 2rem; color: var(--text-main);">{{ total_docs }}</h3>
-            <p style="margin: 4px 0 0; color: var(--text-muted); font-weight: 600; text-transform: uppercase; font-size: 0.85rem;">Tổng số Văn bản/Tài liệu</p>
+            <h3 class="stat-value">{{ total_docs }}</h3>
+            <p class="stat-label">Tổng số Văn bản/Tài liệu</p>
         </div>
     </div>
 </div>
 
-{% if chart %}
-<div class="dm-card" style="margin-bottom: 24px; padding: 24px;">
-    <h3 style="margin: 0 0 16px 0; color: var(--text-main); font-size: 1.1rem;">Biểu đồ thống kê theo Phông lưu trữ</h3>
+{% if chart_json and chart_json != 'null' %}
+<div class="chart-container">
+    <h3 class="chart-title"><i class="fa fa-bar-chart"></i> Biểu đồ thống kê theo Phông lưu trữ</h3>
     <div id="report-chart"></div>
 </div>
 {% endif %}
 
-<div class="dm-table-wrapper dm-card">
-    <table class="dm-table">
+<div class="table-container dm-card" style="padding: 0; background: var(--c-gray-900);">
+    <table class="dm-table" style="margin: 0; width: 100%;">
         <thead>
             <tr>
                 {% for col in columns %}
-                <th>{{ col.label }}</th>
+                <th style="padding: 16px 20px;">{{ col.label }}</th>
                 {% endfor %}
             </tr>
         </thead>
@@ -87,20 +246,23 @@
             {% for row in data %}
             <tr>
                 {% for col in columns %}
-                <td>
+                <td style="padding: 16px 20px; border-bottom: 1px solid var(--c-gray-800);">
                     {% if col.fieldname == 'file_count' or col.fieldname == 'doc_count' %}
-                        <strong>{{ row.get(col.fieldname, 0) }}</strong>
+                        <span style="display: inline-block; background: rgba(79, 70, 229, 0.15); color: #818cf8; padding: 4px 12px; border-radius: 20px; font-weight: 600; font-size: 0.9rem;">
+                            {{ row.get(col.fieldname, 0) }}
+                        </span>
                     {% else %}
-                        {{ row.get(col.fieldname, '-') or '-' }}
+                        <span style="color: #e5e7eb; font-weight: 500;">{{ row.get(col.fieldname, '-') or '-' }}</span>
                     {% endif %}
                 </td>
                 {% endfor %}
             </tr>
             {% else %}
             <tr>
-                <td colspan="{{ columns|length }}" style="text-align: center; padding: 40px; color: var(--c-gray-400);">
-                    <i class="fa fa-table" style="font-size: 32px; margin-bottom: 12px; display: block;"></i>
-                    Không có dữ liệu phù hợp.
+                <td colspan="{{ columns|length }}" style="text-align: center; padding: 60px; color: var(--c-gray-500);">
+                    <i class="fa fa-inbox" style="font-size: 48px; margin-bottom: 16px; display: block; opacity: 0.5;"></i>
+                    <div style="font-size: 1.1rem; font-weight: 500;">Không có dữ liệu phù hợp với bộ lọc hiện tại.</div>
+                    <div style="font-size: 0.9rem; margin-top: 8px;">Vui lòng thử thay đổi các tiêu chí tìm kiếm.</div>
                 </td>
             </tr>
             {% endfor %}
@@ -111,21 +273,43 @@
 {% endblock %}
 
 {% block dm_scripts %}
-{% if chart_json and chart_json != 'null' %}
+<script id="dm-chart-data" type="application/json">{{ chart_json | safe if chart_json and chart_json != 'null' else 'null' }}</script>
 <script>
     document.addEventListener("DOMContentLoaded", function() {
-        const chartData = {{ chart_json }};
-        
-        if (chartData && chartData.data) {
-            new frappe.Chart("#report-chart", {
-                data: chartData.data,
-                title: "",
-                type: chartData.type || 'bar',
-                height: 300,
-                colors: chartData.colors || ['#1f2937']
-            });
-        }
+        var rawData = document.getElementById('dm-chart-data');
+        if (!rawData) return;
+        var chartData = JSON.parse(rawData.textContent || 'null');
+        if (!chartData || !chartData.data) return;
+
+        new frappe.Chart("#report-chart", {
+            data: chartData.data,
+            title: "",
+            type: chartData.type || 'bar',
+            height: 350,
+            colors: ['#6366f1', '#10b981', '#f59e0b', '#ec4899'],
+            barOptions: {
+                spaceRatio: 0.4
+            },
+            axisOptions: {
+                xIsSeries: 1,
+                xAxisMode: 'tick',
+                yAxisMode: 'span',
+                textColor: '#9ca3af'
+            },
+            tooltipOptions: {
+                formatTooltipX: function(d) { return (d + '').toUpperCase(); },
+                formatTooltipY: function(d) { return d + ' mục'; }
+            }
+        });
+
+        var chartEl = document.getElementById('report-chart');
+        chartEl.style.opacity = '0';
+        chartEl.style.transform = 'translateY(20px)';
+        chartEl.style.transition = 'all 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+        setTimeout(function() {
+            chartEl.style.opacity = '1';
+            chartEl.style.transform = 'translateY(0)';
+        }, 100);
     });
 </script>
-{% endif %}
 {% endblock %}

@@ -99,11 +99,7 @@
                 parent_entry: document.getElementById('parent_entry').value || null,
                 sort_order: parseInt(document.getElementById('sort_order').value) || 0,
                 is_active: document.getElementById('is_active').checked ? 1 : 0
-            };
-            const docname = document.getElementById('docname').value;
-            const btnSave = document.getElementById('saveBtn');
-            
-            // Call shared save function
+            };// Call shared save function
             window.dmSaveRecord('Quick Entry Dictionary', docname, data, '/quick_entry_dictionaries/form', btnSave);
         };
     });

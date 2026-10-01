@@ -320,12 +320,7 @@
                 author: document.getElementById('author').value || null,
                 page_count: document.getElementById('page_count').value || null,
                 description: document.getElementById('description').value || null
-            };
-            
-            const docname = document.getElementById('docname').value;
-            const btnSave = document.getElementById('saveBtn');
-            
-            window.dmSaveRecord('Archive Document', docname, data, '/archive_documents/form', btnSave);
+            };window.dmSaveRecord('Archive Document', docname, data, '/archive_documents/form', btnSave);
         };
         
         window.openDocumentViewer = function(fileUrl, fileName) {

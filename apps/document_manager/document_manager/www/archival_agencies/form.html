@@ -124,12 +124,7 @@
                 email: document.getElementById('email').value.trim() || null,
                 website: document.getElementById('website').value.trim() || null,
                 description: document.getElementById('description').value || null
-            };
-            
-            const docname = document.getElementById('docname').value;
-            const btnSave = document.getElementById('saveBtn');
-            
-            // Call shared save function
+            };// Call shared save function
             window.dmSaveRecord('Archival Agency', docname, data, '/archival_agencies/form', btnSave);
         };
     });

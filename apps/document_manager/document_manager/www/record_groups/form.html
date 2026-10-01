@@ -118,11 +118,7 @@
                 start_year: document.getElementById('start_year').value || null,
                 end_year: document.getElementById('end_year').value || null,
                 description: document.getElementById('description').value || null
-            };
-            const docname = document.getElementById('docname').value;
-            const btnSave = document.getElementById('saveBtn');
-            
-            // Call shared save function
+            };// Call shared save function
             window.dmSaveRecord('Record Group', docname, data, '/record_groups/form', btnSave);
         };
     });

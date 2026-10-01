@@ -1,0 +1,116 @@
+{% extends "templates/dm_portal_base.html" %}
+
+{% block page_actions %}
+{% if can_edit %}
+<button type="button" class="dm-btn primary" id="btnSave">
+    <i class="fa fa-save"></i> Lưu Thay Đổi
+</button>
+{% endif %}
+{% endblock %}
+
+{% block dm_content %}
+<div class="dm-card" style="padding: 24px;">
+    <form id="frmOrganizationInfo">
+        
+        <h3 class="dm-section-title"><i class="fa fa-info-circle"></i> Thông tin cơ bản</h3>
+        <div class="dm-form-grid">
+            <div class="dm-form-group">
+                <label class="dm-form-label">Tên đơn vị <span style="color:red">*</span></label>
+                <input type="text" name="org_name" class="dm-form-control" value="{{ doc.org_name or '' }}" {% if not can_edit %}disabled{% endif %} required>
+            </div>
+            <div class="dm-form-group">
+                <label class="dm-form-label">Loại đơn vị</label>
+                <input type="text" name="org_type" class="dm-form-control" value="{{ doc.org_type or '' }}" {% if not can_edit %}disabled{% endif %}>
+            </div>
+            <div class="dm-form-group" style="grid-column: 1 / -1;">
+                <label class="dm-form-label">Địa chỉ</label>
+                <input type="text" name="address" class="dm-form-control" value="{{ doc.address or '' }}" {% if not can_edit %}disabled{% endif %}>
+            </div>
+            <div class="dm-form-group">
+                <label class="dm-form-label">Điện thoại</label>
+                <input type="text" name="phone" class="dm-form-control" value="{{ doc.phone or '' }}" {% if not can_edit %}disabled{% endif %}>
+            </div>
+            <div class="dm-form-group">
+                <label class="dm-form-label">Email</label>
+                <input type="email" name="email" class="dm-form-control" value="{{ doc.email or '' }}" {% if not can_edit %}disabled{% endif %}>
+            </div>
+            <div class="dm-form-group">
+                <label class="dm-form-label">Website</label>
+                <input type="text" name="website" class="dm-form-control" value="{{ doc.website or '' }}" {% if not can_edit %}disabled{% endif %}>
+            </div>
+        </div>
+
+        <h3 class="dm-section-title" style="margin-top: 32px;"><i class="fa fa-users"></i> Lãnh đạo</h3>
+        <div class="dm-form-grid">
+            <div class="dm-form-group" style="grid-column: 1 / -1;">
+                <label class="dm-form-label">Thông tin lãnh đạo</label>
+                <textarea name="leadership_info" class="dm-form-control" rows="4" {% if not can_edit %}disabled{% endif %}>{{ doc.leadership_info or '' }}</textarea>
+            </div>
+        </div>
+
+        <h3 class="dm-section-title" style="margin-top: 32px;"><i class="fa fa-sitemap"></i> Cơ cấu tổ chức</h3>
+        <div class="dm-form-grid">
+            <div class="dm-form-group" style="grid-column: 1 / -1;">
+                <label class="dm-form-label">Sơ đồ / Cơ cấu tổ chức</label>
+                <textarea name="org_structure" class="dm-form-control" rows="4" {% if not can_edit %}disabled{% endif %}>{{ doc.org_structure or '' }}</textarea>
+            </div>
+        </div>
+
+        <h3 class="dm-section-title" style="margin-top: 32px;"><i class="fa fa-file-text-o"></i> Giới thiệu</h3>
+        <div class="dm-form-grid">
+            <div class="dm-form-group" style="grid-column: 1 / -1;">
+                <label class="dm-form-label">Giới thiệu đơn vị</label>
+                <textarea name="introduction" class="dm-form-control" rows="5" {% if not can_edit %}disabled{% endif %}>{{ doc.introduction or '' }}</textarea>
+            </div>
+        </div>
+
+    </form>
+</div>
+{% endblock %}
+
+{% block dm_scripts %}
+<div id="dm-context-data" data-can-edit="{{ 1 if can_edit else 0 }}" style="display: none;"></div>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        var contextEl = document.getElementById("dm-context-data");
+        var canEdit = contextEl && contextEl.getAttribute("data-can-edit") === "1";
+        
+        if (!canEdit) return;
+        var btnSave = document.getElementById("btnSave");
+        if(btnSave) {
+            btnSave.addEventListener("click", function() {
+                var form = document.getElementById("frmOrganizationInfo");
+                if(!form.checkValidity()) {
+                    form.reportValidity();
+                    return;
+                }
+                var formData = new FormData(form);
+                var data = {};
+                formData.forEach(function(value, key) { data[key] = value; });
+                
+                btnSave.disabled = true;
+                btnSave.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Đang lưu...';
+                
+                frappe.call({
+                    type: "POST",
+                    method: "frappe.client.save",
+                    args: {
+                        doc: Object.assign({
+                            doctype: "Organization Info",
+                            name: "Organization Info"
+                        }, data)
+                    },
+                    callback: function(r) {
+                        btnSave.disabled = false;
+                        btnSave.innerHTML = '<i class="fa fa-save"></i> Lưu Thay Đổi';
+                        if(!r.exc) {
+                            frappe.msgprint({title: "Thành công", message: "Đã lưu thông tin tổ chức", indicator: "green"});
+                            setTimeout(function() { window.location.reload(); }, 1500);
+                        }
+                    }
+                });
+            });
+        }
+    });
+</script>
+{% endblock %}

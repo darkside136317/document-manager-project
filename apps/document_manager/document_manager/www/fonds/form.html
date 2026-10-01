@@ -176,11 +176,7 @@
 
             if (document.getElementById('history')) {
                 data.history = document.getElementById('history').value || null;
-            }
-            const docname = document.getElementById('docname').value;
-            const btnSave = document.getElementById('saveBtn');
-            
-            // Call shared save function
+            }// Call shared save function
             window.dmSaveRecord('Fonds', docname, data, '/fonds/form', btnSave);
         };
     });

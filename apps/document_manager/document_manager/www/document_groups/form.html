@@ -86,11 +86,7 @@
                 group_code: document.getElementById('group_code').value.trim() || null,
                 is_active: document.getElementById('is_active').checked ? 1 : 0,
                 description: document.getElementById('description').value || null
-            };
-            const docname = document.getElementById('docname').value;
-            const btnSave = document.getElementById('saveBtn');
-            
-            // Call shared save function
+            };// Call shared save function
             window.dmSaveRecord('Document Group', docname, data, '/document_groups/form', btnSave);
         };
     });
