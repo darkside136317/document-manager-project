@@ -1,0 +1,149 @@
+{% extends "templates/dm_portal_base.html" %}
+
+{% block page_actions %}
+<button type="button" class="dm-btn" onclick="window.history.back()">
+    <i class="fa fa-arrow-left"></i> Quay lại
+</button>
+
+{% if can_edit %}
+<button type="button" class="dm-btn primary" onclick="saveWarehouse()" id="saveBtn">
+    <i class="fa fa-save"></i> Lưu thông tin
+</button>
+{% endif %}
+{% endblock %}
+
+{% block dm_content %}
+<div class="dm-card">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid var(--brand-border); padding-bottom: 16px; margin-bottom: 24px;">
+        <div>
+            <h2 style="margin: 0; color: var(--text-main); font-size: 1.5rem;">Thông tin Kho lưu trữ</h2>
+            {% if docname %}
+            <div style="color: var(--text-muted); font-size: 0.9rem; margin-top: 4px;">ID: <strong>{{ docname }}</strong></div>
+            {% endif %}
+        </div>
+        <div>
+            {% if doc %}
+                {% if doc.is_group %}
+                <span class="dm-badge" style="background: var(--c-gray-100); font-size: 0.9rem; padding: 6px 12px;">Nhóm</span>
+                {% else %}
+                <span class="dm-badge" style="background: var(--c-gray-200); font-size: 0.9rem; padding: 6px 12px;">Lá</span>
+                {% endif %}
+            {% else %}
+                <span class="dm-badge" style="background: var(--c-gray-200); font-size: 0.9rem; padding: 6px 12px;">Thêm mới</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <form id="warehouseForm">
+        <input type="hidden" id="docname" value="{{ docname or '' }}">
+        
+        <h3 style="color: var(--brand-primary); font-size: 1.1rem; border-bottom: 1px solid var(--brand-border); padding-bottom: 8px; margin-bottom: 16px;">
+            Thông tin chung
+        </h3>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+            <div class="dm-form-group">
+                <label class="dm-form-label">Tên kho/phòng/giá/hộp {% if can_edit %}<span style="color: red;">*</span>{% endif %}</label>
+                <input type="text" id="warehouse_name" class="dm-form-control" value="{{ doc.warehouse_name or '' }}" style="font-weight: bold;" {% if not can_edit %}disabled{% endif %} required>
+            </div>
+            
+            <div class="dm-form-group">
+                <label class="dm-form-label">Mã kho</label>
+                <input type="text" id="warehouse_code" class="dm-form-control" value="{{ doc.warehouse_code or '' }}" {% if not can_edit %}disabled{% endif %}>
+            </div>
+            
+            <div class="dm-form-group">
+                <label class="dm-form-label">Loại</label>
+                <select id="warehouse_type" class="dm-form-control" {% if not can_edit %}disabled{% endif %}>
+                    <option value="">-- Trống --</option>
+                    {% for t in ['Kho', 'Phòng', 'Giá', 'Hộp'] %}
+                    <option value="{{ t }}" {% if doc and doc.warehouse_type == t %}selected{% endif %}>{{ t }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="dm-form-group">
+                <label class="dm-form-label">Thuộc kho/phòng cha</label>
+                <select id="parent_warehouse" class="dm-form-control" {% if not can_edit %}disabled{% endif %}>
+                    <option value="">-- Cấp gốc (Không có cha) --</option>
+                    {% for p in parent_warehouses %}
+                        {% if p.name != docname %}
+                        <option value="{{ p.name }}" {% if doc and doc.parent_warehouse == p.name %}selected{% endif %}>{{ p.warehouse_name }}</option>
+                        {% endif %}
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="dm-form-group" style="grid-column: span 2; display: flex; align-items: center; gap: 8px;">
+                <input type="checkbox" id="is_group" {% if not doc or doc.is_group %}checked{% endif %} {% if not can_edit %}disabled{% endif %} style="width: 16px; height: 16px; cursor: pointer;">
+                <label class="dm-form-label" style="margin: 0; cursor: pointer;" for="is_group">Là nhóm (Có thể chứa kho con)</label>
+            </div>
+        </div>
+
+        <h3 style="color: var(--brand-primary); font-size: 1.1rem; border-bottom: 1px solid var(--brand-border); padding-bottom: 8px; margin-bottom: 16px; margin-top: 32px;">
+            Thông tin chi tiết
+        </h3>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+            <div class="dm-form-group">
+                <label class="dm-form-label">Cơ quan lưu trữ</label>
+                <select id="archival_agency" class="dm-form-control" {% if not can_edit %}disabled{% endif %}>
+                    <option value="">-- Trống --</option>
+                    {% for a in agencies %}
+                    <option value="{{ a.name }}" {% if doc and doc.archival_agency == a.name %}selected{% endif %}>{{ a.agency_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="dm-form-group">
+                <label class="dm-form-label">Sức chứa</label>
+                <input type="text" id="capacity" class="dm-form-control" value="{{ doc.capacity or '' }}" placeholder="Ví dụ: 50 hộp, 10 giá..." {% if not can_edit %}disabled{% endif %}>
+            </div>
+            
+            <div class="dm-form-group" style="grid-column: span 2;">
+                <label class="dm-form-label">Vị trí</label>
+                <input type="text" id="location" class="dm-form-control" value="{{ doc.location or '' }}" {% if not can_edit %}disabled{% endif %}>
+            </div>
+        </div>
+
+        <div class="dm-form-group" style="margin-top: 16px;">
+            <label class="dm-form-label">Mô tả thêm</label>
+            <textarea id="description" class="dm-form-control" rows="4" {% if not can_edit %}disabled{% endif %}>{{ (doc.description or '') | striptags }}</textarea>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block dm_scripts %}
+{% if can_edit %}
+<script>
+    frappe.ready(function() {window.saveWarehouse = function() {
+            const btnSave = document.getElementById('saveBtn');
+            const docname = document.getElementById('docname').value;
+            
+            const warehouse_name = document.getElementById('warehouse_name').value.trim();
+            
+            if (!warehouse_name) {
+                frappe.msgprint({title: 'Lỗi', indicator: 'red', message: 'Vui lòng nhập Tên kho/phòng/giá/hộp'});
+                return;
+            }
+            
+            let data = {
+                warehouse_name: warehouse_name,
+                warehouse_code: document.getElementById('warehouse_code').value.trim() || null,
+                warehouse_type: document.getElementById('warehouse_type').value || null,
+                parent_warehouse: document.getElementById('parent_warehouse').value || null,
+                is_group: document.getElementById('is_group').checked ? 1 : 0,
+                location: document.getElementById('location').value.trim() || null,
+                capacity: document.getElementById('capacity').value.trim() || null,
+                archival_agency: document.getElementById('archival_agency').value || null,
+                description: document.getElementById('description').value || null
+            };
+            const docname = document.getElementById('docname').value;
+            const btnSave = document.getElementById('saveBtn');
+            
+            // Call shared save function
+            window.dmSaveRecord('Storage Warehouse', docname, data, '/storage_warehouses/form', btnSave);
+        };
+    });
+</script>
+{% endif %}
+{% endblock %}

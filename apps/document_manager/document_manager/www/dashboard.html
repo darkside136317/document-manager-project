@@ -1,62 +1,10 @@
-{%- extends "templates/web.html" -%}
+{%- extends "templates/dm_portal_base.html" -%}
 
-{% block title %}{{ title }}{% endblock %}
-
-{% block page_content %}
+{% block dm_content %}
 <style>
-    @import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css');
-    
     /* =========================================
        PREMIUM GRAY THEME - DASHBOARD
        ========================================= */
-    :root {
-        /* Core Gray Palette */
-        --c-gray-50: #f9fafb;
-        --c-gray-100: #f3f4f6;
-        --c-gray-200: #e5e7eb;
-        --c-gray-300: #d1d5db;
-        --c-gray-400: #9ca3af;
-        --c-gray-500: #6b7280;
-        --c-gray-600: #4b5563;
-        --c-gray-700: #374151;
-        --c-gray-800: #1f2937;
-        --c-gray-900: #111827;
-
-        /* Brand Mapping */
-        --brand-primary: var(--c-gray-800);
-        --brand-accent: var(--c-gray-500);
-        --brand-bg: var(--c-gray-50);
-        --brand-surface: #ffffff;
-        --brand-border: var(--c-gray-200);
-        
-        --text-main: var(--c-gray-900);
-        --text-muted: var(--c-gray-500);
-        
-        /* Radii & Shadows */
-        --radius-sm: 8px;
-        --radius-md: 12px;
-        --radius-lg: 16px;
-        --radius-xl: 24px;
-        
-        --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-        --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
-        --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.025);
-        --shadow-hover: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.02);
-    }
-
-    body {
-        background-color: var(--brand-bg);
-        color: var(--text-main);
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    }
-
-    .dm-portal-wrapper {
-        max-width: 1280px;
-        margin: 0 auto;
-        padding: 24px 16px 60px;
-    }
-
-    /* --- HERO SECTION (LIGHT GRAY PREMIUM) --- */
     .dm-hero {
         position: relative;
         background: linear-gradient(135deg, #ffffff 0%, var(--c-gray-100) 100%);
@@ -543,9 +491,9 @@
         </div>
         
         <div class="dm-quick-links">
-            <a href="/app/archival-file/new-archival-file" class="dm-btn primary"><i class="fa fa-plus"></i> Lập hồ sơ mới</a>
-            <a href="/app/archive-document/new-archive-document" class="dm-btn"><i class="fa fa-file-text-o"></i> Biên mục tài liệu</a>
-            <a href="/app/usage-request" class="dm-btn"><i class="fa fa-check-square-o"></i> Duyệt yêu cầu khai thác</a>
+            <a href="/archival_files/form" class="dm-btn primary"><i class="fa fa-plus"></i> Lập hồ sơ mới</a>
+            <a href="/archive_documents/form" class="dm-btn"><i class="fa fa-file-text-o"></i> Biên mục tài liệu</a>
+            <a href="/usage_requests" class="dm-btn"><i class="fa fa-check-square-o"></i> Duyệt yêu cầu khai thác</a>
         </div>
     </section>
 
@@ -561,11 +509,11 @@
                     <h3 class="dm-card-title">Biên mục &amp; Quản lý hồ sơ</h3>
                 </div>
                 <ul class="dm-nav-list">
-                    <li><a href="/app/fonds">Phông lưu trữ</a></li>
-                    <li><a href="/app/record-group">Khối tài liệu</a></li>
-                    <li><a href="/app/catalog">Mục lục tài liệu</a></li>
-                    <li><a href="/app/archival-file">Hồ sơ lưu trữ</a></li>
-                    <li><a href="/app/archive-document">Văn bản / Tài liệu</a></li>
+                    <li><a href="/fonds">Phông lưu trữ</a></li>
+                    <li><a href="/record_groups">Khối tài liệu</a></li>
+                    <li><a href="/catalogs">Mục lục tài liệu</a></li>
+                    <li><a href="/archival_files">Hồ sơ lưu trữ</a></li>
+                    <li><a href="/archive_documents">Văn bản / Tài liệu</a></li>
                 </ul>
             </div>
             
@@ -575,10 +523,10 @@
                     <h3 class="dm-card-title">Độc giả &amp; Khai thác</h3>
                 </div>
                 <ul class="dm-nav-list">
-                    <li><a href="/app/reader">Hồ sơ Độc giả</a></li>
-                    <li><a href="/app/usage-request">Phiếu Y/C Khai thác</a></li>
-                    <li><a href="/app/copy-request">Phiếu Y/C Sao chụp</a></li>
-                    <li><a href="/app/reader-feedback">Phản hồi độc giả</a></li>
+                    <li><a href="/readers">Hồ sơ Độc giả</a></li>
+                    <li><a href="/usage_requests">Phiếu Y/C Khai thác</a></li>
+                    <li><a href="/copy_requests">Phiếu Y/C Sao chụp</a></li>
+                    <li><a href="/reader_feedbacks">Phản hồi độc giả</a></li>
                 </ul>
             </div>
             
@@ -588,9 +536,9 @@
                     <h3 class="dm-card-title">Bảo quản &amp; Kiểm tra</h3>
                 </div>
                 <ul class="dm-nav-list">
-                    <li><a href="/app/integrity-check">Kiểm tra toàn vẹn</a></li>
-                    <li><a href="/app/backup-batch">Sao lưu dữ liệu</a></li>
-                    <li><a href="/app/restore-batch">Khôi phục dữ liệu</a></li>
+                    <li><a href="/integrity_checks">Kiểm tra toàn vẹn</a></li>
+                    <li><a href="/backup_batches">Sao lưu dữ liệu</a></li>
+                    <li><a href="/restore_batches">Khôi phục dữ liệu</a></li>
                 </ul>
             </div>
             
@@ -600,8 +548,8 @@
                     <h3 class="dm-card-title">Thống kê &amp; Báo cáo</h3>
                 </div>
                 <ul class="dm-nav-list">
-                    <li><a href="/app/query-report/Thong%20Ke%20Tai%20Lieu">Thống kê tài liệu</a></li>
-                    <li><a href="/app/query-report/Thong%20Ke%20Khai%20Thac">Thống kê khai thác</a></li>
+                    <li><a href="/reports/thong_ke_tai_lieu">Thống kê tài liệu</a></li>
+                    <li><a href="/reports/thong_ke_khai_thac">Thống kê khai thác</a></li>
                 </ul>
             </div>
             
@@ -611,13 +559,13 @@
                     <h3 class="dm-card-title">Danh mục Dùng chung</h3>
                 </div>
                 <ul class="dm-nav-list">
-                    <li><a href="/app/archival-agency">Cơ quan lưu trữ</a></li>
-                    <li><a href="/app/classification-scheme">Bảng phân loại</a></li>
-                    <li><a href="/app/document-group">Nhóm tài liệu</a></li>
-                    <li><a href="/app/document-type-category">Loại tài liệu</a></li>
-                    <li><a href="/app/confidentiality-level">Mức độ mật</a></li>
-                    <li><a href="/app/storage-warehouse">Kho lưu trữ</a></li>
-                    <li><a href="/app/quick-entry-dictionary">Từ điển nhập nhanh</a></li>
+                    <li><a href="/archival_agencies">Cơ quan lưu trữ</a></li>
+                    <li><a href="/classification_schemes">Bảng phân loại</a></li>
+                    <li><a href="/document_groups">Nhóm tài liệu</a></li>
+                    <li><a href="/document_type_categories">Loại tài liệu</a></li>
+                    <li><a href="/confidentiality_levels">Mức độ mật</a></li>
+                    <li><a href="/storage_warehouses">Kho lưu trữ</a></li>
+                    <li><a href="/quick_entry_dictionaries">Từ điển nhập nhanh</a></li>
                 </ul>
             </div>
             
@@ -641,7 +589,7 @@
             <div class="dm-widget">
                 <h3 class="dm-widget-title"><i class="fa fa-bell-o"></i> Hàng đợi &amp; Cảnh báo</h3>
                 
-                <a href="/app/usage-request?workflow_state=Chờ duyệt" class="dm-alert-item warning">
+                <a href="/usage_requests?workflow_state=Chờ duyệt" class="dm-alert-item warning">
                     <div class="dm-alert-icon"><i class="fa fa-clock-o"></i></div>
                     <div class="dm-alert-content">
                         <strong>{{ summary.pending_usage }} Phiếu yêu cầu khai thác</strong>
@@ -649,7 +597,7 @@
                     </div>
                 </a>
                 
-                <a href="/app/copy-request?workflow_state=Chờ duyệt" class="dm-alert-item warning">
+                <a href="/copy_requests?workflow_state=Chờ duyệt" class="dm-alert-item warning">
                     <div class="dm-alert-icon"><i class="fa fa-copy"></i></div>
                     <div class="dm-alert-content">
                         <strong>{{ summary.pending_copy }} Phiếu yêu cầu sao chụp</strong>
@@ -673,7 +621,7 @@
                         {% for doc in summary.recent_documents %}
                             {% set status_class = "is-ready" if doc.search_index_status == "Đã index" else "is-pending" %}
                             {% set file_type = doc.file_type or "Tệp" %}
-                            <a class="dm-recent-item" href="/app/archive-document/{{ doc.name|urlencode }}">
+                            <a class="dm-recent-item" href="/archive_documents/form?name={{ doc.name|urlencode }}">
                                 <span class="dm-recent-badge">{{ file_type }}</span>
                                 <div class="dm-recent-main">
                                     <strong>{{ doc.document_title or doc.name }}</strong>
@@ -690,15 +638,13 @@
                     {% endif %}
                 </div>
                 <div style="margin-top: 16px; text-align: center;">
-                    <a href="/app/archive-document" style="color: var(--brand-primary); font-size: 0.9rem; font-weight: 600; text-decoration: none;">
+                    <a href="/archive_documents" style="color: var(--brand-primary); font-size: 0.9rem; font-weight: 600; text-decoration: none;">
                         Xem tất cả tài liệu <i class="fa fa-arrow-right"></i>
                     </a>
                 </div>
             </div>
         </aside>
     </div>
-</div>
-
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Quick Search Autocomplete logic
@@ -751,13 +697,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 if (hits && hits.length > 0) {
                     searchResults.innerHTML = hits.map(function (hit) {
-                        const title = escapeHTML(hit.document_title || hit.name);
+                        const title = escapeHTML(hit.document_title || hit.id);
                         const fileType = escapeHTML(hit.file_type || "Tài liệu");
                         return (
-                            '<li><a href="/app/archive-document/' + encodeURIComponent(hit.name) + '">' +
+                            '<li><a href="/archive_documents/form?name=' + encodeURIComponent(hit.id) + '">' +
                             '<div style="font-weight:600; color:var(--text-main);">' + title + '</div>' +
                             '<div style="font-size:12px;color:var(--text-muted);margin-top:4px;">' +
-                            '<span style="background:var(--c-gray-100);padding:2px 6px;border-radius:4px;color:var(--c-gray-700);font-weight:600;font-size:10px;margin-right:6px;">' + fileType + '</span> ' + escapeHTML(hit.name) +
+                            '<span style="background:var(--c-gray-100);padding:2px 6px;border-radius:4px;color:var(--c-gray-700);font-weight:600;font-size:10px;margin-right:6px;">' + fileType + '</span> ' + escapeHTML(hit.id) +
                             '</div></a></li>'
                         );
                     }).join("");

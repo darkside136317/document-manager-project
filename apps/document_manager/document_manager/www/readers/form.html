@@ -1,0 +1,160 @@
+{% extends "templates/dm_portal_base.html" %}
+
+{% block page_actions %}
+<button type="button" class="dm-btn primary" onclick="saveReader()" id="saveBtn">
+    <i class="fa fa-save"></i> Lưu lại
+</button>
+{% if docname %}
+<button type="button" class="dm-btn danger" onclick="deleteReader()" id="deleteBtn" style="margin-left: 8px;">
+    <i class="fa fa-trash"></i>
+</button>
+{% endif %}
+{% endblock %}
+
+{% block dm_content %}
+<div class="dm-card">
+    <form id="readerForm">
+        <input type="hidden" id="docname" value="{{ docname or '' }}">
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+            <!-- Cột 1 -->
+            <div>
+                <h3 style="margin-top: 0; color: var(--brand-primary); font-size: 1.1rem; border-bottom: 1px solid var(--brand-border); padding-bottom: 8px; margin-bottom: 16px;">Thông tin Cơ bản</h3>
+                
+                <div class="dm-form-group">
+                    <label class="dm-form-label">Họ và tên <span style="color: red;">*</span></label>
+                    <input type="text" id="full_name" class="dm-form-control" value="{{ doc.full_name or '' }}" required>
+                </div>
+                <div class="dm-form-group">
+                    <label class="dm-form-label">Email</label>
+                    <input type="email" id="email" class="dm-form-control" value="{{ doc.email or '' }}">
+                </div>
+                <div class="dm-form-group">
+                    <label class="dm-form-label">Điện thoại</label>
+                    <input type="text" id="phone" class="dm-form-control" value="{{ doc.phone or '' }}">
+                </div>
+                <div class="dm-form-group">
+                    <label class="dm-form-label">Số CMND/CCCD</label>
+                    <input type="text" id="id_number" class="dm-form-control" value="{{ doc.id_number or '' }}">
+                </div>
+                <div class="dm-form-group">
+                    <label class="dm-form-label">Tài khoản liên kết (User)</label>
+                    <input type="text" id="user" class="dm-form-control" value="{{ doc.user or '' }}" placeholder="email@domain.com">
+                </div>
+            </div>
+            
+            <!-- Cột 2 -->
+            <div>
+                <h3 style="margin-top: 0; color: var(--brand-primary); font-size: 1.1rem; border-bottom: 1px solid var(--brand-border); padding-bottom: 8px; margin-bottom: 16px;">Cơ quan & Quyền hạn</h3>
+                
+                <div class="dm-form-group">
+                    <label class="dm-form-label">Cơ quan/Đơn vị</label>
+                    <input type="text" id="organization" class="dm-form-control" value="{{ doc.organization or '' }}">
+                </div>
+                <div class="dm-form-group">
+                    <label class="dm-form-label">Chức vụ</label>
+                    <input type="text" id="position" class="dm-form-control" value="{{ doc.position or '' }}">
+                </div>
+                <div class="dm-form-group">
+                    <label class="dm-form-label">Địa chỉ</label>
+                    <input type="text" id="address" class="dm-form-control" value="{{ doc.address or '' }}">
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div class="dm-form-group">
+                        <label class="dm-form-label">Mức mật tối đa</label>
+                        <select id="max_confidentiality_priority" class="dm-form-control">
+                            <option value="1" {% if doc and doc.max_confidentiality_priority == 1 %}selected{% endif %}>1 - Thường</option>
+                            <option value="2" {% if doc and doc.max_confidentiality_priority == 2 %}selected{% endif %}>2 - Mật</option>
+                            <option value="3" {% if doc and doc.max_confidentiality_priority == 3 %}selected{% endif %}>3 - Tối mật</option>
+                            <option value="4" {% if doc and doc.max_confidentiality_priority == 4 %}selected{% endif %}>4 - Tuyệt mật</option>
+                        </select>
+                    </div>
+                    <div class="dm-form-group">
+                        <label class="dm-form-label">Nhóm độc giả</label>
+                        <input type="text" id="reader_group" class="dm-form-control" value="{{ doc.reader_group if doc else '' }}">
+                    </div>
+                </div>
+                
+                <div class="dm-form-group">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="checkbox" id="is_active" {% if not doc or doc.is_active %}checked{% endif %}>
+                        <span style="font-weight: 600; color: var(--text-main);">Đang hoạt động</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+        
+        <div class="dm-form-group" style="margin-top: 24px;">
+            <label class="dm-form-label">Ghi chú</label>
+            <textarea id="notes" class="dm-form-control" rows="3">{{ doc.notes if doc else '' }}</textarea>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block dm_scripts %}
+<script>
+    frappe.ready(function() {
+        // Setup CSRF token for Frappe API
+        const csrf_token = frappe.csrf_token;
+        
+        window.saveReader = function() {
+            const btn = document.getElementById('saveBtn');
+            const docname = document.getElementById('docname').value;
+            const full_name = document.getElementById('full_name').value.trim();
+            
+            if (!full_name) {
+                frappe.msgprint({title: 'Lỗi', indicator: 'red', message: 'Vui lòng nhập Họ và tên'});
+                return;
+            }
+            
+            const data = {
+                full_name: full_name,
+                email: document.getElementById('email').value,
+                phone: document.getElementById('phone').value,
+                id_number: document.getElementById('id_number').value,
+                user: document.getElementById('user').value || null,
+                organization: document.getElementById('organization').value,
+                position: document.getElementById('position').value,
+                address: document.getElementById('address').value,
+                max_confidentiality_priority: parseInt(document.getElementById('max_confidentiality_priority').value) || 1,
+                reader_group: document.getElementById('reader_group').value,
+                is_active: document.getElementById('is_active').checked ? 1 : 0,
+                notes: document.getElementById('notes').value
+            };
+            
+            window.dmSaveRecord('Reader', docname, data, '/readers/form', btn);
+        };
+        
+        window.deleteReader = async function() {
+            const docname = document.getElementById('docname').value;
+            if (!docname) return;
+            
+            frappe.confirm('Bạn có chắc chắn muốn xóa Độc giả này không?', async () => {
+                const btn = document.getElementById('deleteBtn');
+                btn.disabled = true;
+                
+                try {
+                    const response = await fetch('/api/resource/Reader/' + docname, {
+                        method: 'DELETE',
+                        headers: {
+                            'X-Frappe-CSRF-Token': csrf_token
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        window.location.href = '/readers';
+                    } else {
+                        frappe.msgprint({title: 'Lỗi', indicator: 'red', message: 'Không thể xóa dữ liệu'});
+                        btn.disabled = false;
+                    }
+                } catch(e) {
+                    frappe.msgprint({title: 'Lỗi', indicator: 'red', message: 'Lỗi kết nối'});
+                    btn.disabled = false;
+                }
+            });
+        };
+    });
+</script>
+{% endblock %}

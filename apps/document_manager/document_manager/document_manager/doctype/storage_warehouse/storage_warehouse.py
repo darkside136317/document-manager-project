@@ -9,6 +9,5 @@ class StorageWarehouse(NestedSet):
     nsm_parent_field = "parent_warehouse"
 
     def validate(self):
-        super().validate()
         if self.warehouse_code:
             self.warehouse_code = self.warehouse_code.strip().upper()

@@ -1,0 +1,183 @@
+{% extends "templates/dm_portal_base.html" %}
+
+{% block page_actions %}
+<button type="button" class="dm-btn" onclick="window.history.back()">
+    <i class="fa fa-arrow-left"></i> Quay lại
+</button>
+
+{% if can_edit %}
+<button type="button" class="dm-btn primary" onclick="saveArchivalFile()" id="saveBtn">
+    <i class="fa fa-save"></i> Lưu thông tin
+</button>
+{% endif %}
+{% endblock %}
+
+{% block dm_content %}
+<div class="dm-card">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid var(--brand-border); padding-bottom: 16px; margin-bottom: 24px;">
+        <div>
+            <h2 style="margin: 0; color: var(--text-main); font-size: 1.5rem;">Thông tin Hồ sơ lưu trữ</h2>
+            {% if docname %}
+            <div style="color: var(--text-muted); font-size: 0.9rem; margin-top: 4px;">ID: <strong>{{ docname }}</strong></div>
+            {% endif %}
+        </div>
+        <div>
+            {% if doc %}
+                {% if doc.status == 'Đang xử lý' %}
+                <span class="dm-badge warning" style="font-size: 0.9rem; padding: 6px 12px;">Đang xử lý</span>
+                {% elif doc.status == 'Đã hoàn thành' %}
+                <span class="dm-badge success" style="font-size: 0.9rem; padding: 6px 12px;">Đã hoàn thành</span>
+                {% elif doc.status == 'Nháp' %}
+                <span class="dm-badge" style="background: var(--c-gray-300); font-size: 0.9rem; padding: 6px 12px;">Nháp</span>
+                {% else %}
+                <span class="dm-badge" style="background: var(--c-gray-400); font-size: 0.9rem; padding: 6px 12px;">{{ doc.status }}</span>
+                {% endif %}
+            {% else %}
+                <span class="dm-badge" style="background: var(--c-gray-200); font-size: 0.9rem; padding: 6px 12px;">Thêm mới</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <form id="archivalFileForm">
+        <input type="hidden" id="docname" value="{{ docname or '' }}">
+        
+        <h3 style="color: var(--brand-primary); font-size: 1.1rem; border-bottom: 1px solid var(--brand-border); padding-bottom: 8px; margin-bottom: 16px;">
+            Thông tin chung
+        </h3>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+            <div class="dm-form-group">
+                <label class="dm-form-label">Số hồ sơ</label>
+                <input type="text" id="file_number" class="dm-form-control" value="{{ doc.file_number or '' }}" {% if not can_edit %}disabled{% endif %}>
+            </div>
+            
+            <div class="dm-form-group">
+                <label class="dm-form-label">Tiêu đề hồ sơ {% if can_edit %}<span style="color: red;">*</span>{% endif %}</label>
+                <input type="text" id="file_title" class="dm-form-control" value="{{ doc.file_title or '' }}" style="font-weight: bold;" {% if not can_edit %}disabled{% endif %} required>
+            </div>
+            
+            <div class="dm-form-group">
+                <label class="dm-form-label">Mục lục tài liệu {% if can_edit %}<span style="color: red;">*</span>{% endif %}</label>
+                <select id="catalog" class="dm-form-control" {% if not can_edit %}disabled{% endif %} required>
+                    <option value="">-- Chọn Mục lục --</option>
+                    {% for c in catalogs %}
+                    <option value="{{ c.name }}" {% if doc and doc.catalog == c.name %}selected{% endif %}>
+                        {{ c.catalog_title }} ({{ c.name }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="dm-form-group">
+                <label class="dm-form-label">Khối / Phông (Tự động cập nhật)</label>
+                <input type="text" class="dm-form-control" value="{{ doc.record_group or '' }} / {{ doc.fonds or '' }}" disabled style="background-color: var(--c-gray-100);">
+            </div>
+        </div>
+
+        <h3 style="color: var(--brand-primary); font-size: 1.1rem; border-bottom: 1px solid var(--brand-border); padding-bottom: 8px; margin-bottom: 16px; margin-top: 32px;">
+            Thời gian & Phân loại
+        </h3>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+            <div class="dm-form-group">
+                <label class="dm-form-label">Ngày bắt đầu</label>
+                <input type="date" id="start_date" class="dm-form-control" value="{{ doc.start_date or '' }}" {% if not can_edit %}disabled{% endif %}>
+            </div>
+            
+            <div class="dm-form-group">
+                <label class="dm-form-label">Ngày kết thúc</label>
+                <input type="date" id="end_date" class="dm-form-control" value="{{ doc.end_date or '' }}" {% if not can_edit %}disabled{% endif %}>
+            </div>
+
+            <div class="dm-form-group">
+                <label class="dm-form-label">Mức độ mật</label>
+                <select id="confidentiality_level" class="dm-form-control" {% if not can_edit %}disabled{% endif %}>
+                    {% for c in confidentiality_levels %}
+                    <option value="{{ c.name }}" {% if doc and doc.confidentiality_level == c.name %}selected{% elif not doc and c.name == 'Thường' %}selected{% endif %}>
+                        {{ c.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="dm-form-group">
+                <label class="dm-form-label">Số tờ</label>
+                <input type="number" id="total_pages" class="dm-form-control" value="{{ doc.total_pages or '' }}" {% if not can_edit %}disabled{% endif %}>
+            </div>
+        </div>
+
+        <h3 style="color: var(--brand-primary); font-size: 1.1rem; border-bottom: 1px solid var(--brand-border); padding-bottom: 8px; margin-bottom: 16px; margin-top: 32px;">
+            Vị trí lưu trữ & Mô tả
+        </h3>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+            <div class="dm-form-group">
+                <label class="dm-form-label">Kho lưu trữ</label>
+                <select id="storage_warehouse" class="dm-form-control" {% if not can_edit %}disabled{% endif %}>
+                    <option value="">-- Trống --</option>
+                    {% for w in warehouses %}
+                    <option value="{{ w.name }}" {% if doc and doc.storage_warehouse == w.name %}selected{% endif %}>
+                        {{ w.warehouse_name }} ({{ w.name }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="dm-form-group">
+                <label class="dm-form-label">Số giá / Số hộp</label>
+                <div style="display: flex; gap: 8px;">
+                    <input type="text" id="shelf_number" class="dm-form-control" placeholder="Số giá" value="{{ doc.shelf_number or '' }}" {% if not can_edit %}disabled{% endif %}>
+                    <input type="text" id="box_number" class="dm-form-control" placeholder="Số hộp" value="{{ doc.box_number or '' }}" {% if not can_edit %}disabled{% endif %}>
+                </div>
+            </div>
+            
+            <div class="dm-form-group" style="grid-column: span 2;">
+                <label class="dm-form-label">Vị trí vật lý</label>
+                <input type="text" id="physical_location" class="dm-form-control" value="{{ doc.physical_location or '' }}" {% if not can_edit %}disabled{% endif %}>
+            </div>
+
+            <div class="dm-form-group" style="grid-column: span 2;">
+                <label class="dm-form-label">Mô tả chi tiết</label>
+                <textarea id="description" class="dm-form-control" rows="4" {% if not can_edit %}disabled{% endif %}>{{ (doc.description or '') | striptags }}</textarea>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block dm_scripts %}
+{% if can_edit %}
+<script>
+    frappe.ready(function() {window.saveArchivalFile = function() {
+            const btnSave = document.getElementById('saveBtn');
+            const docname = document.getElementById('docname').value;
+            
+            const file_title = document.getElementById('file_title').value.trim();
+            const catalog = document.getElementById('catalog').value;
+            
+            if (!file_title || !catalog) {
+                frappe.msgprint({title: 'Lỗi', indicator: 'red', message: 'Vui lòng điền đầy đủ các trường bắt buộc (*)'});
+                return;
+            }
+            
+            let data = {
+                file_title: file_title,
+                catalog: catalog,
+                file_number: document.getElementById('file_number').value.trim(),
+                start_date: document.getElementById('start_date').value || null,
+                end_date: document.getElementById('end_date').value || null,
+                confidentiality_level: document.getElementById('confidentiality_level').value || null,
+                total_pages: document.getElementById('total_pages').value || null,
+                storage_warehouse: document.getElementById('storage_warehouse').value || null,
+                shelf_number: document.getElementById('shelf_number').value || null,
+                box_number: document.getElementById('box_number').value || null,
+                physical_location: document.getElementById('physical_location').value || null,
+                description: document.getElementById('description').value || null
+            };
+            const docname = document.getElementById('docname').value;
+            const btnSave = document.getElementById('saveBtn');
+            
+            // Call shared save function
+            window.dmSaveRecord('Archival File', docname, data, '/archival_files/form', btnSave);
+        };
+    });
+</script>
+{% endif %}
+{% endblock %}

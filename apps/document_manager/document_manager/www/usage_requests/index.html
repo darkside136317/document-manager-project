@@ -1,0 +1,115 @@
+{% extends "templates/dm_portal_base.html" %}
+
+{% block page_actions %}
+<a href="/usage_requests/form" class="dm-btn primary">
+    <i class="fa fa-plus"></i> Tạo Yêu cầu mới
+</a>
+{% endblock %}
+
+{% block dm_content %}
+<div class="dm-card" style="margin-bottom: 24px; padding: 16px 24px;">
+    <form method="GET" action="/usage_requests" style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+        <div style="flex: 1; min-width: 200px; position: relative;">
+            <i class="fa fa-search" style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--c-gray-400);"></i>
+            <input type="text" name="search" class="dm-form-control" placeholder="Tìm kiếm theo mã phiếu..." value="{{ search_term }}" style="padding-left: 42px;">
+        </div>
+        
+        <div style="width: 200px;">
+            <select name="status" class="dm-form-control">
+                <option value="">-- Tất cả trạng thái --</option>
+                <option value="Nháp" {% if status_filter == 'Nháp' %}selected{% endif %}>Nháp</option>
+                <option value="Chờ duyệt" {% if status_filter == 'Chờ duyệt' %}selected{% endif %}>Chờ duyệt</option>
+                <option value="Đã duyệt" {% if status_filter == 'Đã duyệt' %}selected{% endif %}>Đã duyệt</option>
+                <option value="Từ chối" {% if status_filter == 'Từ chối' %}selected{% endif %}>Từ chối</option>
+                <option value="Đã trả" {% if status_filter == 'Đã trả' %}selected{% endif %}>Đã trả</option>
+            </select>
+        </div>
+        
+        <button type="submit" class="dm-btn">Lọc</button>
+        {% if search_term or status_filter %}
+        <a href="/usage_requests" class="dm-btn" style="color: var(--c-gray-500);"><i class="fa fa-times"></i> Xóa lọc</a>
+        {% endif %}
+    </form>
+</div>
+
+<div class="dm-table-wrapper">
+    <table class="dm-table">
+        <thead>
+            <tr>
+                <th>Mã phiếu</th>
+                <th>Độc giả</th>
+                <th>Ngày yêu cầu</th>
+                <th>Mục đích</th>
+                <th>Trạng thái</th>
+                <th style="text-align: right;">Thao tác</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in requests %}
+            <tr>
+                <td style="font-weight: 600;">
+                    <a href="/usage_requests/form?name={{ row.name }}" style="color: var(--brand-primary); text-decoration: none;">
+                        {{ row.name }}
+                    </a>
+                </td>
+                <td>{{ row.reader_name or '-' }}</td>
+                <td>{{ frappe.format_date(row.request_date) }}</td>
+                <td>{{ (row.purpose or '-') | truncate(50) }}</td>
+                <td>
+                    {% if row.workflow_state == 'Nháp' %}
+                    <span class="dm-badge" style="background: var(--c-gray-200);">Nháp</span>
+                    {% elif row.workflow_state == 'Chờ duyệt' %}
+                    <span class="dm-badge warning">Chờ duyệt</span>
+                    {% elif row.workflow_state == 'Đã duyệt' %}
+                    <span class="dm-badge success">Đã duyệt</span>
+                    {% elif row.workflow_state == 'Từ chối' %}
+                    <span class="dm-badge danger">Từ chối</span>
+                    {% elif row.workflow_state == 'Đã trả' %}
+                    <span class="dm-badge" style="background: var(--c-gray-300);">Đã trả</span>
+                    {% else %}
+                    <span class="dm-badge">{{ row.workflow_state }}</span>
+                    {% endif %}
+                </td>
+                <td style="text-align: right;">
+                    <a href="/usage_requests/form?name={{ row.name }}" class="dm-btn" style="padding: 6px 12px; font-size: 0.85rem;">Chi tiết</a>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="6" style="text-align: center; padding: 40px; color: var(--c-gray-400);">
+                    <i class="fa fa-inbox" style="font-size: 32px; margin-bottom: 12px; display: block;"></i>
+                    Không tìm thấy bản ghi nào.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="dm-pagination">
+    <div class="dm-pagination-info">
+        Hiển thị {{ start + 1 if total_count > 0 else 0 }} - {{ start + requests|length }} trong số {{ total_count }} bản ghi
+    </div>
+    <div class="dm-pagination-controls">
+        {% if start > 0 %}
+        <a href="?search={{ search_term }}&status={{ status_filter }}&start={{ start - limit }}" class="dm-btn" style="padding: 6px 12px;">
+            <i class="fa fa-chevron-left"></i> Trước
+        </a>
+        {% else %}
+        <button class="dm-btn" style="padding: 6px 12px; opacity: 0.5; cursor: not-allowed;" disabled>
+            <i class="fa fa-chevron-left"></i> Trước
+        </button>
+        {% endif %}
+        
+        {% if has_more %}
+        <a href="?search={{ search_term }}&status={{ status_filter }}&start={{ start + limit }}" class="dm-btn" style="padding: 6px 12px;">
+            Tiếp <i class="fa fa-chevron-right"></i>
+        </a>
+        {% else %}
+        <button class="dm-btn" style="padding: 6px 12px; opacity: 0.5; cursor: not-allowed;" disabled>
+            Tiếp <i class="fa fa-chevron-right"></i>
+        </button>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

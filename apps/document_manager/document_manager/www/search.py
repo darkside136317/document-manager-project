@@ -10,3 +10,6 @@ def get_context(context):
     context.confidentiality_levels = frappe.get_all(
         "Confidentiality Level", fields=["name", "priority"], order_by="priority"
     )
+    context.breadcrumbs = [
+        {'label': 'Tìm kiếm tài liệu'}
+    ]

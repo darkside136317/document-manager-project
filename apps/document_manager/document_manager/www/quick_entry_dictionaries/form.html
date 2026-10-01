@@ -1,0 +1,112 @@
+{% extends "templates/dm_portal_base.html" %}
+
+{% block page_actions %}
+<button type="button" class="dm-btn" onclick="window.history.back()">
+    <i class="fa fa-arrow-left"></i> Quay lại
+</button>
+
+{% if can_edit %}
+<button type="button" class="dm-btn primary" onclick="saveDictionary()" id="saveBtn">
+    <i class="fa fa-save"></i> Lưu thông tin
+</button>
+{% endif %}
+{% endblock %}
+
+{% block dm_content %}
+<div class="dm-card">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid var(--brand-border); padding-bottom: 16px; margin-bottom: 24px;">
+        <div>
+            <h2 style="margin: 0; color: var(--text-main); font-size: 1.5rem;">Thông tin Từ điển nhập nhanh</h2>
+            {% if docname %}
+            <div style="color: var(--text-muted); font-size: 0.9rem; margin-top: 4px;">ID: <strong>{{ docname }}</strong></div>
+            {% endif %}
+        </div>
+        <div>
+            {% if doc %}
+                {% if doc.is_active %}
+                <span class="dm-badge success" style="font-size: 0.9rem; padding: 6px 12px;">Đang sử dụng</span>
+                {% else %}
+                <span class="dm-badge" style="background: var(--c-gray-300); font-size: 0.9rem; padding: 6px 12px;">Ngừng sử dụng</span>
+                {% endif %}
+            {% else %}
+                <span class="dm-badge" style="background: var(--c-gray-200); font-size: 0.9rem; padding: 6px 12px;">Thêm mới</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <form id="dictionaryForm">
+        <input type="hidden" id="docname" value="{{ docname or '' }}">
+        
+        <h3 style="color: var(--brand-primary); font-size: 1.1rem; border-bottom: 1px solid var(--brand-border); padding-bottom: 8px; margin-bottom: 16px;">
+            Thông tin chung
+        </h3>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+            <div class="dm-form-group">
+                <label class="dm-form-label">Loại từ điển {% if can_edit %}<span style="color: red;">*</span>{% endif %}</label>
+                <input type="text" id="dictionary_type" class="dm-form-control" value="{{ doc.dictionary_type or '' }}" placeholder="VD: Tên người, Địa danh..." {% if not can_edit %}disabled{% endif %} required>
+            </div>
+            
+            <div class="dm-form-group">
+                <label class="dm-form-label">Giá trị {% if can_edit %}<span style="color: red;">*</span>{% endif %}</label>
+                <input type="text" id="entry_value" class="dm-form-control" value="{{ doc.entry_value or '' }}" style="font-weight: bold;" {% if not can_edit %}disabled{% endif %} required>
+            </div>
+
+            <div class="dm-form-group">
+                <label class="dm-form-label">Giá trị cha (từ điển đa cấp)</label>
+                <select id="parent_entry" class="dm-form-control" {% if not can_edit %}disabled{% endif %}>
+                    <option value="">-- Trống --</option>
+                    {% for p in parent_entries %}
+                        {% if p.name != docname %}
+                        <option value="{{ p.name }}" {% if doc and doc.parent_entry == p.name %}selected{% endif %}>{{ p.name }}</option>
+                        {% endif %}
+                    {% endfor %}
+                </select>
+                <small style="color: var(--c-gray-500); display: block; margin-top: 4px;">Để trống nếu là từ điển đơn cấp.</small>
+            </div>
+            
+            <div class="dm-form-group">
+                <label class="dm-form-label">Thứ tự sắp xếp</label>
+                <input type="number" id="sort_order" class="dm-form-control" value="{{ doc.sort_order or 0 }}" {% if not can_edit %}disabled{% endif %}>
+            </div>
+
+            <div class="dm-form-group" style="grid-column: span 2; display: flex; align-items: center; gap: 8px;">
+                <input type="checkbox" id="is_active" {% if not doc or doc.is_active %}checked{% endif %} {% if not can_edit %}disabled{% endif %} style="width: 16px; height: 16px; cursor: pointer;">
+                <label class="dm-form-label" style="margin: 0; cursor: pointer;" for="is_active">Đang sử dụng</label>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block dm_scripts %}
+{% if can_edit %}
+<script>
+    frappe.ready(function() {window.saveDictionary = function() {
+            const btnSave = document.getElementById('saveBtn');
+            const docname = document.getElementById('docname').value;
+            
+            const dictionary_type = document.getElementById('dictionary_type').value.trim();
+            const entry_value = document.getElementById('entry_value').value.trim();
+            
+            if (!dictionary_type || !entry_value) {
+                frappe.msgprint({title: 'Lỗi', indicator: 'red', message: 'Vui lòng nhập Loại từ điển và Giá trị'});
+                return;
+            }
+            
+            let data = {
+                dictionary_type: dictionary_type,
+                entry_value: entry_value,
+                parent_entry: document.getElementById('parent_entry').value || null,
+                sort_order: parseInt(document.getElementById('sort_order').value) || 0,
+                is_active: document.getElementById('is_active').checked ? 1 : 0
+            };
+            const docname = document.getElementById('docname').value;
+            const btnSave = document.getElementById('saveBtn');
+            
+            // Call shared save function
+            window.dmSaveRecord('Quick Entry Dictionary', docname, data, '/quick_entry_dictionaries/form', btnSave);
+        };
+    });
+</script>
+{% endif %}
+{% endblock %}

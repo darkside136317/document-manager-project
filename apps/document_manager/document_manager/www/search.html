@@ -1,18 +1,12 @@
-{%- extends "templates/web.html" -%}
+{%- extends "templates/dm_portal_base.html" -%}
 
 {%- block title -%}Tìm kiếm tài liệu{%- endblock -%}
 
-{%- block page_content -%}
+{%- block dm_content -%}
 <style>
     .page-content-wrapper { background: var(--dm-background); }
     .dm-search-page { color: var(--dm-ink); padding: 24px 0 56px; }
     .dm-search-page * { box-sizing: border-box; }
-
-    .dm-breadcrumb {
-        align-items: center; color: var(--dm-muted); display: flex; font-size: 13px;
-        gap: 8px; margin-bottom: 18px;
-    }
-    .dm-breadcrumb a { color: var(--dm-primary); font-weight: 600; text-decoration: none; }
 
     .dm-hero {
         background:
@@ -178,11 +172,6 @@
 </style>
 
 <div class="dm-search-page">
-    <div class="dm-breadcrumb">
-        <a href="/app/document-manager"><i class="fa fa-arrow-left"></i>&nbsp; Document Manager</a>
-        <span>/</span><span>Tìm kiếm tài liệu</span>
-    </div>
-
     <section class="dm-hero">
         <div class="dm-eyebrow"><span class="dm-eyebrow-dot"></span> Kho lưu trữ số</div>
         <h1>Tìm kiếm tài liệu</h1>
@@ -394,7 +383,7 @@
                 ? '<p class="dm-snippet">' + safeHighlighted(formatted.content_text) + '</p>'
                 : '<p class="dm-snippet">Không có nội dung trích xuất để hiển thị.</p>';
             const fileType = escapeHTML(doc.file_type || "Tệp");
-            const href = "/app/archive-document/" + encodeURIComponent(doc.id || "");
+            const href = "/archive_documents/form?name=" + encodeURIComponent(doc.id || "");
             const meta = [];
             if (doc.fonds_name || doc.fonds) meta.push('<span class="dm-meta-item"><i class="fa fa-archive"></i>' + escapeHTML(doc.fonds_name || doc.fonds) + '</span>');
             if (doc.archival_file_title || doc.archival_file) meta.push('<span class="dm-meta-item"><i class="fa fa-folder-o"></i>' + escapeHTML(doc.archival_file_title || doc.archival_file) + '</span>');

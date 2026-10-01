@@ -1,0 +1,74 @@
+{%- extends "templates/web.html" -%}
+
+{% block title %}{{ page_title or 'Document Manager' }}{% endblock %}
+
+{% block navbar %}
+<header class="dm-navbar" style="margin: 24px 16px 0; max-width: 1248px; margin-left: auto; margin-right: auto;">
+    <div class="dm-navbar-brand">
+        <a href="/dashboard">
+            <i class="fa fa-archive"></i>
+            <span>Document Manager</span>
+        </a>
+    </div>
+    <div class="dm-navbar-nav">
+        <a href="/dashboard" class="dm-nav-link"><i class="fa fa-home"></i> Trang chủ</a>
+        <div class="dm-dropdown">
+            <button class="dm-dropdown-toggle">
+                <i class="fa fa-user-circle"></i> {{ frappe.session.user_fullname or frappe.session.user }} <i class="fa fa-angle-down"></i>
+            </button>
+            <div class="dm-dropdown-menu">
+                <a href="/me"><i class="fa fa-user"></i> Tài khoản</a>
+                <a href="/app"><i class="fa fa-desktop"></i> Chuyển sang Desk</a>
+                <div class="dm-dropdown-divider"></div>
+                <a href="#" onclick="frappe.app.logout()"><i class="fa fa-sign-out"></i> Đăng xuất</a>
+            </div>
+        </div>
+    </div>
+</header>
+{% endblock %}
+
+{% block page_content %}
+<style>
+    @import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css');
+    
+    /* Include our shared dm-portal.css inline to avoid build issues */
+    {% include "document_manager/public/css/dm-portal.css" ignore missing %}
+</style>
+
+<div class="dm-portal-wrapper">
+    <!-- Breadcrumbs -->
+    {% if breadcrumbs %}
+    <div class="dm-breadcrumb">
+        <a href="/dashboard"><i class="fa fa-home"></i> Trang chủ</a>
+        {% for crumb in breadcrumbs %}
+            <span class="dm-breadcrumb-separator"><i class="fa fa-angle-right"></i></span>
+            {% if crumb.link %}
+                <a href="{{ crumb.link }}">{{ crumb.label }}</a>
+            {% else %}
+                <span>{{ crumb.label }}</span>
+            {% endif %}
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Page Header -->
+    {% if page_title %}
+    <div class="dm-page-header">
+        <h1 class="dm-page-title">
+            {% if page_icon %}<i class="fa {{ page_icon }}"></i>{% endif %}
+            {{ page_title }}
+        </h1>
+        <div class="dm-page-actions">
+            {% block page_actions %}{% endblock %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Main Content -->
+    <div class="dm-page-content">
+        {% block dm_content %}{% endblock %}
+    </div>
+</div>
+
+{% block dm_scripts %}{% endblock %}
+{% endblock %}

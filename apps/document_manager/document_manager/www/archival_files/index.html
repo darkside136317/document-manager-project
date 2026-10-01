@@ -1,0 +1,129 @@
+{% extends "templates/dm_portal_base.html" %}
+
+{% block page_actions %}
+{% if can_create %}
+<a href="/archival_files/form" class="dm-btn primary">
+    <i class="fa fa-plus"></i> Thêm Hồ sơ
+</a>
+{% endif %}
+{% endblock %}
+
+{% block dm_content %}
+<div class="dm-card" style="margin-bottom: 24px; padding: 16px 24px;">
+    <form method="GET" action="/archival_files" style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;" id="filterForm">
+        <div style="flex: 1; min-width: 200px; position: relative;">
+            <i class="fa fa-search" style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--c-gray-400);"></i>
+            <input type="text" name="search" class="dm-form-control" placeholder="Tìm kiếm theo tiêu đề..." value="{{ search_term }}" style="padding-left: 42px;">
+        </div>
+        
+        <div style="width: 200px;">
+            <select name="catalog" class="dm-form-control">
+                <option value="">-- Mục lục --</option>
+                {% for c in catalogs %}
+                <option value="{{ c.name }}" {% if catalog_filter == c.name %}selected{% endif %}>{{ c.catalog_title }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div style="width: 180px;">
+            <select name="status" class="dm-form-control">
+                <option value="">-- Trạng thái --</option>
+                <option value="Nháp" {% if status_filter == 'Nháp' %}selected{% endif %}>Nháp</option>
+                <option value="Đang xử lý" {% if status_filter == 'Đang xử lý' %}selected{% endif %}>Đang xử lý</option>
+                <option value="Đã hoàn thành" {% if status_filter == 'Đã hoàn thành' %}selected{% endif %}>Đã hoàn thành</option>
+                <option value="Đã đóng" {% if status_filter == 'Đã đóng' %}selected{% endif %}>Đã đóng</option>
+            </select>
+        </div>
+        
+        <button type="submit" class="dm-btn">Tìm kiếm</button>
+        {% if search_term or catalog_filter or status_filter %}
+        <a href="/archival_files" class="dm-btn" style="color: var(--c-gray-500);"><i class="fa fa-times"></i> Xóa lọc</a>
+        {% endif %}
+    </form>
+</div>
+
+<div class="dm-table-wrapper">
+    <table class="dm-table">
+        <thead>
+            <tr>
+                <th>Số hồ sơ</th>
+                <th>Tiêu đề hồ sơ</th>
+                <th>Mục lục</th>
+                <th>Mức độ mật</th>
+                <th>Trạng thái</th>
+                <th style="text-align: right;">Thao tác</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in archival_files %}
+            <tr>
+                <td>{{ row.file_number or '-' }}</td>
+                <td style="font-weight: 600;">
+                    <a href="/archival_files/form?name={{ row.name }}" style="color: var(--brand-primary); text-decoration: none;">
+                        {{ row.file_title }}
+                    </a>
+                </td>
+                <td>{{ row.catalog or '-' }}</td>
+                <td>
+                    {% if row.confidentiality_level == 'Mật' %}
+                    <span class="dm-badge warning">Mật</span>
+                    {% elif row.confidentiality_level == 'Tuyệt mật' %}
+                    <span class="dm-badge" style="background: #dc3545; color: white;">Tuyệt mật</span>
+                    {% else %}
+                    <span class="dm-badge" style="background: var(--c-gray-200);">{{ row.confidentiality_level or 'Thường' }}</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if row.status == 'Đang xử lý' %}
+                    <span class="dm-badge warning">Đang xử lý</span>
+                    {% elif row.status == 'Đã hoàn thành' %}
+                    <span class="dm-badge success">Đã hoàn thành</span>
+                    {% elif row.status == 'Nháp' %}
+                    <span class="dm-badge" style="background: var(--c-gray-300);">Nháp</span>
+                    {% else %}
+                    <span class="dm-badge">{{ row.status }}</span>
+                    {% endif %}
+                </td>
+                <td style="text-align: right;">
+                    <a href="/archival_files/form?name={{ row.name }}" class="dm-btn" style="padding: 6px 12px; font-size: 0.85rem;">Chi tiết</a>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="6" style="text-align: center; padding: 40px; color: var(--c-gray-400);">
+                    <i class="fa fa-folder-open-o" style="font-size: 32px; margin-bottom: 12px; display: block;"></i>
+                    Không tìm thấy hồ sơ nào.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="dm-pagination">
+    <div class="dm-pagination-info">
+        Hiển thị {{ start + 1 if total_count > 0 else 0 }} - {{ start + archival_files|length }} trong số {{ total_count }} bản ghi
+    </div>
+    <div class="dm-pagination-controls">
+        {% if start > 0 %}
+        <a href="?search={{ search_term }}&catalog={{ catalog_filter }}&status={{ status_filter }}&start={{ start - limit }}" class="dm-btn" style="padding: 6px 12px;">
+            <i class="fa fa-chevron-left"></i> Trước
+        </a>
+        {% else %}
+        <button class="dm-btn" style="padding: 6px 12px; opacity: 0.5; cursor: not-allowed;" disabled>
+            <i class="fa fa-chevron-left"></i> Trước
+        </button>
+        {% endif %}
+        
+        {% if has_more %}
+        <a href="?search={{ search_term }}&catalog={{ catalog_filter }}&status={{ status_filter }}&start={{ start + limit }}" class="dm-btn" style="padding: 6px 12px;">
+            Tiếp <i class="fa fa-chevron-right"></i>
+        </a>
+        {% else %}
+        <button class="dm-btn" style="padding: 6px 12px; opacity: 0.5; cursor: not-allowed;" disabled>
+            Tiếp <i class="fa fa-chevron-right"></i>
+        </button>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

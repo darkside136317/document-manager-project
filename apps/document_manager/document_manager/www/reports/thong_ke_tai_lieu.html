@@ -1,0 +1,131 @@
+{% extends "templates/dm_portal_base.html" %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/frappe-charts@1.6.2/dist/frappe-charts.min.iife.js"></script>
+{% endblock %}
+
+{% block dm_content %}
+<div class="dm-card" style="margin-bottom: 24px; padding: 24px;">
+    <form method="GET" action="/reports/thong_ke_tai_lieu" style="display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap;">
+        <div style="flex: 1; min-width: 200px;">
+            <label class="dm-form-label">Phông lưu trữ</label>
+            <select name="fonds" class="dm-form-control">
+                <option value="">-- Tất cả --</option>
+                {% for f in fonds_options %}
+                <option value="{{ f.name }}" {% if filters.fonds == f.name %}selected{% endif %}>{{ f.name }} - {{ f.fonds_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div style="flex: 1; min-width: 200px;">
+            <label class="dm-form-label">Loại hình tài liệu</label>
+            <select name="document_type_category" class="dm-form-control">
+                <option value="">-- Tất cả --</option>
+                {% for d in doc_type_options %}
+                <option value="{{ d.name }}" {% if filters.document_type_category == d.name %}selected{% endif %}>{{ d.type_name or d.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div style="flex: 1; min-width: 200px;">
+            <label class="dm-form-label">Kho lưu trữ</label>
+            <select name="storage_warehouse" class="dm-form-control">
+                <option value="">-- Tất cả --</option>
+                {% for w in warehouse_options %}
+                <option value="{{ w.name }}" {% if filters.storage_warehouse == w.name %}selected{% endif %}>{{ w.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <button type="submit" class="dm-btn primary" style="height: 42px;">Lọc báo cáo</button>
+        {% if filters %}
+        <a href="/reports/thong_ke_tai_lieu" class="dm-btn" style="height: 42px; color: var(--c-gray-500);"><i class="fa fa-times"></i> Xóa lọc</a>
+        {% endif %}
+    </form>
+</div>
+
+<!-- Summary Widgets -->
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+    <div class="dm-card" style="padding: 24px; display: flex; align-items: center; gap: 16px;">
+        <div style="width: 56px; height: 56px; border-radius: 50%; background: var(--c-gray-100); display: flex; align-items: center; justify-content: center; font-size: 24px; color: var(--brand-primary);">
+            <i class="fa fa-folder"></i>
+        </div>
+        <div>
+            <h3 style="margin: 0; font-size: 2rem; color: var(--text-main);">{{ total_files }}</h3>
+            <p style="margin: 4px 0 0; color: var(--text-muted); font-weight: 600; text-transform: uppercase; font-size: 0.85rem;">Tổng số Hồ sơ</p>
+        </div>
+    </div>
+    
+    <div class="dm-card" style="padding: 24px; display: flex; align-items: center; gap: 16px;">
+        <div style="width: 56px; height: 56px; border-radius: 50%; background: var(--c-gray-100); display: flex; align-items: center; justify-content: center; font-size: 24px; color: var(--brand-primary);">
+            <i class="fa fa-file-text"></i>
+        </div>
+        <div>
+            <h3 style="margin: 0; font-size: 2rem; color: var(--text-main);">{{ total_docs }}</h3>
+            <p style="margin: 4px 0 0; color: var(--text-muted); font-weight: 600; text-transform: uppercase; font-size: 0.85rem;">Tổng số Văn bản/Tài liệu</p>
+        </div>
+    </div>
+</div>
+
+{% if chart %}
+<div class="dm-card" style="margin-bottom: 24px; padding: 24px;">
+    <h3 style="margin: 0 0 16px 0; color: var(--text-main); font-size: 1.1rem;">Biểu đồ thống kê theo Phông lưu trữ</h3>
+    <div id="report-chart"></div>
+</div>
+{% endif %}
+
+<div class="dm-table-wrapper dm-card">
+    <table class="dm-table">
+        <thead>
+            <tr>
+                {% for col in columns %}
+                <th>{{ col.label }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in data %}
+            <tr>
+                {% for col in columns %}
+                <td>
+                    {% if col.fieldname == 'file_count' or col.fieldname == 'doc_count' %}
+                        <strong>{{ row.get(col.fieldname, 0) }}</strong>
+                    {% else %}
+                        {{ row.get(col.fieldname, '-') or '-' }}
+                    {% endif %}
+                </td>
+                {% endfor %}
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="{{ columns|length }}" style="text-align: center; padding: 40px; color: var(--c-gray-400);">
+                    <i class="fa fa-table" style="font-size: 32px; margin-bottom: 12px; display: block;"></i>
+                    Không có dữ liệu phù hợp.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% endblock %}
+
+{% block dm_scripts %}
+{% if chart_json and chart_json != 'null' %}
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const chartData = {{ chart_json }};
+        
+        if (chartData && chartData.data) {
+            new frappe.Chart("#report-chart", {
+                data: chartData.data,
+                title: "",
+                type: chartData.type || 'bar',
+                height: 300,
+                colors: chartData.colors || ['#1f2937']
+            });
+        }
+    });
+</script>
+{% endif %}
+{% endblock %}

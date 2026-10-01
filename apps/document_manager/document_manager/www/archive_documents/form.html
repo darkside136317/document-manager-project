@@ -1,0 +1,170 @@
+{% extends "templates/dm_portal_base.html" %}
+
+{% block page_actions %}
+<button type="button" class="dm-btn" onclick="window.history.back()">
+    <i class="fa fa-arrow-left"></i> Quay lại
+</button>
+
+{% if can_edit %}
+<button type="button" class="dm-btn primary" onclick="saveArchiveDocument()" id="saveBtn">
+    <i class="fa fa-save"></i> Lưu thông tin
+</button>
+{% endif %}
+{% endblock %}
+
+{% block dm_content %}
+<div class="dm-card">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid var(--brand-border); padding-bottom: 16px; margin-bottom: 24px;">
+        <div>
+            <h2 style="margin: 0; color: var(--text-main); font-size: 1.5rem;">Thông tin Văn bản / Tài liệu</h2>
+            {% if docname %}
+            <div style="color: var(--text-muted); font-size: 0.9rem; margin-top: 4px;">ID: <strong>{{ docname }}</strong></div>
+            {% endif %}
+        </div>
+        <div>
+            {% if not doc %}
+                <span class="dm-badge" style="background: var(--c-gray-200); font-size: 0.9rem; padding: 6px 12px;">Thêm mới</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <form id="archiveDocumentForm">
+        <input type="hidden" id="docname" value="{{ docname or '' }}">
+        
+        <h3 style="color: var(--brand-primary); font-size: 1.1rem; border-bottom: 1px solid var(--brand-border); padding-bottom: 8px; margin-bottom: 16px;">
+            Thông tin chung
+        </h3>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+            <div class="dm-form-group">
+                <label class="dm-form-label">Tiêu đề văn bản {% if can_edit %}<span style="color: red;">*</span>{% endif %}</label>
+                <input type="text" id="document_title" class="dm-form-control" value="{{ doc.document_title or '' }}" style="font-weight: bold;" {% if not can_edit %}disabled{% endif %} required>
+            </div>
+            
+            <div class="dm-form-group">
+                <label class="dm-form-label">Hồ sơ lưu trữ {% if can_edit %}<span style="color: red;">*</span>{% endif %}</label>
+                <select id="archival_file" class="dm-form-control" {% if not can_edit %}disabled{% endif %} required>
+                    <option value="">-- Chọn Hồ sơ --</option>
+                    {% for af in archival_files %}
+                    <option value="{{ af.name }}" {% if doc and doc.archival_file == af.name %}selected{% endif %}>
+                        {{ af.file_title }} ({{ af.name }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="dm-form-group">
+                <label class="dm-form-label">Thông tin liên kết (Tự động cập nhật)</label>
+                <div style="background-color: var(--c-gray-100); padding: 8px; border-radius: 4px; font-size: 0.9rem; color: var(--c-gray-700);">
+                    Mục lục: <span id="lbl_catalog">{{ doc.catalog or '-' }}</span><br>
+                    Khối/Phông: <span id="lbl_record_group">{{ doc.record_group or '-' }}</span> / <span id="lbl_fonds">{{ doc.fonds or '-' }}</span><br>
+                    Mức độ mật: <span id="lbl_conf">{{ doc.confidentiality_level or '-' }}</span>
+                </div>
+            </div>
+
+            <div class="dm-form-group">
+                <label class="dm-form-label">Loại tệp & Tầng lưu trữ</label>
+                <div style="display: flex; gap: 8px;">
+                    <select id="file_type" class="dm-form-control" {% if not can_edit %}disabled{% endif %}>
+                        <option value="">-- Loại tệp --</option>
+                        {% for t in ['PDF', 'DOCX', 'XLSX', 'JPG', 'PNG', 'TIFF', 'Khác'] %}
+                        <option value="{{ t }}" {% if doc and doc.file_type == t %}selected{% endif %}>{{ t }}</option>
+                        {% endfor %}
+                    </select>
+                    
+                    <select id="storage_tier" class="dm-form-control" {% if not can_edit %}disabled{% endif %}>
+                        <option value="Hot" {% if not doc or doc.storage_tier == 'Hot' %}selected{% endif %}>Hot (Truy cập nhanh)</option>
+                        <option value="Cold" {% if doc and doc.storage_tier == 'Cold' %}selected{% endif %}>Cold (Lưu trữ lâu dài)</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <h3 style="color: var(--brand-primary); font-size: 1.1rem; border-bottom: 1px solid var(--brand-border); padding-bottom: 8px; margin-bottom: 16px; margin-top: 32px;">
+            Thông tin bổ sung
+        </h3>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+            <div class="dm-form-group">
+                <label class="dm-form-label">Ngày văn bản</label>
+                <input type="date" id="document_date" class="dm-form-control" value="{{ doc.document_date or '' }}" {% if not can_edit %}disabled{% endif %}>
+            </div>
+            
+            <div class="dm-form-group">
+                <label class="dm-form-label">Số văn bản</label>
+                <input type="text" id="document_number" class="dm-form-control" value="{{ doc.document_number or '' }}" {% if not can_edit %}disabled{% endif %}>
+            </div>
+            
+            <div class="dm-form-group">
+                <label class="dm-form-label">Tác giả / Người ký</label>
+                <input type="text" id="author" class="dm-form-control" value="{{ doc.author or '' }}" {% if not can_edit %}disabled{% endif %}>
+            </div>
+            
+            <div class="dm-form-group">
+                <label class="dm-form-label">Số trang</label>
+                <input type="number" id="page_count" class="dm-form-control" value="{{ doc.page_count or '' }}" {% if not can_edit %}disabled{% endif %}>
+            </div>
+        </div>
+
+        <div class="dm-form-group">
+            <label class="dm-form-label">Mô tả chi tiết</label>
+            <textarea id="description" class="dm-form-control" rows="4" {% if not can_edit %}disabled{% endif %}>{{ doc.description or '' }}</textarea>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block dm_scripts %}
+{% if can_edit %}
+<script type="application/json" id="archival-files-data">
+    {{ archival_files | tojson }}
+</script>
+<script>
+    const archival_files = JSON.parse(document.getElementById('archival-files-data').textContent || '[]');
+    
+    document.getElementById('archival_file').addEventListener('change', function() {
+        const val = this.value;
+        const af = archival_files.find(a => a.name === val);
+        if (af) {
+            document.getElementById('lbl_catalog').textContent = af.catalog || '-';
+            document.getElementById('lbl_record_group').textContent = af.record_group || '-';
+            document.getElementById('lbl_fonds').textContent = af.fonds || '-';
+            document.getElementById('lbl_conf').textContent = af.confidentiality_level || '-';
+        } else {
+            document.getElementById('lbl_catalog').textContent = '-';
+            document.getElementById('lbl_record_group').textContent = '-';
+            document.getElementById('lbl_fonds').textContent = '-';
+            document.getElementById('lbl_conf').textContent = '-';
+        }
+    });
+
+    frappe.ready(function() {
+        window.saveArchiveDocument = function() {
+            const document_title = document.getElementById('document_title').value.trim();
+            const archival_file = document.getElementById('archival_file').value;
+            
+            if (!document_title || !archival_file) {
+                frappe.msgprint({title: 'Lỗi', indicator: 'red', message: 'Vui lòng điền đầy đủ các trường bắt buộc (*)'});
+                return;
+            }
+            
+            let data = {
+                document_title: document_title,
+                archival_file: archival_file,
+                file_type: document.getElementById('file_type').value || null,
+                storage_tier: document.getElementById('storage_tier').value || null,
+                document_date: document.getElementById('document_date').value || null,
+                document_number: document.getElementById('document_number').value || null,
+                author: document.getElementById('author').value || null,
+                page_count: document.getElementById('page_count').value || null,
+                description: document.getElementById('description').value || null
+            };
+            
+            const docname = document.getElementById('docname').value;
+            const btnSave = document.getElementById('saveBtn');
+            
+            // Call the shared function
+            window.dmSaveRecord('Archive Document', docname, data, '/archive_documents/form', btnSave);
+        };
+    });
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,94 @@
+{% extends "templates/dm_portal_base.html" %}
+
+{% block page_actions %}
+{% if can_create %}
+<a href="/document_groups/form" class="dm-btn primary">
+    <i class="fa fa-plus"></i> Thêm Nhóm tài liệu
+</a>
+{% endif %}
+{% endblock %}
+
+{% block dm_content %}
+<div class="dm-card" style="margin-bottom: 24px; padding: 16px 24px;">
+    <form method="GET" action="/document_groups" style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+        <div style="flex: 1; min-width: 250px; position: relative;">
+            <i class="fa fa-search" style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--c-gray-400);"></i>
+            <input type="text" name="search" class="dm-form-control" placeholder="Tìm kiếm theo tên nhóm..." value="{{ search_term }}" style="padding-left: 42px;">
+        </div>
+        
+        <button type="submit" class="dm-btn">Tìm kiếm</button>
+        {% if search_term %}
+        <a href="/document_groups" class="dm-btn" style="color: var(--c-gray-500);"><i class="fa fa-times"></i> Xóa lọc</a>
+        {% endif %}
+    </form>
+</div>
+
+<div class="dm-table-wrapper">
+    <table class="dm-table">
+        <thead>
+            <tr>
+                <th>Mã nhóm</th>
+                <th>Tên nhóm tài liệu</th>
+                <th>Trạng thái</th>
+                <th style="text-align: right;">Thao tác</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in groups %}
+            <tr>
+                <td>{{ row.group_code or '-' }}</td>
+                <td style="font-weight: 600;">
+                    <a href="/document_groups/form?name={{ row.name }}" style="color: var(--brand-primary); text-decoration: none;">
+                        {{ row.group_name }}
+                    </a>
+                </td>
+                <td>
+                    {% if row.is_active %}
+                    <span class="dm-badge success">Đang sử dụng</span>
+                    {% else %}
+                    <span class="dm-badge" style="background: var(--c-gray-300);">Ngừng sử dụng</span>
+                    {% endif %}
+                </td>
+                <td style="text-align: right;">
+                    <a href="/document_groups/form?name={{ row.name }}" class="dm-btn" style="padding: 6px 12px; font-size: 0.85rem;">Chi tiết</a>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="4" style="text-align: center; padding: 40px; color: var(--c-gray-400);">
+                    <i class="fa fa-folder-o" style="font-size: 32px; margin-bottom: 12px; display: block;"></i>
+                    Không tìm thấy nhóm tài liệu nào.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="dm-pagination">
+    <div class="dm-pagination-info">
+        Hiển thị {{ start + 1 if total_count > 0 else 0 }} - {{ start + groups|length }} trong số {{ total_count }} bản ghi
+    </div>
+    <div class="dm-pagination-controls">
+        {% if start > 0 %}
+        <a href="?search={{ search_term }}&start={{ start - limit }}" class="dm-btn" style="padding: 6px 12px;">
+            <i class="fa fa-chevron-left"></i> Trước
+        </a>
+        {% else %}
+        <button class="dm-btn" style="padding: 6px 12px; opacity: 0.5; cursor: not-allowed;" disabled>
+            <i class="fa fa-chevron-left"></i> Trước
+        </button>
+        {% endif %}
+        
+        {% if has_more %}
+        <a href="?search={{ search_term }}&start={{ start + limit }}" class="dm-btn" style="padding: 6px 12px;">
+            Tiếp <i class="fa fa-chevron-right"></i>
+        </a>
+        {% else %}
+        <button class="dm-btn" style="padding: 6px 12px; opacity: 0.5; cursor: not-allowed;" disabled>
+            Tiếp <i class="fa fa-chevron-right"></i>
+        </button>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

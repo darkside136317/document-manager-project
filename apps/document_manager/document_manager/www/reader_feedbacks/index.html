@@ -1,0 +1,109 @@
+{% extends "templates/dm_portal_base.html" %}
+
+{% block page_actions %}
+<a href="/reader_feedbacks/form" class="dm-btn primary">
+    <i class="fa fa-plus"></i> Gửi Góp ý mới
+</a>
+{% endblock %}
+
+{% block dm_content %}
+<div class="dm-card" style="margin-bottom: 24px; padding: 16px 24px;">
+    <form method="GET" action="/reader_feedbacks" style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+        <div style="flex: 1; min-width: 200px; position: relative;">
+            <i class="fa fa-search" style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--c-gray-400);"></i>
+            <input type="text" name="search" class="dm-form-control" placeholder="Tìm kiếm theo tiêu đề..." value="{{ search_term }}" style="padding-left: 42px;">
+        </div>
+        
+        <div style="width: 200px;">
+            <select name="status" class="dm-form-control">
+                <option value="">-- Tất cả trạng thái --</option>
+                <option value="Mới" {% if status_filter == 'Mới' %}selected{% endif %}>Mới</option>
+                <option value="Đã xem" {% if status_filter == 'Đã xem' %}selected{% endif %}>Đã xem</option>
+                <option value="Đã phản hồi" {% if status_filter == 'Đã phản hồi' %}selected{% endif %}>Đã phản hồi</option>
+            </select>
+        </div>
+        
+        <button type="submit" class="dm-btn">Lọc</button>
+        {% if search_term or status_filter %}
+        <a href="/reader_feedbacks" class="dm-btn" style="color: var(--c-gray-500);"><i class="fa fa-times"></i> Xóa lọc</a>
+        {% endif %}
+    </form>
+</div>
+
+<div class="dm-table-wrapper">
+    <table class="dm-table">
+        <thead>
+            <tr>
+                <th>Mã</th>
+                <th>Tiêu đề</th>
+                <th>Người gửi</th>
+                <th>Ngày gửi</th>
+                <th>Trạng thái</th>
+                <th style="text-align: right;">Thao tác</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in feedbacks %}
+            <tr>
+                <td>{{ row.name }}</td>
+                <td style="font-weight: 600;">
+                    <a href="/reader_feedbacks/form?name={{ row.name }}" style="color: var(--brand-primary); text-decoration: none;">
+                        {{ row.subject }}
+                    </a>
+                </td>
+                <td>{{ row.reader_name or '-' }}</td>
+                <td>{{ frappe.format_date(row.feedback_date) }}</td>
+                <td>
+                    {% if row.status == 'Mới' %}
+                    <span class="dm-badge" style="background: var(--brand-primary); color: white;">Mới</span>
+                    {% elif row.status == 'Đã xem' %}
+                    <span class="dm-badge warning">Đã xem</span>
+                    {% elif row.status == 'Đã phản hồi' %}
+                    <span class="dm-badge success">Đã phản hồi</span>
+                    {% else %}
+                    <span class="dm-badge">{{ row.status }}</span>
+                    {% endif %}
+                </td>
+                <td style="text-align: right;">
+                    <a href="/reader_feedbacks/form?name={{ row.name }}" class="dm-btn" style="padding: 6px 12px; font-size: 0.85rem;">Xem chi tiết</a>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="6" style="text-align: center; padding: 40px; color: var(--c-gray-400);">
+                    <i class="fa fa-inbox" style="font-size: 32px; margin-bottom: 12px; display: block;"></i>
+                    Không tìm thấy bản ghi nào.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="dm-pagination">
+    <div class="dm-pagination-info">
+        Hiển thị {{ start + 1 if total_count > 0 else 0 }} - {{ start + feedbacks|length }} trong số {{ total_count }} bản ghi
+    </div>
+    <div class="dm-pagination-controls">
+        {% if start > 0 %}
+        <a href="?search={{ search_term }}&status={{ status_filter }}&start={{ start - limit }}" class="dm-btn" style="padding: 6px 12px;">
+            <i class="fa fa-chevron-left"></i> Trước
+        </a>
+        {% else %}
+        <button class="dm-btn" style="padding: 6px 12px; opacity: 0.5; cursor: not-allowed;" disabled>
+            <i class="fa fa-chevron-left"></i> Trước
+        </button>
+        {% endif %}
+        
+        {% if has_more %}
+        <a href="?search={{ search_term }}&status={{ status_filter }}&start={{ start + limit }}" class="dm-btn" style="padding: 6px 12px;">
+            Tiếp <i class="fa fa-chevron-right"></i>
+        </a>
+        {% else %}
+        <button class="dm-btn" style="padding: 6px 12px; opacity: 0.5; cursor: not-allowed;" disabled>
+            Tiếp <i class="fa fa-chevron-right"></i>
+        </button>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

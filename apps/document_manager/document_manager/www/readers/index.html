@@ -1,0 +1,95 @@
+{% extends "templates/dm_portal_base.html" %}
+
+{% block page_actions %}
+<a href="/readers/form" class="dm-btn primary">
+    <i class="fa fa-plus"></i> Thêm Độc giả
+</a>
+{% endblock %}
+
+{% block dm_content %}
+<div class="dm-card" style="margin-bottom: 24px; padding: 16px 24px;">
+    <form method="GET" action="/readers" style="display: flex; gap: 12px; align-items: center;">
+        <div style="flex: 1; position: relative;">
+            <i class="fa fa-search" style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--c-gray-400);"></i>
+            <input type="text" name="search" class="dm-form-control" placeholder="Tìm kiếm theo Tên..." value="{{ search_term }}" style="padding-left: 42px;">
+        </div>
+        <button type="submit" class="dm-btn">Tìm kiếm</button>
+        {% if search_term %}
+        <a href="/readers" class="dm-btn" style="color: var(--c-gray-500);"><i class="fa fa-times"></i> Xóa</a>
+        {% endif %}
+    </form>
+</div>
+
+<div class="dm-table-wrapper">
+    <table class="dm-table">
+        <thead>
+            <tr>
+                <th>Họ và Tên</th>
+                <th>Email</th>
+                <th>Điện thoại</th>
+                <th>Cơ quan / Đơn vị</th>
+                <th>Trạng thái</th>
+                <th style="text-align: right;">Thao tác</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in readers %}
+            <tr>
+                <td style="font-weight: 600;">
+                    <a href="/readers/form?name={{ row.name }}" style="color: var(--brand-primary); text-decoration: none;">
+                        {{ row.full_name }}
+                    </a>
+                </td>
+                <td>{{ row.email or '-' }}</td>
+                <td>{{ row.phone or '-' }}</td>
+                <td>{{ row.organization or '-' }}</td>
+                <td>
+                    {% if row.is_active %}
+                    <span class="dm-badge success">Đang hoạt động</span>
+                    {% else %}
+                    <span class="dm-badge warning">Ngừng hoạt động</span>
+                    {% endif %}
+                </td>
+                <td style="text-align: right;">
+                    <a href="/readers/form?name={{ row.name }}" class="dm-btn" style="padding: 6px 12px; font-size: 0.85rem;">Chi tiết</a>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="6" style="text-align: center; padding: 40px; color: var(--c-gray-400);">
+                    <i class="fa fa-inbox" style="font-size: 32px; margin-bottom: 12px; display: block;"></i>
+                    Không tìm thấy bản ghi nào.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="dm-pagination">
+    <div class="dm-pagination-info">
+        Hiển thị {{ start + 1 if total_count > 0 else 0 }} - {{ start + readers|length }} trong số {{ total_count }} bản ghi
+    </div>
+    <div class="dm-pagination-controls">
+        {% if start > 0 %}
+        <a href="?search={{ search_term }}&start={{ start - limit }}" class="dm-btn" style="padding: 6px 12px;">
+            <i class="fa fa-chevron-left"></i> Trước
+        </a>
+        {% else %}
+        <button class="dm-btn" style="padding: 6px 12px; opacity: 0.5; cursor: not-allowed;" disabled>
+            <i class="fa fa-chevron-left"></i> Trước
+        </button>
+        {% endif %}
+        
+        {% if has_more %}
+        <a href="?search={{ search_term }}&start={{ start + limit }}" class="dm-btn" style="padding: 6px 12px;">
+            Tiếp <i class="fa fa-chevron-right"></i>
+        </a>
+        {% else %}
+        <button class="dm-btn" style="padding: 6px 12px; opacity: 0.5; cursor: not-allowed;" disabled>
+            Tiếp <i class="fa fa-chevron-right"></i>
+        </button>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

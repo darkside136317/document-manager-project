@@ -1,0 +1,138 @@
+{% extends "templates/dm_portal_base.html" %}
+
+{% block page_actions %}
+<button type="button" class="dm-btn" onclick="window.history.back()">
+    <i class="fa fa-arrow-left"></i> Quay lại
+</button>
+
+{% if can_edit %}
+<button type="button" class="dm-btn primary" onclick="saveAgency()" id="saveBtn">
+    <i class="fa fa-save"></i> Lưu thông tin
+</button>
+{% endif %}
+{% endblock %}
+
+{% block dm_content %}
+<div class="dm-card">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid var(--brand-border); padding-bottom: 16px; margin-bottom: 24px;">
+        <div>
+            <h2 style="margin: 0; color: var(--text-main); font-size: 1.5rem;">Thông tin Cơ quan lưu trữ</h2>
+            {% if docname %}
+            <div style="color: var(--text-muted); font-size: 0.9rem; margin-top: 4px;">ID: <strong>{{ docname }}</strong></div>
+            {% endif %}
+        </div>
+        <div>
+            {% if doc %}
+                {% if doc.is_active %}
+                <span class="dm-badge success" style="font-size: 0.9rem; padding: 6px 12px;">Đang hoạt động</span>
+                {% else %}
+                <span class="dm-badge" style="background: var(--c-gray-300); font-size: 0.9rem; padding: 6px 12px;">Ngừng hoạt động</span>
+                {% endif %}
+            {% else %}
+                <span class="dm-badge" style="background: var(--c-gray-200); font-size: 0.9rem; padding: 6px 12px;">Thêm mới</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <form id="agencyForm">
+        <input type="hidden" id="docname" value="{{ docname or '' }}">
+        
+        <h3 style="color: var(--brand-primary); font-size: 1.1rem; border-bottom: 1px solid var(--brand-border); padding-bottom: 8px; margin-bottom: 16px;">
+            Thông tin chung
+        </h3>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+            <div class="dm-form-group">
+                <label class="dm-form-label">Tên cơ quan lưu trữ {% if can_edit %}<span style="color: red;">*</span>{% endif %}</label>
+                <input type="text" id="agency_name" class="dm-form-control" value="{{ doc.agency_name or '' }}" style="font-weight: bold;" {% if not can_edit %}disabled{% endif %} required>
+            </div>
+            
+            <div class="dm-form-group">
+                <label class="dm-form-label">Mã cơ quan</label>
+                <input type="text" id="agency_code" class="dm-form-control" value="{{ doc.agency_code or '' }}" {% if not can_edit %}disabled{% endif %}>
+            </div>
+
+            <div class="dm-form-group">
+                <label class="dm-form-label">Loại cơ quan</label>
+                <select id="agency_type" class="dm-form-control" {% if not can_edit %}disabled{% endif %}>
+                    <option value="">-- Trống --</option>
+                    {% for t in ['Trung tâm lưu trữ', 'Thư viện', 'Cơ quan nhà nước', 'Doanh nghiệp', 'Khác'] %}
+                    <option value="{{ t }}" {% if doc and doc.agency_type == t %}selected{% endif %}>{{ t }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="dm-form-group" style="display: flex; align-items: center; gap: 8px;">
+                <input type="checkbox" id="is_active" {% if not doc or doc.is_active %}checked{% endif %} {% if not can_edit %}disabled{% endif %} style="width: 16px; height: 16px; cursor: pointer;">
+                <label class="dm-form-label" style="margin: 0; cursor: pointer;" for="is_active">Đang hoạt động</label>
+            </div>
+        </div>
+
+        <h3 style="color: var(--brand-primary); font-size: 1.1rem; border-bottom: 1px solid var(--brand-border); padding-bottom: 8px; margin-bottom: 16px; margin-top: 32px;">
+            Thông tin liên hệ
+        </h3>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+            <div class="dm-form-group" style="grid-column: span 2;">
+                <label class="dm-form-label">Địa chỉ</label>
+                <input type="text" id="address" class="dm-form-control" value="{{ doc.address or '' }}" {% if not can_edit %}disabled{% endif %}>
+            </div>
+            
+            <div class="dm-form-group">
+                <label class="dm-form-label">Điện thoại</label>
+                <input type="text" id="phone" class="dm-form-control" value="{{ doc.phone or '' }}" {% if not can_edit %}disabled{% endif %}>
+            </div>
+            
+            <div class="dm-form-group">
+                <label class="dm-form-label">Email</label>
+                <input type="email" id="email" class="dm-form-control" value="{{ doc.email or '' }}" {% if not can_edit %}disabled{% endif %}>
+            </div>
+            
+            <div class="dm-form-group">
+                <label class="dm-form-label">Website</label>
+                <input type="url" id="website" class="dm-form-control" value="{{ doc.website or '' }}" {% if not can_edit %}disabled{% endif %}>
+            </div>
+        </div>
+
+        <h3 style="color: var(--brand-primary); font-size: 1.1rem; border-bottom: 1px solid var(--brand-border); padding-bottom: 8px; margin-bottom: 16px; margin-top: 32px;">
+            Mô tả thêm
+        </h3>
+        <div class="dm-form-group">
+            <textarea id="description" class="dm-form-control" rows="5" {% if not can_edit %}disabled{% endif %}>{{ (doc.description or '') | striptags }}</textarea>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block dm_scripts %}
+{% if can_edit %}
+<script>
+    frappe.ready(function() {
+        window.saveAgency = function() {
+            const agency_name = document.getElementById('agency_name').value.trim();
+            
+            if (!agency_name) {
+                frappe.msgprint({title: 'Lỗi', indicator: 'red', message: 'Vui lòng nhập Tên cơ quan lưu trữ'});
+                return;
+            }
+            
+            let data = {
+                agency_name: agency_name,
+                agency_code: document.getElementById('agency_code').value.trim() || null,
+                agency_type: document.getElementById('agency_type').value || null,
+                is_active: document.getElementById('is_active').checked ? 1 : 0,
+                address: document.getElementById('address').value.trim() || null,
+                phone: document.getElementById('phone').value.trim() || null,
+                email: document.getElementById('email').value.trim() || null,
+                website: document.getElementById('website').value.trim() || null,
+                description: document.getElementById('description').value || null
+            };
+            
+            const docname = document.getElementById('docname').value;
+            const btnSave = document.getElementById('saveBtn');
+            
+            // Call shared save function
+            window.dmSaveRecord('Archival Agency', docname, data, '/archival_agencies/form', btnSave);
+        };
+    });
+</script>
+{% endif %}
+{% endblock %}

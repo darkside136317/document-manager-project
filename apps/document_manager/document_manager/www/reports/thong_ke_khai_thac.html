@@ -1,0 +1,111 @@
+{% extends "templates/dm_portal_base.html" %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/frappe-charts@1.6.2/dist/frappe-charts.min.iife.js"></script>
+{% endblock %}
+
+{% block dm_content %}
+<div class="dm-card" style="margin-bottom: 24px; padding: 24px;">
+    <form method="GET" action="/reports/thong_ke_khai_thac" style="display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap;">
+        <div style="flex: 1; min-width: 200px;">
+            <label class="dm-form-label">Từ ngày</label>
+            <input type="date" name="from_date" class="dm-form-control" value="{{ filters.from_date or '' }}">
+        </div>
+        
+        <div style="flex: 1; min-width: 200px;">
+            <label class="dm-form-label">Đến ngày</label>
+            <input type="date" name="to_date" class="dm-form-control" value="{{ filters.to_date or '' }}">
+        </div>
+
+        <button type="submit" class="dm-btn primary" style="height: 42px;">Lọc báo cáo</button>
+        {% if filters %}
+        <a href="/reports/thong_ke_khai_thac" class="dm-btn" style="height: 42px; color: var(--c-gray-500);"><i class="fa fa-times"></i> Xóa lọc</a>
+        {% endif %}
+    </form>
+</div>
+
+<!-- Summary Widgets -->
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+    <div class="dm-card" style="padding: 24px; display: flex; align-items: center; gap: 16px;">
+        <div style="width: 56px; height: 56px; border-radius: 50%; background: var(--c-gray-100); display: flex; align-items: center; justify-content: center; font-size: 24px; color: var(--brand-primary);">
+            <i class="fa fa-hand-pointer-o"></i>
+        </div>
+        <div>
+            <h3 style="margin: 0; font-size: 2rem; color: var(--text-main);">{{ total_usage }}</h3>
+            <p style="margin: 4px 0 0; color: var(--text-muted); font-weight: 600; text-transform: uppercase; font-size: 0.85rem;">Tổng số Phiếu yêu cầu sử dụng</p>
+        </div>
+    </div>
+    
+    <div class="dm-card" style="padding: 24px; display: flex; align-items: center; gap: 16px;">
+        <div style="width: 56px; height: 56px; border-radius: 50%; background: var(--c-gray-100); display: flex; align-items: center; justify-content: center; font-size: 24px; color: var(--brand-primary);">
+            <i class="fa fa-copy"></i>
+        </div>
+        <div>
+            <h3 style="margin: 0; font-size: 2rem; color: var(--text-main);">{{ total_copy }}</h3>
+            <p style="margin: 4px 0 0; color: var(--text-muted); font-weight: 600; text-transform: uppercase; font-size: 0.85rem;">Tổng số Phiếu sao chụp</p>
+        </div>
+    </div>
+</div>
+
+{% if chart %}
+<div class="dm-card" style="margin-bottom: 24px; padding: 24px;">
+    <h3 style="margin: 0 0 16px 0; color: var(--text-main); font-size: 1.1rem;">Biểu đồ thống kê theo Thời gian</h3>
+    <div id="report-chart"></div>
+</div>
+{% endif %}
+
+<div class="dm-table-wrapper dm-card">
+    <table class="dm-table">
+        <thead>
+            <tr>
+                {% for col in columns %}
+                <th>{{ col.label }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in data %}
+            <tr>
+                {% for col in columns %}
+                <td>
+                    {% if col.fieldtype == 'Int' %}
+                        <strong>{{ row.get(col.fieldname, 0) }}</strong>
+                    {% else %}
+                        {{ row.get(col.fieldname, '-') or '-' }}
+                    {% endif %}
+                </td>
+                {% endfor %}
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="{{ columns|length }}" style="text-align: center; padding: 40px; color: var(--c-gray-400);">
+                    <i class="fa fa-table" style="font-size: 32px; margin-bottom: 12px; display: block;"></i>
+                    Không có dữ liệu phù hợp.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% endblock %}
+
+{% block dm_scripts %}
+{% if chart_json and chart_json != 'null' %}
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const chartData = {{ chart_json }};
+        
+        if (chartData && chartData.data) {
+            new frappe.Chart("#report-chart", {
+                data: chartData.data,
+                title: "",
+                type: chartData.type || 'line',
+                height: 300,
+                colors: chartData.colors || ['#1f2937', '#e67e22']
+            });
+        }
+    });
+</script>
+{% endif %}
+{% endblock %}

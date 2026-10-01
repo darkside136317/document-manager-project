@@ -1,0 +1,49 @@
+import frappe
+from frappe.utils import cint
+
+def get_context(context):
+    if frappe.session.user == 'Guest':
+        frappe.local.flags.redirect_location = '/login'
+        raise frappe.Redirect
+    
+    if not frappe.has_permission('Restore Batch', 'read'):
+        frappe.throw('Bạn không có quyền truy cập', frappe.PermissionError)
+        
+    start = cint(frappe.form_dict.get('start', 0))
+    limit = 20
+    status_filter = frappe.form_dict.get('status', '')
+    
+    filters = {}
+    if status_filter:
+        filters['status'] = status_filter
+        
+    restores = frappe.get_all(
+        'Restore Batch',
+        filters=filters,
+        fields=['name', 'restore_type', 'source_backup', 'status', 'started_at', 'completed_at', 'records_restored'],
+        start=start,
+        page_length=limit,
+        order_by='creation desc'
+    )
+    
+    total_count = frappe.db.count('Restore Batch', filters=filters)
+    
+    user_roles = frappe.get_roles()
+    can_create = 'Document Admin' in user_roles or 'Preservation Officer' in user_roles
+    
+    context.update({
+        'page_title': 'Khôi phục dữ liệu',
+        'page_icon': 'fa-history',
+        'breadcrumbs': [
+            {'label': 'Kiểm tra & Báo cáo'}
+        ],
+        'restores': restores,
+        'status_filter': status_filter,
+        'start': start,
+        'limit': limit,
+        'total_count': total_count,
+        'has_more': (start + limit) < total_count,
+        'can_create': can_create
+    })
+    
+    return context

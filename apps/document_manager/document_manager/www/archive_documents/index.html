@@ -1,0 +1,126 @@
+{% extends "templates/dm_portal_base.html" %}
+
+{% block page_actions %}
+{% if can_create %}
+<a href="/archive_documents/form" class="dm-btn primary">
+    <i class="fa fa-plus"></i> Thêm Văn bản
+</a>
+{% endif %}
+{% endblock %}
+
+{% block dm_content %}
+<div class="dm-card" style="margin-bottom: 24px; padding: 16px 24px;">
+    <form method="GET" action="/archive_documents" style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;" id="filterForm">
+        <div style="flex: 1; min-width: 200px; position: relative;">
+            <i class="fa fa-search" style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--c-gray-400);"></i>
+            <input type="text" name="search" class="dm-form-control" placeholder="Tìm kiếm theo tiêu đề..." value="{{ search_term }}" style="padding-left: 42px;">
+        </div>
+        
+        <div style="width: 200px;">
+            <select name="archival_file" class="dm-form-control">
+                <option value="">-- Hồ sơ lưu trữ --</option>
+                {% for a in archival_files %}
+                <option value="{{ a.name }}" {% if archival_file_filter == a.name %}selected{% endif %}>{{ a.file_title }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div style="width: 150px;">
+            <select name="file_type" class="dm-form-control">
+                <option value="">-- Loại tệp --</option>
+                {% for t in ['PDF', 'DOCX', 'XLSX', 'JPG', 'PNG', 'TIFF', 'Khác'] %}
+                <option value="{{ t }}" {% if file_type_filter == t %}selected{% endif %}>{{ t }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <button type="submit" class="dm-btn">Tìm kiếm</button>
+        {% if search_term or archival_file_filter or file_type_filter %}
+        <a href="/archive_documents" class="dm-btn" style="color: var(--c-gray-500);"><i class="fa fa-times"></i> Xóa lọc</a>
+        {% endif %}
+    </form>
+</div>
+
+<div class="dm-table-wrapper">
+    <table class="dm-table">
+        <thead>
+            <tr>
+                <th>Số văn bản</th>
+                <th>Tiêu đề văn bản</th>
+                <th>Hồ sơ lưu trữ</th>
+                <th>Loại tệp</th>
+                <th>Mức độ mật</th>
+                <th>Ngày VB</th>
+                <th style="text-align: right;">Thao tác</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in documents %}
+            <tr>
+                <td>{{ row.document_number or '-' }}</td>
+                <td style="font-weight: 600;">
+                    <a href="/archive_documents/form?name={{ row.name }}" style="color: var(--brand-primary); text-decoration: none;">
+                        {{ row.document_title }}
+                    </a>
+                </td>
+                <td>{{ row.archival_file or '-' }}</td>
+                <td>
+                    {% if row.file_type %}
+                    <span class="dm-badge" style="background: var(--c-gray-100); color: var(--text-main);">{{ row.file_type }}</span>
+                    {% else %}
+                    -
+                    {% endif %}
+                </td>
+                <td>
+                    {% if row.confidentiality_level == 'Mật' %}
+                    <span class="dm-badge warning">Mật</span>
+                    {% elif row.confidentiality_level == 'Tuyệt mật' %}
+                    <span class="dm-badge" style="background: #dc3545; color: white;">Tuyệt mật</span>
+                    {% else %}
+                    <span class="dm-badge" style="background: var(--c-gray-200);">{{ row.confidentiality_level or 'Thường' }}</span>
+                    {% endif %}
+                </td>
+                <td>{{ row.document_date or '-' }}</td>
+                <td style="text-align: right;">
+                    <a href="/archive_documents/form?name={{ row.name }}" class="dm-btn" style="padding: 6px 12px; font-size: 0.85rem;">Chi tiết</a>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="7" style="text-align: center; padding: 40px; color: var(--c-gray-400);">
+                    <i class="fa fa-file-text-o" style="font-size: 32px; margin-bottom: 12px; display: block;"></i>
+                    Không tìm thấy văn bản nào.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="dm-pagination">
+    <div class="dm-pagination-info">
+        Hiển thị {{ start + 1 if total_count > 0 else 0 }} - {{ start + documents|length }} trong số {{ total_count }} bản ghi
+    </div>
+    <div class="dm-pagination-controls">
+        {% if start > 0 %}
+        <a href="?search={{ search_term }}&archival_file={{ archival_file_filter }}&file_type={{ file_type_filter }}&start={{ start - limit }}" class="dm-btn" style="padding: 6px 12px;">
+            <i class="fa fa-chevron-left"></i> Trước
+        </a>
+        {% else %}
+        <button class="dm-btn" style="padding: 6px 12px; opacity: 0.5; cursor: not-allowed;" disabled>
+            <i class="fa fa-chevron-left"></i> Trước
+        </button>
+        {% endif %}
+        
+        {% if has_more %}
+        <a href="?search={{ search_term }}&archival_file={{ archival_file_filter }}&file_type={{ file_type_filter }}&start={{ start + limit }}" class="dm-btn" style="padding: 6px 12px;">
+            Tiếp <i class="fa fa-chevron-right"></i>
+        </a>
+        {% else %}
+        <button class="dm-btn" style="padding: 6px 12px; opacity: 0.5; cursor: not-allowed;" disabled>
+            Tiếp <i class="fa fa-chevron-right"></i>
+        </button>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

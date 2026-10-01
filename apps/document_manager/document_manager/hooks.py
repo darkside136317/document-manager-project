@@ -30,6 +30,10 @@ web_include_css = [
     "/assets/document_manager/css/document-manager-ui.css",
 ]
 
+web_include_js = [
+    "/assets/document_manager/js/dm-portal.js",
+]
+
 # =============================================================================
 # Website / Portal
 # =============================================================================
