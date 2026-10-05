@@ -35,12 +35,8 @@
 {% endblock %}
 
 {% block page_content %}
-<style>
-    @import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css');
-    
-    /* Include our shared dm-portal.css inline to avoid build issues */
-    {% include "document_manager/public/css/dm-portal.css" ignore missing %}
-</style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+<link rel="stylesheet" href="/assets/document_manager/css/dm-portal.css">
 
 <div class="dm-portal-wrapper">
     <!-- Breadcrumbs -->
@@ -154,6 +150,70 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
+</script>
+
+<script src="/assets/document_manager/js/dm-portal.js"></script>
+<script>
+// Inline fallback for dmSaveRecord - ensures availability even if external file fails
+if (typeof window.dmSaveRecord === 'undefined') {
+    window.dmSaveRecord = async function(doctype, docname, data, redirectBaseUrl, btnElement) {
+        if (!doctype || !data) {
+            console.error("dmSaveRecord: missing doctype or data");
+            return;
+        }
+        btnElement = btnElement || null;
+        var originalText = '';
+        if (btnElement) {
+            btnElement.disabled = true;
+            originalText = btnElement.innerHTML;
+            btnElement.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Đang lưu...';
+        }
+        try {
+            var url = '/api/resource/' + encodeURIComponent(doctype);
+            var method = 'POST';
+            if (docname) {
+                url += '/' + encodeURIComponent(docname);
+                method = 'PUT';
+            }
+            var response = await fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Frappe-CSRF-Token': (typeof frappe !== 'undefined' && frappe.csrf_token) ? frappe.csrf_token : ''
+                },
+                body: JSON.stringify(data)
+            });
+            var result = await response.json();
+            if (response.ok) {
+                frappe.msgprint({title: 'Thành công', indicator: 'green', message: 'Đã lưu thông tin thành công!'});
+                if (redirectBaseUrl) {
+                    var savedDocname = (result.data ? result.data.name : docname) || '';
+                    var sep = redirectBaseUrl.indexOf('?') >= 0 ? '&' : '?';
+                    setTimeout(function() {
+                        window.location.href = redirectBaseUrl + sep + 'name=' + encodeURIComponent(savedDocname);
+                    }, 1000);
+                }
+            } else {
+                var errMsg = 'Có lỗi xảy ra.';
+                if (result._server_messages) {
+                    try {
+                        var msgs = JSON.parse(result._server_messages);
+                        if (msgs && msgs.length) errMsg = JSON.parse(msgs[0]).message || errMsg;
+                    } catch(e) {}
+                }
+                frappe.msgprint({title: 'Lỗi', indicator: 'red', message: errMsg});
+            }
+        } catch(err) {
+            frappe.msgprint({title: 'Lỗi', indicator: 'red', message: 'Không thể kết nối máy chủ.'});
+            console.error('dmSaveRecord error:', err);
+        } finally {
+            if (btnElement) {
+                btnElement.disabled = false;
+                btnElement.innerHTML = originalText;
+            }
+        }
+    };
+}
 </script>
 
 {% block dm_scripts %}{% endblock %}

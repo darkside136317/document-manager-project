@@ -84,12 +84,11 @@
                 
                 frappe.call({
                     type: "POST",
-                    method: "frappe.client.save",
+                    method: "frappe.client.set_value",
                     args: {
-                        doc: Object.assign({
-                            doctype: "Reader Settings",
-                            name: "Reader Settings"
-                        }, data)
+                        doctype: "Reader Settings",
+                        name: "Reader Settings",
+                        fieldname: data
                     },
                     callback: function(r) {
                         btnSave.disabled = false;
@@ -97,6 +96,16 @@
                         if(!r.exc) {
                             frappe.msgprint({title: "Thành công", message: "Đã lưu thiết lập độc giả", indicator: "green"});
                             setTimeout(function() { window.location.reload(); }, 1500);
+                        } else {
+                            var errMsg = "Có lỗi xảy ra";
+                            if (r.exc) {
+                                try {
+                                    var excArr = JSON.parse(r.exc);
+                                    var match = excArr[0].match(/frappe\.exceptions\.\w+: (.*)/);
+                                    if (match) errMsg = match[1];
+                                } catch(e) {}
+                            }
+                            frappe.msgprint({title: "Lỗi", message: errMsg, indicator: "red"});
                         }
                     }
                 });
