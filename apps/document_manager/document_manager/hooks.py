@@ -42,7 +42,7 @@ website_route_rules = [
 ]
 
 portal_menu_items = [
-    {"title": "Tìm kiếm tài liệu", "route": "/search", "role": "Reader"},
+    {"title": "Tìm kiếm tài liệu", "route": "/portal", "role": "Reader"},
     {"title": "Phiếu yêu cầu", "route": "/usage-requests", "role": "Reader"},
     {"title": "Phiếu sao chụp", "route": "/copy-requests", "role": "Reader"},
     {"title": "Góp ý", "route": "/feedback", "role": "Reader"},
@@ -140,6 +140,6 @@ role_home_page = {
     "Cataloger": "dashboard",
     "Reading Room Officer": "dashboard",
     "Preservation Officer": "dashboard",
-    "Reader": "dashboard",
+    "Reader": "portal",
     "System Manager": "dashboard"
 }

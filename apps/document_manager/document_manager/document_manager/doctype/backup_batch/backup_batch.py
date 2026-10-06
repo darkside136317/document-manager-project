@@ -17,3 +17,12 @@ class BackupBatch(Document):
         )
         self.db_set("status", "Đang chạy")
         self.db_set("started_at", frappe.utils.now())
+
+@frappe.whitelist()
+def trigger_backup(docname):
+    if not frappe.has_permission("Backup Batch", "write", doc=docname):
+        frappe.throw("Không có quyền chạy sao lưu", frappe.PermissionError)
+        
+    doc = frappe.get_doc("Backup Batch", docname)
+    doc.run_backup()
+    return True

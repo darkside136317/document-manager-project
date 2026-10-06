@@ -14,3 +14,12 @@ class IntegrityCheck(Document):
         )
         self.db_set("status", "Đang chạy")
         self.db_set("started_at", frappe.utils.now())
+
+@frappe.whitelist()
+def trigger_integrity_check(docname):
+    if not frappe.has_permission("Integrity Check", "write", doc=docname):
+        frappe.throw("Không có quyền chạy kiểm tra toàn vẹn", frappe.PermissionError)
+        
+    doc = frappe.get_doc("Integrity Check", docname)
+    doc.run_check()
+    return True
