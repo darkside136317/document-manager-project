@@ -13,7 +13,7 @@ def get_context(context):
     doc = None
     
     user_roles = frappe.get_roles()
-    can_edit = 'Document Admin' in user_roles or 'Cataloger' in user_roles
+    can_edit = any(r in user_roles for r in ('Document Admin', 'Cataloger', 'System Manager', 'Administrator'))
     
     if docname:
         if not frappe.db.exists('Archival File', docname):
@@ -26,9 +26,13 @@ def get_context(context):
             frappe.throw(_('Bạn không có quyền tạo Hồ sơ mới'), frappe.PermissionError)
         context.page_title = 'Thêm Hồ sơ mới'
         
-    catalogs = frappe.get_all('Catalog', fields=['name', 'catalog_title'])
+    catalogs = frappe.get_all('Catalog', fields=['name', 'catalog_title', 'record_group', 'fonds'])
     confidentiality_levels = frappe.get_all('Confidentiality Level', fields=['name'])
     warehouses = frappe.get_all('Storage Warehouse', fields=['name', 'warehouse_name'])
+    
+    document_groups = frappe.get_all('Document Group', fields=['name'])
+    document_type_categories = frappe.get_all('Document Type Category', fields=['name'])
+    classification_schemes = frappe.get_all('Classification Scheme', fields=['name', 'scheme_name'])
         
     context.update({
         'doc': doc,
@@ -37,6 +41,9 @@ def get_context(context):
         'catalogs': catalogs,
         'confidentiality_levels': confidentiality_levels,
         'warehouses': warehouses,
+        'document_groups': document_groups,
+        'document_type_categories': document_type_categories,
+        'classification_schemes': classification_schemes,
         'page_icon': 'fa-folder-open-o',
         'breadcrumbs': [
             {'label': 'Hồ sơ & Tài liệu'},

@@ -13,7 +13,7 @@ def get_context(context):
     doc = None
     
     user_roles = frappe.get_roles()
-    can_edit = 'Document Admin' in user_roles or 'Cataloger' in user_roles
+    can_edit = any(r in user_roles for r in ('Document Admin', 'Cataloger', 'System Manager', 'Administrator'))
     
     if docname:
         if not frappe.db.exists('Archive Document', docname):
