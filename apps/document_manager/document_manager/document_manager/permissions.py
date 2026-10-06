@@ -73,25 +73,48 @@ def archive_document_query(user):
 
 def has_archival_file_permission(doc, ptype="read", user=None):
     """Check if user has permission to access this Archival File."""
+    if not user:
+        user = frappe.session.user
+    if user == "Guest":
+        return False
+    if ptype != "read":
+        return None  # Let standard Frappe Role Permissions handle write/delete
+
     if _is_staff_user():
-        return True
+        return None
+        
     if not doc.confidentiality_level:
-        return True
+        return None
+        
     max_priority = _get_reader_max_priority()
     level_priority = frappe.db.get_value(
         "Confidentiality Level", doc.confidentiality_level, "priority"
     )
-    return int(level_priority or 1) <= max_priority
+    # Return False if restricted, None to let Frappe continue checking
+    if int(level_priority or 1) > max_priority:
+        return False
+    return None
 
 
 def has_archive_document_permission(doc, ptype="read", user=None):
     """Check if user has permission to access this Archive Document."""
+    if not user:
+        user = frappe.session.user
+    if user == "Guest":
+        return False
+    if ptype != "read":
+        return None  # Let standard Frappe Role Permissions handle write/delete
+
     if _is_staff_user():
-        return True
+        return None
+        
     if not doc.confidentiality_level:
-        return True
+        return None
+        
     max_priority = _get_reader_max_priority()
     level_priority = frappe.db.get_value(
         "Confidentiality Level", doc.confidentiality_level, "priority"
     )
-    return int(level_priority or 1) <= max_priority
+    if int(level_priority or 1) > max_priority:
+        return False
+    return None

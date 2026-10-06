@@ -131,3 +131,15 @@ has_permission = {
 # =============================================================================
 # after_install = "document_manager.document_manager.setup.after_install"
 after_migrate = "document_manager.document_manager.setup.after_migrate"
+
+# =============================================================================
+# Login Redirects
+# =============================================================================
+role_home_page = {
+    "Document Admin": "dashboard",
+    "Cataloger": "dashboard",
+    "Reading Room Officer": "dashboard",
+    "Preservation Officer": "dashboard",
+    "Reader": "dashboard",
+    "System Manager": "dashboard"
+}

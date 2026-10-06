@@ -39,7 +39,15 @@
                 </div>
                 <div class="dm-form-group">
                     <label class="dm-form-label">Tài khoản liên kết (User)</label>
-                    <input type="text" id="user" class="dm-form-control" value="{{ doc.user or '' }}" placeholder="email@domain.com">
+                    <input type="text" id="user" class="dm-form-control" value="{{ doc.user or '' }}" placeholder="Tự động tạo nếu để trống">
+                </div>
+                <div class="dm-form-group">
+                    <label class="dm-form-label">Mật khẩu (Nhập để đổi hoặc tạo mới)</label>
+                    <input type="password" id="new_password" class="dm-form-control" placeholder="Nhập mật khẩu mới...">
+                </div>
+                <div class="dm-form-group">
+                    <label class="dm-form-label">Xác nhận Mật khẩu</label>
+                    <input type="password" id="confirm_password" class="dm-form-control" placeholder="Nhập lại mật khẩu...">
                 </div>
             </div>
             
@@ -99,14 +107,23 @@
         // Setup CSRF token for Frappe API
         const csrf_token = frappe.csrf_token;
         
-        window.saveReader = function() {
+        window.saveReader = async function() {
             const btn = document.getElementById('saveBtn');
             const docname = document.getElementById('docname').value;
             const full_name = document.getElementById('full_name').value.trim();
+            const new_password = document.getElementById('new_password').value;
+            const confirm_password = document.getElementById('confirm_password').value;
             
             if (!full_name) {
                 frappe.msgprint({title: 'Lỗi', indicator: 'red', message: 'Vui lòng nhập Họ và tên'});
                 return;
+            }
+            
+            if (new_password || confirm_password) {
+                if (new_password !== confirm_password) {
+                    frappe.msgprint({title: 'Lỗi', indicator: 'red', message: 'Mật khẩu xác nhận không khớp!'});
+                    return;
+                }
             }
             
             const data = {
@@ -124,7 +141,52 @@
                 notes: document.getElementById('notes').value
             };
             
-            window.dmSaveRecord('Reader', docname, data, '/readers/form', btn);
+            try {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Đang lưu...';
+                
+                let method = docname ? 'PUT' : 'POST';
+                let url = docname ? `/api/resource/Reader/${docname}` : '/api/resource/Reader';
+                
+                let response = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Frappe-CSRF-Token': csrf_token
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                if (!response.ok) throw new Error('Lưu dữ liệu thất bại');
+                let result = await response.json();
+                let newDocname = result.data.name;
+                
+                let pwdToSet = document.getElementById('new_password').value;
+                if (pwdToSet) {
+                    let pwdResp = await fetch('/api/method/document_manager.document_manager.doctype.reader.reader.set_reader_password', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Frappe-CSRF-Token': csrf_token
+                        },
+                        body: JSON.stringify({ reader_name: newDocname, new_password: pwdToSet })
+                    });
+                    
+                    if (!pwdResp.ok) {
+                        frappe.msgprint({title: 'Cảnh báo', indicator: 'orange', message: 'Lưu thông tin thành công nhưng thiết lập mật khẩu thất bại. Vui lòng kiểm tra lại quyền.'});
+                        setTimeout(() => window.location.href = '/readers/form?name=' + newDocname, 2500);
+                        return;
+                    }
+                }
+                
+                frappe.show_alert({message: 'Đã lưu thành công', indicator: 'green'});
+                setTimeout(() => window.location.href = '/readers/form?name=' + newDocname, 1000);
+                
+            } catch (e) {
+                frappe.msgprint({title: 'Lỗi', indicator: 'red', message: e.message || 'Có lỗi xảy ra'});
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa fa-save"></i> Lưu lại';
+            }
         };
         
         window.deleteReader = async function() {

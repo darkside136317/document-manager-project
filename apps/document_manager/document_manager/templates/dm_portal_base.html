@@ -3,35 +3,6 @@
 {% block title %}{{ page_title or 'Document Manager' }}{% endblock %}
 
 {% block navbar %}
-<header class="dm-navbar" style="margin: 24px 16px 0; max-width: 1248px; margin-left: auto; margin-right: auto;">
-    <div class="dm-navbar-brand">
-        <a href="/dashboard">
-            <i class="fa fa-archive"></i>
-            <span>Document Manager</span>
-        </a>
-    </div>
-    <div class="dm-navbar-nav">
-        <div class="dm-navbar-search" style="position: relative; margin-right: 16px;">
-            <i class="fa fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--c-gray-400);"></i>
-            <input type="text" id="dm-global-search-input" placeholder="Tìm kiếm tài liệu..." style="padding: 8px 16px 8px 36px; border-radius: 20px; border: 1px solid var(--brand-border); background: var(--c-gray-50); font-size: 0.9rem; width: 300px; outline: none; transition: all 0.2s;" autocomplete="off" onfocus="this.style.background='white'; this.style.borderColor='var(--brand-primary)';" onblur="this.style.background='var(--c-gray-50)'; this.style.borderColor='var(--brand-border)';">
-            <div id="dm-global-search-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; margin-top: 8px; background: white; border: 1px solid var(--brand-border); border-radius: 8px; box-shadow: var(--shadow-lg); z-index: 1050; max-height: 400px; overflow-y: auto;">
-                <ul id="dm-global-search-results" style="list-style: none; margin: 0; padding: 0;"></ul>
-            </div>
-        </div>
-        <a href="/dashboard" class="dm-nav-link"><i class="fa fa-home"></i> Trang chủ</a>
-        <div class="dm-dropdown">
-            <button class="dm-dropdown-toggle">
-                <i class="fa fa-user-circle"></i> {{ frappe.session.user_fullname or frappe.session.user }} <i class="fa fa-angle-down"></i>
-            </button>
-            <div class="dm-dropdown-menu">
-                <a href="/me"><i class="fa fa-user"></i> Tài khoản</a>
-                <a href="/app"><i class="fa fa-desktop"></i> Chuyển sang Desk</a>
-                <div class="dm-dropdown-divider"></div>
-                <a href="#" onclick="frappe.app.logout()"><i class="fa fa-sign-out"></i> Đăng xuất</a>
-            </div>
-        </div>
-    </div>
-</header>
 {% endblock %}
 
 {% block page_content %}
@@ -39,6 +10,27 @@
 <link rel="stylesheet" href="/assets/document_manager/css/dm-portal.css">
 
 <div class="dm-portal-wrapper">
+    <header class="dm-navbar" style="margin-bottom: 24px; display: flex; align-items: center; justify-content: center; gap: 32px;">
+        <div class="dm-navbar-brand">
+            <a href="/dashboard">
+                <i class="fa fa-archive"></i>
+                <span>Document Manager</span>
+            </a>
+        </div>
+        <div class="dm-navbar-nav" style="display: flex; align-items: center; gap: 16px;">
+            <a href="/dashboard" class="dm-nav-link"><i class="fa fa-home"></i> Trang chủ</a>
+            <div class="dm-dropdown">
+                <button class="dm-dropdown-toggle">
+                    <i class="fa fa-user-circle"></i> {{ frappe.session.user_fullname or frappe.session.user }} <i class="fa fa-angle-down"></i>
+                </button>
+                <div class="dm-dropdown-menu">
+                    <a href="/me"><i class="fa fa-user"></i> Tài khoản</a>
+                    <div class="dm-dropdown-divider"></div>
+                    <a href="#" onclick="dmLogout(event)"><i class="fa fa-sign-out"></i> Đăng xuất</a>
+                </div>
+            </div>
+        </div>
+    </header>
     <!-- Breadcrumbs -->
     {% if breadcrumbs %}
     <div class="dm-breadcrumb">
@@ -213,6 +205,31 @@ if (typeof window.dmSaveRecord === 'undefined') {
             }
         }
     };
+}
+
+// Dedicated logout function for portal
+function dmLogout(e) {
+    if (e) e.preventDefault();
+    if (typeof frappe !== 'undefined' && frappe.call) {
+        frappe.call({
+            method: 'logout',
+            callback: function() {
+                window.location.href = '/login';
+            }
+        });
+    } else {
+        // Fallback fetch with CSRF token
+        var csrf = (typeof frappe !== 'undefined' && frappe.csrf_token) ? frappe.csrf_token : '';
+        fetch('/api/method/logout', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Frappe-CSRF-Token': csrf
+            }
+        }).then(function() {
+            window.location.href = '/login';
+        });
+    }
 }
 </script>
 

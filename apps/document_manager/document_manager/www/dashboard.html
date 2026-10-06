@@ -236,17 +236,19 @@
         display: flex;
         align-items: center;
         gap: 12px;
-        margin-bottom: 20px;
-        padding-bottom: 16px;
-        border-bottom: 1px solid var(--brand-border);
+        margin: -24px -24px 20px -24px;
+        padding: 16px 24px;
+        background: #e0f2fe; /* Light blue background */
+        border-bottom: 1px solid #bae6fd;
+        border-radius: calc(var(--radius-lg) - 1px) calc(var(--radius-lg) - 1px) 0 0;
     }
 
     .dm-card-icon {
         width: 36px;
         height: 36px;
         border-radius: 50%;
-        background: var(--c-gray-100);
-        color: var(--c-gray-600);
+        background: #bae6fd;
+        color: #0369a1;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -256,8 +258,8 @@
     .dm-card-title {
         margin: 0;
         font-size: 1.05rem;
-        font-weight: 600;
-        color: var(--text-main);
+        font-weight: 700;
+        color: #0369a1;
     }
 
     .dm-nav-list {
@@ -307,13 +309,17 @@
     }
     
     .dm-widget-title {
+        margin: -24px -24px 20px -24px;
+        padding: 16px 24px;
+        background: #e0f2fe;
+        border-bottom: 1px solid #bae6fd;
+        border-radius: calc(var(--radius-lg) - 1px) calc(var(--radius-lg) - 1px) 0 0;
         font-size: 1.1rem;
         font-weight: 700;
-        margin: 0 0 20px 0;
         display: flex;
         align-items: center;
         gap: 10px;
-        color: var(--text-main);
+        color: #0369a1;
     }
 
     .dm-alert-item {
