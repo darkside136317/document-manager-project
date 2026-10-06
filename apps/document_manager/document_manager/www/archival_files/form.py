@@ -34,6 +34,10 @@ def get_context(context):
     document_type_categories = frappe.get_all('Document Type Category', fields=['name'])
     classification_schemes = frappe.get_all('Classification Scheme', fields=['name', 'scheme_name'])
         
+    user_roles = frappe.get_roles()
+    is_staff = any(r in user_roles for r in ('Document Admin', 'Cataloger', 'System Manager', 'Administrator', 'Reading Room Officer', 'Archivist'))
+    context.base_template = "templates/dm_dashboard_base.html" if is_staff else "templates/dm_portal_base.html"
+    
     context.update({
         'doc': doc,
         'docname': docname,

@@ -37,6 +37,10 @@ def get_context(context):
     
     total_count = frappe.db.count('Copy Request', filters=filters)
     
+    user_roles = frappe.get_roles()
+    is_staff = any(r in user_roles for r in ('Document Admin', 'Cataloger', 'System Manager', 'Administrator', 'Reading Room Officer', 'Archivist'))
+    context.base_template = "templates/dm_dashboard_base.html" if is_staff else "templates/dm_portal_base.html"
+    
     context.update({
         'page_title': 'Danh sách Yêu cầu Sao chụp',
         'page_icon': 'fa-copy',

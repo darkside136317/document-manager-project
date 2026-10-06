@@ -26,6 +26,10 @@ def get_context(context):
             frappe.throw(_('Bạn không có quyền tạo Cơ quan mới'), frappe.PermissionError)
         context.page_title = 'Thêm Cơ quan lưu trữ mới'
         
+    user_roles = frappe.get_roles()
+    is_staff = any(r in user_roles for r in ('Document Admin', 'Cataloger', 'System Manager', 'Administrator', 'Reading Room Officer', 'Archivist'))
+    context.base_template = "templates/dm_dashboard_base.html" if is_staff else "templates/dm_portal_base.html"
+    
     context.update({
         'doc': doc,
         'docname': docname,

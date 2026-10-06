@@ -10,6 +10,13 @@ def get_context(context):
     context.no_cache = 1
     # Yêu cầu người dùng phải đăng nhập mới xem được Dashboard
     context.login_required = True
+    
+    user_roles = frappe.get_roles()
+    is_staff = any(r in user_roles for r in ('Document Admin', 'Cataloger', 'System Manager', 'Administrator', 'Reading Room Officer', 'Archivist'))
+    if not is_staff:
+        frappe.local.flags.redirect_location = '/portal'
+        raise frappe.Redirect
+        
     context.title = "Document Manager Dashboard"
 
     # Fetch dữ liệu tổng quan

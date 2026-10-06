@@ -28,6 +28,10 @@ def get_context(context):
         
     backups = frappe.get_all('Backup Batch', filters={'status': 'Thành công'}, fields=['name', 'backup_type'], order_by='creation desc')
         
+    user_roles = frappe.get_roles()
+    is_staff = any(r in user_roles for r in ('Document Admin', 'Cataloger', 'System Manager', 'Administrator', 'Reading Room Officer', 'Archivist'))
+    context.base_template = "templates/dm_dashboard_base.html" if is_staff else "templates/dm_portal_base.html"
+    
     context.update({
         'doc': doc,
         'docname': docname,

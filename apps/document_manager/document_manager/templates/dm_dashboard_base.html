@@ -12,13 +12,13 @@
 <div class="dm-portal-wrapper">
     <header class="dm-navbar" style="margin-bottom: 24px; display: flex; align-items: center; justify-content: center; gap: 32px;">
         <div class="dm-navbar-brand">
-            <a href="/portal">
+            <a href="/dashboard">
                 <i class="fa fa-archive"></i>
                 <span>Document Manager</span>
             </a>
         </div>
         <div class="dm-navbar-nav" style="display: flex; align-items: center; gap: 16px;">
-            <a href="/portal" class="dm-nav-link"><i class="fa fa-home"></i> Trang chủ</a>
+            <a href="/dashboard" class="dm-nav-link"><i class="fa fa-home"></i> Trang chủ</a>
             <div class="dm-dropdown">
                 <button class="dm-dropdown-toggle">
                     <i class="fa fa-user-circle"></i> {{ frappe.session.user_fullname or frappe.session.user }} <i class="fa fa-angle-down"></i>
@@ -34,7 +34,7 @@
     <!-- Breadcrumbs -->
     {% if breadcrumbs %}
     <div class="dm-breadcrumb">
-        <a href="/portal"><i class="fa fa-home"></i> Trang chủ</a>
+        <a href="/dashboard"><i class="fa fa-home"></i> Trang chủ</a>
         {% for crumb in breadcrumbs %}
             <span class="dm-breadcrumb-separator"><i class="fa fa-angle-right"></i></span>
             {% if crumb.link %}
@@ -86,7 +86,7 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault();
             const query = searchInput.value.trim();
             if (query) {
-                window.location.href = "/portal?query=" + encodeURIComponent(query);
+                window.location.href = "/archive_documents?search=" + encodeURIComponent(query);
             }
         }
     });

@@ -29,6 +29,10 @@ def get_context(context):
     parent_warehouses = frappe.get_all('Storage Warehouse', filters={'is_group': 1}, fields=['name', 'warehouse_name'])
     agencies = frappe.get_all('Archival Agency', fields=['name', 'agency_name'])
         
+    user_roles = frappe.get_roles()
+    is_staff = any(r in user_roles for r in ('Document Admin', 'Cataloger', 'System Manager', 'Administrator', 'Reading Room Officer', 'Archivist'))
+    context.base_template = "templates/dm_dashboard_base.html" if is_staff else "templates/dm_portal_base.html"
+    
     context.update({
         'doc': doc,
         'docname': docname,

@@ -28,6 +28,10 @@ def get_context(context):
         
     parent_entries = frappe.get_all('Quick Entry Dictionary', fields=['name', 'entry_value'])
         
+    user_roles = frappe.get_roles()
+    is_staff = any(r in user_roles for r in ('Document Admin', 'Cataloger', 'System Manager', 'Administrator', 'Reading Room Officer', 'Archivist'))
+    context.base_template = "templates/dm_dashboard_base.html" if is_staff else "templates/dm_portal_base.html"
+    
     context.update({
         'doc': doc,
         'docname': docname,

@@ -28,6 +28,10 @@ def get_context(context):
     activity_types = frappe.get_all('Business Activity Log', fields=['activity_type'], distinct=1)
     doctypes = frappe.get_all('Business Activity Log', fields=['reference_doctype'], distinct=1)
     
+    user_roles = frappe.get_roles()
+    is_staff = any(r in user_roles for r in ('Document Admin', 'Cataloger', 'System Manager', 'Administrator', 'Reading Room Officer', 'Archivist'))
+    context.base_template = "templates/dm_dashboard_base.html" if is_staff else "templates/dm_portal_base.html"
+    
     context.update({
         'logs': logs,
         'filters': filters,

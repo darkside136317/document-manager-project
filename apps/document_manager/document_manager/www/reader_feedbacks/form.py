@@ -40,6 +40,10 @@ def get_context(context):
     if is_officer:
         readers_list = frappe.get_all('Reader', filters={'is_active': 1}, fields=['name', 'full_name'])
         
+    user_roles = frappe.get_roles()
+    is_staff = any(r in user_roles for r in ('Document Admin', 'Cataloger', 'System Manager', 'Administrator', 'Reading Room Officer', 'Archivist'))
+    context.base_template = "templates/dm_dashboard_base.html" if is_staff else "templates/dm_portal_base.html"
+    
     context.update({
         'doc': doc,
         'docname': docname,

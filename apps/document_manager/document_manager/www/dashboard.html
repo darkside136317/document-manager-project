@@ -1,4 +1,4 @@
-{%- extends "templates/dm_portal_base.html" -%}
+{%- extends "templates/dm_dashboard_base.html" -%}
 
 {% block dm_content %}
 <style>
@@ -673,7 +673,7 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault();
             const query = searchInput.value.trim();
             if (query) {
-                window.location.href = "/portal?query=" + encodeURIComponent(query);
+                window.location.href = "/archive_documents?search=" + encodeURIComponent(query);
             }
         }
     });

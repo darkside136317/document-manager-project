@@ -39,6 +39,10 @@ def get_context(context):
     user_roles = frappe.get_roles()
     can_create = 'Document Admin' in user_roles or 'Cataloger' in user_roles
     
+    user_roles = frappe.get_roles()
+    is_staff = any(r in user_roles for r in ('Document Admin', 'Cataloger', 'System Manager', 'Administrator', 'Reading Room Officer', 'Archivist'))
+    context.base_template = "templates/dm_dashboard_base.html" if is_staff else "templates/dm_portal_base.html"
+    
     context.update({
         'page_title': 'Kho lưu trữ',
         'page_icon': 'fa-database',
