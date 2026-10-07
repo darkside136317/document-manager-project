@@ -17,7 +17,7 @@ import frappe
 
 from document_manager.document_manager.permissions import is_file_published
 from document_manager.document_manager.policy import get_reader_scope
-from document_manager.document_manager.services.errors import log_exception
+from document_manager.document_manager.services.errors import log_exception, retry_on_deadlock
 
 _clients = {}  # one client / configured index per site (a bench serves several sites)
 _indexes = {}
@@ -142,6 +142,10 @@ def _build_documents(names) -> list[dict]:
 
 def index_documents(names):
     """Index several documents with one Meilisearch task; mark the failures."""
+    return retry_on_deadlock(lambda: _index_documents(names))
+
+
+def _index_documents(names):
     documents = _build_documents(names)
     if not documents:
         return 0
@@ -153,12 +157,15 @@ def index_documents(names):
         if result.status != "succeeded":
             raise RuntimeError(f"Could not index documents: {result.error}")
     except Exception:
+        # waiting for the engine took a while: leave the old snapshot before writing the failure
+        frappe.db.commit()
         frappe.db.sql(
             "update `tabArchive Document` set search_index_status=%s where name in %s",
             ("Lỗi", tuple(ids)),
         )
         frappe.db.commit()
         raise
+    frappe.db.commit()  # end the snapshot taken by the reads above: other jobs changed these rows meanwhile
     frappe.db.sql(
         "update `tabArchive Document` set search_index_status=%s where name in %s",
         ("Đã index", tuple(ids)),

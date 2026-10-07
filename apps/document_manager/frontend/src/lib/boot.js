@@ -6,6 +6,8 @@ const empty = {
   nav: [],
   legacy: [],
   masters: [],
+  archive: [],
+  upload: { extensions: [], max_mb: 0 },
 };
 
 export const boot = { ...empty, ...(typeof window !== "undefined" ? window.__DM_BOOT__ : {}) };

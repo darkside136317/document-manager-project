@@ -83,6 +83,9 @@ website_redirects = [
         ("storage_warehouses", "kho-luu-tru"), ("confidentiality_levels", "muc-do-mat"),
         ("classification_schemes", "khung-phan-loai"), ("quick_entry_dictionaries", "tu-dien"),
     )
+] + [
+    {"source": f"{old}(/.*)?", "target": "/dashboard/bien-muc", "redirect_http_status": 301}
+    for old in ("record_groups", "catalogs", "archival_files", "archive_documents")
 ]
 
 # Audit trail: every business DocType also reports create / update / delete to the activity log.

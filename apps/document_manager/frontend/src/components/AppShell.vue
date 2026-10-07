@@ -1,10 +1,11 @@
 <script setup>
-import { computed, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { boot } from "../lib/boot.js";
 import { pageTitle } from "../lib/page.js";
 import { theme, toggleTheme } from "../lib/theme.js";
 import ChangePasswordDialog from "./ChangePasswordDialog.vue";
+import CommandPalette from "./CommandPalette.vue";
 import Icon from "./Icon.vue";
 import SidebarNav from "./SidebarNav.vue";
 import ToastHost from "./ToastHost.vue";
@@ -13,6 +14,17 @@ import UserMenu from "./UserMenu.vue";
 const route = useRoute();
 const menuOpen = ref(false);
 const passwordOpen = ref(false);
+const paletteOpen = ref(false);
+const canSearch = computed(() => boot.archive.length > 0);
+
+function onShortcut(event) {
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k" && canSearch.value) {
+    event.preventDefault();
+    paletteOpen.value = !paletteOpen.value;
+  }
+}
+onMounted(() => window.addEventListener("keydown", onShortcut));
+onBeforeUnmount(() => window.removeEventListener("keydown", onShortcut));
 const title = computed(() => pageTitle.value || route.meta.title || "");
 
 watch(() => route.fullPath, () => (menuOpen.value = false));
@@ -41,7 +53,11 @@ watch(title, (value) => { document.title = value ? `${value} — ${boot.org}` : 
         <button class="btn btn-ghost btn-icon lg:hidden" type="button" aria-label="Mở menu" @click="menuOpen = true">
           <Icon name="menu" />
         </button>
-        <h1 class="m-0 min-w-0 flex-1 truncate text-sm font-medium text-ink-muted">{{ title }}</h1>
+        <p class="m-0 min-w-0 flex-1 truncate text-sm font-medium text-ink-muted">{{ title }}</p>
+        <button v-if="canSearch" class="btn hidden !min-h-0 gap-2 !py-1.5 text-ink-muted sm:inline-flex" type="button" aria-label="Tìm nhanh (Ctrl K)" @click="paletteOpen = true">
+          <Icon name="search" :size="15" /> Tìm nhanh <kbd class="rounded border border-line px-1.5 text-xs">Ctrl K</kbd>
+        </button>
+        <button v-if="canSearch" class="btn btn-ghost btn-icon sm:hidden" type="button" aria-label="Tìm nhanh" @click="paletteOpen = true"><Icon name="search" /></button>
         <button class="btn btn-ghost btn-icon" type="button" :aria-label="theme === 'dark' ? 'Chuyển sang giao diện sáng' : 'Chuyển sang giao diện tối'" @click="toggleTheme">
           <Icon :name="theme === 'dark' ? 'sun' : 'moon'" />
         </button>
@@ -52,6 +68,7 @@ watch(title, (value) => { document.title = value ? `${value} — ${boot.org}` : 
       </main>
     </div>
 
+    <CommandPalette :open="paletteOpen" @close="paletteOpen = false" />
     <ChangePasswordDialog :open="passwordOpen" @close="passwordOpen = false" />
     <ToastHost />
   </div>

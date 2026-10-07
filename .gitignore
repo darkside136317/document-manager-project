@@ -46,3 +46,8 @@ apps/document_manager/document_manager/www/dashboard/index.html
 
 # Scratch
 *.tar.gz
+
+# Browser e2e (Playwright)
+scripts/e2e/ui/node_modules/
+scripts/e2e/ui/out/
+scripts/e2e/ui/samples/

@@ -27,22 +27,47 @@ def _get_permitted_document(doc_name, feature="can_preview"):
 
 
 def _read_original_file(doc):
-    """Return original bytes and filename, preferring the durable GridFS copy."""
+    """Original bytes and filename: the durable GridFS copy first, the uploaded file when GridFS is
+    unavailable (not configured, unreachable, or the copy has not been made yet)."""
     if doc.gridfs_file_id:
-        from document_manager.document_manager.services.mongodb_storage import (
-            MongoGridFSStorage,
-        )
+        try:
+            from document_manager.document_manager.services.mongodb_storage import MongoGridFSStorage
 
-        storage = MongoGridFSStorage(collection_name="documents")
-        info = storage.get_file_info(doc.gridfs_file_id)
-        return storage.download_file(doc.gridfs_file_id), info["filename"]
+            storage = MongoGridFSStorage(collection_name="documents")
+            info = storage.get_file_info(doc.gridfs_file_id)
+            return storage.download_file(doc.gridfs_file_id), info["filename"]
+        except Exception:
+            if not doc.file_attachment:
+                raise
 
     if doc.file_attachment:
-        file_doc = frappe.get_doc("File", {"file_url": doc.file_attachment})
-        filename = file_doc.file_name or PurePosixPath(doc.file_attachment).name
-        return file_doc.get_content(), filename
+        from document_manager.document_manager.services.file_processor import read_file_bytes
+
+        content = read_file_bytes(doc.file_attachment)
+        if content is None:
+            frappe.throw(_("Không đọc được tệp đính kèm."), frappe.DoesNotExistError)
+        filename = frappe.db.get_value("File", {"file_url": doc.file_attachment}, "file_name") or PurePosixPath(
+            doc.file_attachment).name
+        return content, filename
 
     frappe.throw(_("Tài liệu chưa có tệp đính kèm."))
+
+
+def _mark_accessed(doc_name):
+    """Record the access time (and commit: GET requests are rolled back otherwise).
+
+    The request has already read the document, so its snapshot can be older than a change a
+    background job committed meanwhile, and MariaDB then refuses the update ("Record has changed
+    since last read"). Finish the read first, write on a fresh snapshot, retry if it still collides.
+    """
+    from document_manager.document_manager.services.errors import retry_on_deadlock
+
+    def write():
+        frappe.db.commit()
+        frappe.db.set_value("Archive Document", doc_name, "last_accessed", frappe.utils.now(), update_modified=False)
+        frappe.db.commit()
+
+    retry_on_deadlock(write)
 
 
 def _download_url(doc_name):
@@ -110,11 +135,7 @@ def preview_file(doc_name):
         frappe.throw(_("Định dạng tệp này không hỗ trợ xem trực tiếp."))
 
     content, filename = _read_original_file(doc)
-    frappe.db.set_value(
-        "Archive Document", doc.name, "last_accessed", frappe.utils.now(),
-        update_modified=False,
-    )
-    frappe.db.commit()  # GET requests are rolled back otherwise
+    _mark_accessed(doc.name)
     frappe.local.response.filename = filename
     frappe.local.response.filecontent = content
     frappe.local.response.type = "download"
@@ -126,11 +147,7 @@ def download_file(doc_name):
     """Download the original file after checking Archive Document permission."""
     doc = _get_permitted_document(doc_name, "can_download")
     content, filename = _read_original_file(doc)
-    frappe.db.set_value(
-        "Archive Document", doc.name, "last_accessed", frappe.utils.now(),
-        update_modified=False,
-    )
-    
+    _mark_accessed(doc.name)
     _log_activity("Tải xuống", "Archive Document", doc.name, f"Tải xuống tệp gốc {filename}")
     
     frappe.local.response.filename = filename

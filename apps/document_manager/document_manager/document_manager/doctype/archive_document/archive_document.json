@@ -92,7 +92,7 @@
     {
       "fieldname": "file_size_kb",
       "fieldtype": "Float",
-      "label": "Kích thước (KB)",
+      "label": "Dung lượng",
       "read_only": 1,
       "precision": 2
     },
@@ -239,11 +239,13 @@
       "read": 1,
       "write": 1,
       "create": 1,
-      "delete": 1
+      "delete": 1,
+      "print": 1
     },
     {
       "role": "Reading Room Officer",
-      "read": 1
+      "read": 1,
+      "print": 1
     },
     {
       "role": "Reader",

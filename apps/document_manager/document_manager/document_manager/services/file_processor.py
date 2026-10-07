@@ -14,7 +14,7 @@ import io
 
 import frappe
 
-from document_manager.document_manager.services.errors import log_exception
+from document_manager.document_manager.services.errors import log_exception, retry_on_deadlock
 
 OCR_MAX_PAGES = 300
 TEXT_LIMIT = 65000  # MariaDB TEXT column
@@ -38,8 +38,9 @@ def extract_and_store(doc_name: str):
 
     try:
         mark("Đang xử lý")
+        frappe.db.commit()  # release the row: reading, extracting and storing below can take seconds
         # 1. Read file content from Frappe's file system
-        file_content = _read_frappe_file(doc.file_attachment)
+        file_content = read_file_bytes(doc.file_attachment)
         if not file_content:
             log_exception("File Processing Error", f"Không đọc được tệp {doc.file_attachment} của {doc_name}")
             mark("Lỗi")
@@ -79,8 +80,11 @@ def extract_and_store(doc_name: str):
         if gridfs_file_id:
             update_values["gridfs_file_id"] = gridfs_file_id
 
-        frappe.db.set_value("Archive Document", doc_name, update_values, update_modified=False)
-        frappe.db.commit()
+        def write():
+            frappe.db.set_value("Archive Document", doc_name, update_values, update_modified=False)
+            frappe.db.commit()
+
+        retry_on_deadlock(write)
 
         # The replaced file is garbage now (never delete before the new one is recorded).
         if gridfs_file_id and previous_file_id and previous_file_id != gridfs_file_id:
@@ -102,18 +106,26 @@ def extract_and_store(doc_name: str):
         frappe.db.commit()
 
 
-def _read_frappe_file(file_url: str) -> bytes | None:
-    """Read file content from Frappe's file system."""
+def read_file_bytes(file_url: str) -> bytes | None:
+    """The exact bytes of an uploaded file.
+
+    `File.get_content()` decodes whatever happens to be valid UTF-8 and returns text for it (a PDF
+    made of ASCII only, a text-like export), which would corrupt the checksum and the stored copy.
+    The file is read from disk instead; `get_content` stays as a fallback for remote storage.
+    """
     try:
         file_doc = frappe.get_doc("File", {"file_url": file_url})
-        return file_doc.get_content()
+    except Exception:
+        return None
+    try:
+        with open(file_doc.get_full_path(), "rb") as handle:
+            return handle.read()
     except Exception:
         try:
-            file_path = frappe.get_site_path("public", file_url.lstrip("/"))
-            with open(file_path, "rb") as f:
-                return f.read()
+            content = file_doc.get_content()
         except Exception:
             return None
+        return content.encode("utf-8") if isinstance(content, str) else content
 
 
 def _extract_text_pdf(content: bytes) -> str:

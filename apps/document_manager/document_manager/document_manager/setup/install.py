@@ -29,6 +29,7 @@ CONFIDENTIALITY_LEVELS = (
 
 def after_install():
     set_vietnamese_defaults()
+    set_upload_limit()
     seed_all()
 
 
@@ -88,5 +89,19 @@ def set_vietnamese_defaults() -> bool:
         return False
     frappe.db.set_value("Language", "vi", "enabled", 1)
     frappe.db.set_single_value("System Settings", "language", "vi")
+    frappe.clear_cache()
+    return True
+
+
+def set_upload_limit() -> bool:
+    """Scanned records are big: raise Frappe's per-file limit to what the cataloguing screen accepts.
+
+    A larger value chosen by an administrator is kept. Returns True when it changed.
+    """
+    from document_manager.document_manager.constants import UPLOAD_MAX_MB
+
+    if frappe.utils.cint(frappe.db.get_single_value("System Settings", "max_file_size")) >= UPLOAD_MAX_MB:
+        return False
+    frappe.db.set_single_value("System Settings", "max_file_size", UPLOAD_MAX_MB)
     frappe.clear_cache()
     return True

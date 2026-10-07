@@ -122,6 +122,22 @@ export const api = {
   linkSearch: (doctype, txt = "", filters = null) => call(`${BASE}.crud.link_search`, { doctype, txt, filters }),
   treeChildren: (doctype, parent = null, filters = null) =>
     call(`${BASE}.crud.tree_children`, { doctype, parent, filters }),
+  archive: {
+    tree: (parentDoctype = null, parentName = null) =>
+      call(`${BASE}.archive.get_tree`, { parent_doctype: parentDoctype, parent_name: parentName }),
+    fileOverview: (name) => call(`${BASE}.archive.get_file_overview`, { name }),
+    documentOverview: (name) => call(`${BASE}.archive.get_document_overview`, { name }),
+    addDocument: (archivalFile, fileUrl, title = null) =>
+      call(`${BASE}.archive.add_document_from_file`, { archival_file: archivalFile, file_url: fileUrl, title }, { post: true }),
+    attachFile: (document, fileUrl) =>
+      call(`${BASE}.archive.attach_file`, { document, file_url: fileUrl }, { post: true }),
+    reindex: (document) => call(`${BASE}.archive.reindex_document`, { document }, { post: true }),
+  },
+  search: {
+    files: (params) => call(`${BASE}.search.search_archival_files`, params),
+    documents: (params) => call(`${BASE}.search.search_documents`, params),
+  },
+  preview: (docName) => call(`${BASE}.file_access.get_preview`, { doc_name: docName }),
   changePassword: (oldPassword, newPassword) =>
     call(
       "frappe.core.doctype.user.user.update_password",

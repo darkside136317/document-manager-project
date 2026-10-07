@@ -11,7 +11,7 @@ from frappe import _
 from frappe.model import no_value_fields
 from frappe.utils import cint
 
-from document_manager.document_manager.constants import MASTER_BY_DOCTYPE, MASTERS
+from document_manager.document_manager.constants import REGISTRY
 
 BREAKS = ("Section Break", "Column Break", "Tab Break")
 # Field types the generic form can draw. Anything else (tables, attachments, ...) is left out
@@ -24,7 +24,7 @@ MAX_LIST_COLUMNS = 6
 
 def assert_master(doctype: str) -> None:
     """Only registered DocTypes are reachable through the generic API."""
-    if doctype not in MASTER_BY_DOCTYPE:
+    if doctype not in REGISTRY:
         frappe.throw(_("Loại dữ liệu {0} không được quản lý ở màn hình này").format(doctype), frappe.PermissionError)
 
 
@@ -54,9 +54,9 @@ def title_field_of(meta) -> str:
 
 def link_targets() -> set:
     """DocTypes a Link field of a registered screen points to (what `api.crud.link_search` may search)."""
-    targets = set(MASTER_BY_DOCTYPE)
-    for master in MASTERS:
-        for df in frappe.get_meta(master["doctype"]).fields:
+    targets = set(REGISTRY)
+    for entry in REGISTRY.values():
+        for df in frappe.get_meta(entry["doctype"]).fields:
             if df.fieldtype == "Link" and df.options:
                 targets.add(df.options)
     return targets
@@ -82,8 +82,18 @@ def _layout(fields) -> list:
     return sections
 
 
+def _suggestions(entry: dict) -> dict:
+    """{field: dictionary type} for the fields whose registry entry names a quick-entry dictionary
+    the user can read (the dictionary may not exist yet: then there is simply nothing to suggest)."""
+    wanted = entry.get("suggest") or {}
+    if not wanted or not frappe.has_permission("Quick Entry Dictionary", "read"):
+        return {}
+    return {field: kind for field, kind in wanted.items() if frappe.db.exists("Dictionary Type", kind)}
+
+
 def describe(doctype: str) -> dict:
     assert_master(doctype)
+    entry = REGISTRY[doctype]
     meta = frappe.get_meta(doctype)
     perms = permissions_of(doctype)
     if not perms["read"]:
@@ -91,12 +101,14 @@ def describe(doctype: str) -> dict:
 
     read_levels = meta.get_permlevel_access("read") or [0]
     write_levels = meta.get_permlevel_access("write") or []
+    hidden = set(entry.get("hide") or ())
+    suggest = _suggestions(entry)
     kept, fields = [], []
     for df in meta.fields:
         if df.fieldtype in BREAKS:
             kept.append(df)
             continue
-        if df.fieldtype not in SUPPORTED or df.hidden or df.fieldname in HIDDEN_FIELDS:
+        if df.fieldtype not in SUPPORTED or df.hidden or df.fieldname in HIDDEN_FIELDS or df.fieldname in hidden:
             continue
         if cint(df.permlevel) not in read_levels:
             continue
@@ -114,22 +126,29 @@ def describe(doctype: str) -> dict:
             "in_list_view": bool(df.in_list_view),
             "in_standard_filter": bool(df.in_standard_filter),
             "depends_on": df.depends_on or "",
+            "suggest": suggest.get(df.fieldname, ""),
         })
 
     by_name = {f["fieldname"]: f for f in fields}
-    list_fields = [f["fieldname"] for f in fields if f["in_list_view"]][:MAX_LIST_COLUMNS]
+    configured = [f for f in (entry.get("list_fields") or []) if f in valid_columns(meta)]
+    list_fields = configured or [f["fieldname"] for f in fields if f["in_list_view"]][:MAX_LIST_COLUMNS]
     if not list_fields:
         list_fields = [f["fieldname"] for f in fields if f["fieldtype"] not in no_value_fields][:4]
+    # Columns may include fields the form hides (size, index status): describe them from the raw meta.
+    columns = []
+    for name in list_fields:
+        df = meta.get_field(name)
+        columns.append({"fieldname": name, "label": (df.label if df else None) or name,
+                        "fieldtype": df.fieldtype if df else "Data"})
     title_field = title_field_of(meta)
-    search_fields = [f.strip() for f in (meta.search_fields or "").split(",") if f.strip() in by_name]
-    if not search_fields and title_field in by_name:
+    search_fields = [f.strip() for f in (meta.search_fields or "").split(",") if f.strip() in valid_columns(meta)]
+    if not search_fields and title_field in valid_columns(meta):
         search_fields = [title_field]
 
-    master = MASTER_BY_DOCTYPE[doctype]
     return {
         "doctype": doctype,
-        "label": master["label"],
-        "slug": master["slug"],
+        "label": entry["label"],
+        "slug": entry["slug"],
         "title_field": title_field,
         "name_field": name_field_of(meta),
         "allow_rename": bool(meta.allow_rename),
@@ -137,6 +156,7 @@ def describe(doctype: str) -> dict:
         "parent_field": parent_field_of(meta),
         "search_fields": search_fields,
         "list_fields": list_fields,
+        "columns": columns,
         "fields": fields,
         "layout": _layout(kept),
         "permissions": perms,

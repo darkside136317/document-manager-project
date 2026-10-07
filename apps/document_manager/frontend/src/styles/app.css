@@ -76,7 +76,7 @@ html[data-theme="dark"] {
   .badge-warning { @apply bg-warning-soft text-warning; }
   .badge-danger { @apply bg-danger-soft text-danger; }
 
-  .table-wrap { @apply overflow-x-auto; }
+  .table-wrap { @apply relative overflow-x-auto; }
   .data-table { @apply w-full border-collapse text-sm; }
   .data-table th {
     @apply border-b border-line bg-surface-muted px-4 py-2.5 text-left text-xs font-semibold uppercase

@@ -148,7 +148,7 @@ services:
       UPSTREAM_REAL_IP_HEADER: X-Forwarded-For
       UPSTREAM_REAL_IP_RECURSIVE: "off"
       PROXY_READ_TIMEOUT: ${PROXY_READ_TIMEOUT:-120}
-      CLIENT_MAX_BODY_SIZE: ${CLIENT_MAX_BODY_SIZE:-50m}
+      CLIENT_MAX_BODY_SIZE: ${CLIENT_MAX_BODY_SIZE:-200m}
     volumes:
       - sites:/home/frappe/frappe-bench/sites
       - logs:/home/frappe/frappe-bench/logs

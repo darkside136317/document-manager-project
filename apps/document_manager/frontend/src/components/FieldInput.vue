@@ -3,6 +3,7 @@ import { computed } from "vue";
 import { selectOptions } from "../lib/doctype.js";
 import LinkSelect from "./LinkSelect.vue";
 import RichText from "./RichText.vue";
+import SuggestInput from "./SuggestInput.vue";
 
 const props = defineProps({
   field: { type: Object, required: true },
@@ -117,6 +118,16 @@ const datetimeValue = computed(() => String(props.modelValue || "").replace(" ",
       :value="datetimeValue"
       :disabled="disabled"
       @input="emit('update:modelValue', $event.target.value.replace('T', ' '))"
+    />
+
+    <SuggestInput
+      v-else-if="field.suggest && field.fieldtype === 'Data'"
+      :input-id="id"
+      :model-value="modelValue || ''"
+      :dictionary="field.suggest"
+      :disabled="disabled"
+      :invalid="invalid"
+      @update:model-value="emit('update:modelValue', $event)"
     />
 
     <input

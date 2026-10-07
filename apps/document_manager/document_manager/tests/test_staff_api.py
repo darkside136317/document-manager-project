@@ -67,7 +67,7 @@ class TestStaffApi(IntegrationTestCase):
                 self.assertNotIn(hidden, [f["fieldname"] for f in info["fields"]])
 
     def test_unregistered_doctypes_are_out_of_reach(self):
-        for doctype in ("User", "Role", "Usage Request", "Archive Document"):
+        for doctype in ("User", "Role", "Usage Request", "Reader", "Backup Batch"):
             with self.assertRaises(frappe.PermissionError, msg=doctype):
                 meta.get_doctype_ui(doctype)
             with self.assertRaises(frappe.PermissionError, msg=doctype):

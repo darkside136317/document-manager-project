@@ -10,3 +10,4 @@ document_manager.patches.create_reader_groups
 document_manager.patches.purge_infrastructure_settings
 document_manager.patches.upgrade_quick_entry_dictionary
 document_manager.patches.use_vietnamese_language
+document_manager.patches.set_upload_limit

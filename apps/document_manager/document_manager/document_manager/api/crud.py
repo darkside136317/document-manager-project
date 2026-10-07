@@ -11,6 +11,7 @@ import frappe
 from frappe import _
 from frappe.utils import cint
 
+from document_manager.document_manager.services.errors import retry_on_deadlock
 from document_manager.document_manager.services.ui import (
     assert_master,
     describe,
@@ -106,7 +107,13 @@ def save(doctype, values, name=None):
     """Create (no `name`) or update a record; only fields the user may write are applied.
 
     Send back the `modified` you loaded: a concurrent edit is then reported instead of overwritten.
+    When a background job commits a change to the same row between this request's read and write,
+    MariaDB aborts the write (1020); the whole save is then repeated on fresh data.
     """
+    return retry_on_deadlock(lambda: _save(doctype, values, name))
+
+
+def _save(doctype, values, name):
     info = describe(doctype)
     values = _parse(values, {})
     writable = {f["fieldname"] for f in info["fields"] if not f["read_only"]}
@@ -131,7 +138,7 @@ def save(doctype, values, name=None):
 def delete(doctype, name):
     """Delete one record. Frappe refuses (with the list of links) while other records still use it."""
     assert_master(doctype)
-    frappe.delete_doc(doctype, name)
+    retry_on_deadlock(lambda: frappe.delete_doc(doctype, name))
     return {"name": name}
 
 

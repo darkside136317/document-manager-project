@@ -37,9 +37,9 @@ class ArchiveDocument(Document):
             type_map = {
                 "PDF": "PDF",
                 "DOCX": "DOCX",
-                "DOC": "DOCX",
+                "DOC": "Khác",  # legacy binary Word: stored, not text-extracted
                 "XLSX": "XLSX",
-                "XLS": "XLSX",
+                "XLS": "Khác",  # legacy binary Excel: stored, not text-extracted
                 "JPG": "JPG",
                 "JPEG": "JPG",
                 "PNG": "PNG",

@@ -160,7 +160,7 @@ class TestAccessControl(IntegrationTestCase):
 
     def test_staff_only_pages_exist_and_are_gated(self):
         mods = self._staff_only_modules()
-        self.assertGreater(len(mods), 20)
+        self.assertGreater(len(mods), 8)  # guards the discovery itself; the catalogue pages now live in the SPA
         for mod in mods:
             module = importlib.import_module(mod)
             frappe.set_user("Guest")
