@@ -9,7 +9,6 @@
     {"fieldname": "auto_return_overdue", "fieldtype": "Check", "label": "Tự động nhắc trả quá hạn", "default": "1"},
     {"fieldname": "section_registration", "fieldtype": "Section Break", "label": "Đăng ký"},
     {"fieldname": "allow_self_registration", "fieldtype": "Check", "label": "Cho phép tự đăng ký", "default": "1"},
-    {"fieldname": "default_confidentiality_priority", "fieldtype": "Int", "label": "Mức mật mặc định cho độc giả mới", "default": "1"},
     {"fieldname": "require_approval", "fieldtype": "Check", "label": "Yêu cầu duyệt đăng ký", "default": "1"}
   ],
   "permissions": [

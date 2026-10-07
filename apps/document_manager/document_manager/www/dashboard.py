@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import frappe
+from document_manager.document_manager.permissions import require_staff
 from document_manager.document_manager.api.dashboard import get_workspace_summary
 
 def get_context(context):
@@ -11,20 +12,17 @@ def get_context(context):
     # Yêu cầu người dùng phải đăng nhập mới xem được Dashboard
     context.login_required = True
     
-    user_roles = frappe.get_roles()
-    is_staff = any(r in user_roles for r in ('Document Admin', 'Cataloger', 'System Manager', 'Administrator', 'Reading Room Officer', 'Archivist'))
-    if not is_staff:
-        frappe.local.flags.redirect_location = '/portal'
-        raise frappe.Redirect
-        
+    require_staff()
+
     context.title = "Document Manager Dashboard"
 
     # Fetch dữ liệu tổng quan
     try:
         summary_data = get_workspace_summary()
         context.summary = summary_data
-    except Exception as e:
-        frappe.log_error(f"Error fetching dashboard summary: {str(e)}", "Dashboard SSR")
+    except Exception:
+        from document_manager.document_manager.services.errors import log_exception
+        log_exception("Dashboard SSR", "Error fetching dashboard summary")
         context.summary = {
             "archival_files": 0,
             "documents": 0,

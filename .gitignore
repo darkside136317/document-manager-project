@@ -38,3 +38,11 @@ desktop.ini
 
 # Docker volumes data (if mounted locally)
 docker/volumes/
+
+# Staff SPA (built in the Docker image / by `yarn build`)
+apps/document_manager/frontend/node_modules/
+apps/document_manager/document_manager/public/staff/
+apps/document_manager/document_manager/www/dashboard/index.html
+
+# Scratch
+*.tar.gz

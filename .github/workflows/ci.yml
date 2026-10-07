@@ -1,0 +1,134 @@
+name: CI
+
+# Every push / PR: static checks + full Frappe test run in the real image.
+# Push to main (or a v* tag): additionally build and publish the image to GHCR.
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  static:
+    name: Static checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Python compiles
+        run: python -m compileall -q apps docker/dev
+      - name: Lint (real errors only)
+        run: |
+          pip install -q ruff
+          ruff check apps --select E9,F63,F7,F82 --no-cache
+      - name: JSON files are valid
+        run: |
+          python - <<'EOF'
+          import json, pathlib, sys
+          bad = []
+          for path in pathlib.Path("apps").rglob("*.json"):
+              try:
+                  json.loads(path.read_text(encoding="utf-8"))
+              except Exception as exc:
+                  bad.append(f"{path}: {exc}")
+          print("\n".join(bad) or "all JSON valid")
+          sys.exit(1 if bad else 0)
+          EOF
+      - name: JS syntax
+        run: |
+          for f in $(find apps -name '*.js' -not -path '*/node_modules/*'); do node --check "$f"; done
+      - name: Compose files are valid
+        working-directory: docker
+        run: |
+          cp .env.example .env
+          docker compose -f docker-compose.yml config -q
+          docker compose -f docker-compose.yml -f docker-compose.prod.yml config -q
+          docker compose -f docker-compose.yml -f docker-compose.dev.yml config -q
+
+  test:
+    name: Frappe tests
+    needs: static
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: docker
+    env:
+      COMPOSE_DOCKER_CLI_BUILD: "1"
+      DOCKER_BUILDKIT: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test environment file
+        run: |
+          cp .env.example .env
+          echo "SITE=$(grep '^FRAPPE_SITE_NAME=' .env | cut -d= -f2)" >> "$GITHUB_ENV"
+      - name: Build image
+        run: docker compose build backend
+      - name: Start database and redis
+        run: docker compose up -d db redis-cache redis-queue
+      - name: Create site (ERPNext + document_manager)
+        run: docker compose run --rm create-site
+      - name: Migrate (fresh site must seed itself)
+        run: docker compose run --rm backend bench --site $SITE migrate
+      - name: Run tests
+        run: |
+          docker compose run --rm backend bash -c "
+            bench --site $SITE set-config allow_tests true &&
+            bench --site $SITE run-tests --app document_manager --module document_manager.tests.test_access_control &&
+            bench --site $SITE run-tests --app document_manager --module document_manager.tests.test_request_workflow &&
+            bench --site $SITE run-tests --app document_manager --module document_manager.tests.test_reader_ui_logic &&
+            bench --site $SITE run-tests --app document_manager --module document_manager.tests.test_p0_hardening &&
+            bench --site $SITE run-tests --app document_manager --module document_manager.tests.test_policy &&
+            bench --site $SITE run-tests --app document_manager --module document_manager.tests.test_search_service &&
+            bench --site $SITE run-tests --app document_manager --module document_manager.tests.test_audit_and_hierarchy"
+      - name: Logs on failure
+        if: failure()
+        run: docker compose logs --no-color --tail=200
+
+  publish:
+    name: Build and publish image
+    needs: test
+    if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Image name and ERPNext version
+        run: |
+          echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/docmanager-custom" >> "$GITHUB_ENV"
+          echo "ERPNEXT_VERSION=$(grep '^ERPNEXT_VERSION=' docker/.env.example | cut -d= -f2)" >> "$GITHUB_ENV"
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/metadata-action@v5
+        id: meta
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=raw,value=${{ env.ERPNEXT_VERSION }},enable={{is_default_branch}}
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha
+            type=ref,event=tag
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          build-args: ERPNEXT_VERSION=${{ env.ERPNEXT_VERSION }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

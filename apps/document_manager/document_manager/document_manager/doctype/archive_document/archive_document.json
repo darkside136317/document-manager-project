@@ -26,7 +26,8 @@
       "options": "Archival File",
       "reqd": 1,
       "in_list_view": 1,
-      "in_standard_filter": 1
+      "in_standard_filter": 1,
+      "search_index": 1
     },
     {
       "fieldname": "column_break_1",
@@ -38,7 +39,8 @@
       "label": "Mục lục tài liệu",
       "options": "Catalog",
       "read_only": 1,
-      "fetch_from": "archival_file.catalog"
+      "fetch_from": "archival_file.catalog",
+      "search_index": 1
     },
     {
       "fieldname": "record_group",
@@ -46,7 +48,8 @@
       "label": "Khối tài liệu",
       "options": "Record Group",
       "read_only": 1,
-      "fetch_from": "archival_file.record_group"
+      "fetch_from": "archival_file.record_group",
+      "search_index": 1
     },
     {
       "fieldname": "fonds",
@@ -54,7 +57,8 @@
       "label": "Phông lưu trữ",
       "options": "Fonds",
       "read_only": 1,
-      "fetch_from": "archival_file.fonds"
+      "fetch_from": "archival_file.fonds",
+      "search_index": 1
     },
     {
       "fieldname": "confidentiality_level",
@@ -62,7 +66,8 @@
       "label": "Mức độ mật",
       "options": "Confidentiality Level",
       "fetch_from": "archival_file.confidentiality_level",
-      "in_standard_filter": 1
+      "in_standard_filter": 1,
+      "search_index": 1
     },
     {
       "fieldname": "section_file",
@@ -81,7 +86,8 @@
       "label": "Loại tệp",
       "options": "\nPDF\nDOCX\nXLSX\nJPG\nPNG\nTIFF\nKhác",
       "in_list_view": 1,
-      "in_standard_filter": 1
+      "in_standard_filter": 1,
+      "search_index": 1
     },
     {
       "fieldname": "file_size_kb",
@@ -161,7 +167,8 @@
       "options": "Chưa index\nĐang xử lý\nĐã index\nLỗi",
       "default": "Chưa index",
       "read_only": 1,
-      "in_standard_filter": 1
+      "in_standard_filter": 1,
+      "search_index": 1
     },
     {
       "fieldname": "section_content",
@@ -185,12 +192,14 @@
     {
       "fieldname": "document_date",
       "fieldtype": "Date",
-      "label": "Ngày văn bản"
+      "label": "Ngày văn bản",
+      "search_index": 1
     },
     {
       "fieldname": "document_number",
       "fieldtype": "Data",
-      "label": "Số văn bản"
+      "label": "Số văn bản",
+      "search_index": 1
     },
     {
       "fieldname": "column_break_meta",
@@ -215,11 +224,22 @@
   "permissions": [
     {
       "role": "Document Admin",
-      "read": 1, "write": 1, "create": 1, "delete": 1, "print": 1, "export": 1, "import": 1, "share": 1, "report": 1
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "delete": 1,
+      "print": 1,
+      "export": 1,
+      "import": 1,
+      "share": 1,
+      "report": 1
     },
     {
       "role": "Cataloger",
-      "read": 1, "write": 1, "create": 1, "delete": 1
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "delete": 1
     },
     {
       "role": "Reading Room Officer",

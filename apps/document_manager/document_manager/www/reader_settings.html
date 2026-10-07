@@ -16,15 +16,15 @@
         <div class="dm-form-grid">
             <div class="dm-form-group">
                 <label class="dm-form-label">Số Phiếu Yêu cầu Khai thác tối đa/ngày</label>
-                <input type="number" name="max_requests_per_day" class="dm-form-control" value="{{ doc.max_requests_per_day or '5' }}" {% if not can_edit %}disabled{% endif %}>
+                <input type="number" name="max_requests_per_day" class="dm-form-control" value="{{ doc.max_requests_per_day if doc.max_requests_per_day is not none else '5' }}" {% if not can_edit %}disabled{% endif %}>
             </div>
             <div class="dm-form-group">
                 <label class="dm-form-label">Số Phiếu Sao chụp tối đa/ngày</label>
-                <input type="number" name="max_copy_requests_per_day" class="dm-form-control" value="{{ doc.max_copy_requests_per_day or '3' }}" {% if not can_edit %}disabled{% endif %}>
+                <input type="number" name="max_copy_requests_per_day" class="dm-form-control" value="{{ doc.max_copy_requests_per_day if doc.max_copy_requests_per_day is not none else '3' }}" {% if not can_edit %}disabled{% endif %}>
             </div>
             <div class="dm-form-group">
                 <label class="dm-form-label">Thời gian giữ tài liệu (ngày)</label>
-                <input type="number" name="document_hold_days" class="dm-form-control" value="{{ doc.document_hold_days or '7' }}" {% if not can_edit %}disabled{% endif %}>
+                <input type="number" name="document_hold_days" class="dm-form-control" value="{{ doc.document_hold_days if doc.document_hold_days is not none else '7' }}" {% if not can_edit %}disabled{% endif %}>
             </div>
             <div class="dm-form-group" style="grid-column: 1 / -1;">
                 <label class="dm-checkbox-label">
@@ -47,10 +47,6 @@
                     <input type="checkbox" name="require_approval" value="1" {% if doc.require_approval %}checked{% endif %} {% if not can_edit %}disabled{% endif %}>
                     Yêu cầu cán bộ phê duyệt khi đăng ký mới
                 </label>
-            </div>
-            <div class="dm-form-group">
-                <label class="dm-form-label">Mức độ Mật mặc định cho độc giả mới</label>
-                <input type="number" name="default_confidentiality_priority" class="dm-form-control" value="{{ doc.default_confidentiality_priority or '1' }}" {% if not can_edit %}disabled{% endif %}>
             </div>
         </div>
 

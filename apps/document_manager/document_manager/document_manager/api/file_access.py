@@ -7,12 +7,17 @@ from urllib.parse import quote
 import frappe
 from frappe import _
 
+from document_manager.document_manager.policy import get_reader_scope
+
 
 INLINE_FILE_TYPES = {"PDF", "JPG", "PNG"}
 TEXT_FILE_TYPES = {"DOCX", "XLSX"}
 
 
-def _get_permitted_document(doc_name):
+def _get_permitted_document(doc_name, feature="can_preview"):
+    """The Archive Document if the user's group allows `feature` and the document is readable."""
+    from document_manager.document_manager.permissions import assert_feature
+    assert_feature(feature)
     if not doc_name or not frappe.db.exists("Archive Document", doc_name):
         frappe.throw(_("Không tìm thấy tài liệu."), frappe.DoesNotExistError)
 
@@ -63,8 +68,8 @@ def get_preview(doc_name):
         "title": doc.document_title or doc.name,
         "filename": filename,
         "file_type": file_type or _("Tệp"),
-        "download_url": _download_url(doc.name),
-        "document_url": f"/app/archive-document/{quote(doc.name)}",
+        "download_url": _download_url(doc.name) if get_reader_scope().can_download else None,
+        "document_url": f"/portal_document?name={quote(doc.name)}",
     }
 
     if file_type in INLINE_FILE_TYPES:
@@ -109,6 +114,7 @@ def preview_file(doc_name):
         "Archive Document", doc.name, "last_accessed", frappe.utils.now(),
         update_modified=False,
     )
+    frappe.db.commit()  # GET requests are rolled back otherwise
     frappe.local.response.filename = filename
     frappe.local.response.filecontent = content
     frappe.local.response.type = "download"
@@ -118,7 +124,7 @@ def preview_file(doc_name):
 @frappe.whitelist()
 def download_file(doc_name):
     """Download the original file after checking Archive Document permission."""
-    doc = _get_permitted_document(doc_name)
+    doc = _get_permitted_document(doc_name, "can_download")
     content, filename = _read_original_file(doc)
     frappe.db.set_value(
         "Archive Document", doc.name, "last_accessed", frappe.utils.now(),
@@ -138,21 +144,12 @@ def log_document_access(doc_name, action):
     if action not in ["Xem", "Tải xuống"]:
         action = "Xem"
         
-    doc = _get_permitted_document(doc_name)
+    doc = _get_permitted_document(doc_name, "can_download" if action == "Tải xuống" else "can_preview")
     _log_activity(action, "Archive Document", doc.name, f"{action} tài liệu trên Portal")
     return "OK"
 
 def _log_activity(activity_type, ref_doctype, ref_name, description):
-    try:
-        frappe.get_doc({
-            "doctype": "Business Activity Log",
-            "activity_type": activity_type if activity_type in ["Xem", "Tạo mới", "Cập nhật", "Xóa", "Tìm kiếm", "Tải xuống", "Xuất XML", "Nhập XML", "Sao lưu", "Phục hồi", "Kiểm tra"] else "Xem",
-            "reference_doctype": ref_doctype,
-            "reference_name": ref_name,
-            "user": frappe.session.user,
-            "ip_address": frappe.local.request_ip,
-            "description": description
-        }).insert(ignore_permissions=True)
-        frappe.db.commit()
-    except Exception as e:
-        frappe.log_error(f"Failed to log activity: {e}")
+    """GET endpoints are rolled back by Frappe, so these rows are committed explicitly."""
+    from document_manager.document_manager.services.audit import log_activity
+
+    log_activity(activity_type, ref_doctype, ref_name, description, commit=True)

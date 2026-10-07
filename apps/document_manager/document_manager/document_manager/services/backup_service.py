@@ -11,6 +11,8 @@ import hashlib
 
 import frappe
 
+from document_manager.document_manager.services.errors import log_exception
+
 
 def schedule_integrity_check():
     """Create and queue the configured weekly integrity check."""
@@ -27,32 +29,41 @@ def schedule_integrity_check():
     check.run_check()
 
 
+FILE_BACKUP_NOTE = (
+    "Sao lưu tệp tài liệu (GridFS) chưa được hỗ trợ: hệ thống chưa tạo bản sao nào của các tệp. "
+    "Hãy sao lưu cụm MongoDB Atlas bằng công cụ của Atlas."
+)
+
+
 def run_backup(batch_name: str, backup_type: str):
-    """Run backup job (enqueued from BackupBatch.run_backup)."""
+    """Run backup job (enqueued from BackupBatch.run_backup).
+
+    Only the database dump is real. A request that includes the document files is reported as
+    "Một phần" (database done) or "Chưa hỗ trợ" (files only) — never as a success.
+    """
     batch = frappe.get_doc("Backup Batch", batch_name)
     try:
         backup_path = ""
         backup_size = 0
+        wants_db = backup_type in ("Cơ sở dữ liệu", "Cả hai")
+        wants_files = backup_type in ("Tệp tài liệu", "Cả hai")
 
-        if backup_type in ("Cơ sở dữ liệu", "Cả hai"):
+        if wants_db:
+            import os
+
             from frappe.utils.backups import new_backup
             backup = new_backup(ignore_files=True, force=True)
             backup_path = backup.backup_path_db
-            import os
             if os.path.exists(backup_path):
                 backup_size = os.path.getsize(backup_path) / (1024 * 1024)
 
-        if backup_type in ("Tệp tài liệu", "Cả hai"):
-            # Export file metadata to GridFS backup collection
-            try:
-                from document_manager.document_manager.services.mongodb_storage import MongoGridFSStorage
-                storage = MongoGridFSStorage(collection_name="documents")
-                files = storage.list_files(limit=0)
-                backup_path += f" | {len(files)} files in GridFS"
-            except Exception as e:
-                frappe.log_error(f"File backup audit failed: {e}", "Backup Error")
+        if wants_files:
+            status = "Một phần" if wants_db else "Chưa hỗ trợ"
+            batch.db_set("error_log", FILE_BACKUP_NOTE)
+        else:
+            status = "Thành công"
 
-        batch.db_set("status", "Thành công")
+        batch.db_set("status", status)
         batch.db_set("completed_at", frappe.utils.now())
         batch.db_set("backup_path", backup_path)
         batch.db_set("backup_size_mb", round(backup_size, 2))
@@ -63,7 +74,7 @@ def run_backup(batch_name: str, backup_type: str):
         batch.db_set("error_log", str(e))
         batch.db_set("completed_at", frappe.utils.now())
         frappe.db.commit()
-        frappe.log_error(f"Backup failed for {batch_name}: {e}", "Backup Error")
+        log_exception("Backup Error", f"Backup failed for {batch_name}")
 
 
 def run_integrity_check(check_name: str, check_type: str):
@@ -123,19 +134,31 @@ def run_integrity_check(check_name: str, check_type: str):
 
 
 def run_restore(restore_name: str):
-    """Run restore job (enqueued from RestoreBatch.run_restore)."""
+    """Run restore job (enqueued from RestoreBatch.run_restore).
+
+    Restoring a site from inside the running site is not safe, so nothing is overwritten here.
+    The batch ends as "Cần thao tác thủ công" with the exact command, instead of claiming success.
+    """
     restore = frappe.get_doc("Restore Batch", restore_name)
     try:
-        # Restore from source backup
-        if restore.source_backup:
+        if not restore.source_backup:
+            status, note = "Lỗi", "Chưa chọn đợt sao lưu nguồn."
+        else:
             backup = frappe.get_doc("Backup Batch", restore.source_backup)
-            if backup.backup_path:
-                frappe.logger().info(f"Restoring from: {backup.backup_path}")
-                # frappe.utils.backups.restore(backup.backup_path) — requires manual execution
-                restore.db_set("records_restored", 0)
-                restore.db_set("error_log", "Phục hồi CSDL cần thực hiện thủ công qua bench restore.")
-
-        restore.db_set("status", "Thành công")
+            if not backup.backup_path:
+                status, note = "Lỗi", f"Đợt sao lưu {backup.name} không có tệp sao lưu CSDL."
+            else:
+                site = frappe.local.site
+                status = "Cần thao tác thủ công"
+                note = (
+                    "Hệ thống chưa tự động khôi phục dữ liệu. Thực hiện thủ công trên máy chủ:\n"
+                    f"  bench --site {site} --force restore \"{backup.backup_path}\" "
+                    "--db-root-password <mật khẩu root MariaDB>\n"
+                    "Nên bật chế độ bảo trì trước khi chạy và kiểm tra lại sau khi hoàn tất."
+                )
+        restore.db_set("records_restored", 0)
+        restore.db_set("status", status)
+        restore.db_set("error_log", note)
         restore.db_set("completed_at", frappe.utils.now())
         frappe.db.commit()
 
@@ -144,3 +167,4 @@ def run_restore(restore_name: str):
         restore.db_set("error_log", str(e))
         restore.db_set("completed_at", frappe.utils.now())
         frappe.db.commit()
+        log_exception("Restore Error", f"Restore failed for {restore_name}")

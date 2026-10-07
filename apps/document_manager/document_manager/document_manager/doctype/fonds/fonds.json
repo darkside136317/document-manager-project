@@ -38,7 +38,8 @@
       "options": "Archival Agency",
       "reqd": 1,
       "in_list_view": 1,
-      "in_standard_filter": 1
+      "in_standard_filter": 1,
+      "search_index": 1
     },
     {
       "fieldname": "status",
@@ -46,7 +47,8 @@
       "label": "Trạng thái",
       "options": "Đang xử lý\nĐã hoàn thành\nĐã đóng",
       "default": "Đang xử lý",
-      "in_standard_filter": 1
+      "in_standard_filter": 1,
+      "search_index": 1
     },
     {
       "fieldname": "section_time",
@@ -141,11 +143,22 @@
   "permissions": [
     {
       "role": "Document Admin",
-      "read": 1, "write": 1, "create": 1, "delete": 1, "print": 1, "export": 1, "import": 1, "share": 1, "report": 1
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "delete": 1,
+      "print": 1,
+      "export": 1,
+      "import": 1,
+      "share": 1,
+      "report": 1
     },
     {
       "role": "Cataloger",
-      "read": 1, "write": 1, "create": 1, "delete": 0
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "delete": 0
     },
     {
       "role": "Reading Room Officer",

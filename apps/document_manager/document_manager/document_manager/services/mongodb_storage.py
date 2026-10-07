@@ -17,15 +17,11 @@ import frappe
 from frappe.utils import cint
 
 # pymongo imports (deferred to avoid import errors during bench setup)
-_mongo_client = None
+_mongo_clients = {}  # one client per connection URI (a bench serves several sites)
 
 
 def _get_mongo_client():
-    """Lazy-initialize MongoDB client from site config or environment."""
-    global _mongo_client
-    if _mongo_client is not None:
-        return _mongo_client
-
+    """Lazy-initialize the MongoDB client of the current site (site config or environment)."""
     import pymongo
 
     uri = (
@@ -39,10 +35,11 @@ def _get_mongo_client():
             "Thêm 'mongodb_atlas_uri' vào site_config.json hoặc common_site_config.json."
         )
 
-    _mongo_client = pymongo.MongoClient(uri, serverSelectionTimeoutMS=5000)
-    # Test connection
-    _mongo_client.admin.command("ping")
-    return _mongo_client
+    if uri not in _mongo_clients:
+        client = pymongo.MongoClient(uri, serverSelectionTimeoutMS=5000)
+        client.admin.command("ping")  # fail now, not on the first read
+        _mongo_clients[uri] = client
+    return _mongo_clients[uri]
 
 
 def _get_database():
@@ -293,3 +290,47 @@ def download_document_file(doc_name: str) -> tuple[bytes, str]:
     )
 
     return content, info["filename"]
+
+
+# --- Cleanup (a deleted/replaced document must not leave its bytes behind) ---
+
+def delete_gridfs_files(file_ids, collection_name: str = "documents") -> list[str]:
+    """Delete files from GridFS; returns the ids that could not be deleted.
+
+    Failures are logged with a traceback instead of being swallowed, so the orphans can be
+    found (and retried by the integrity check) later.
+    """
+    from document_manager.document_manager.services.errors import log_exception
+
+    ids = [i for i in (file_ids or []) if i]
+    if not ids:
+        return []
+    try:
+        storage = MongoGridFSStorage(collection_name=collection_name)
+    except Exception:
+        log_exception("GridFS Cleanup Error", f"Cannot connect to delete {len(ids)} file(s)")
+        return ids
+
+    failed = []
+    for file_id in ids:
+        try:
+            storage.delete_file(file_id)
+        except Exception:
+            log_exception("GridFS Cleanup Error", f"Cannot delete {collection_name}/{file_id}")
+            failed.append(file_id)
+    return failed
+
+
+def enqueue_delete_gridfs_files(file_ids, collection_name: str = "documents"):
+    """Delete GridFS files in the background once the surrounding transaction has committed."""
+    ids = [i for i in (file_ids or []) if i]
+    if not ids:
+        return
+    frappe.enqueue(
+        "document_manager.document_manager.services.mongodb_storage.delete_gridfs_files",
+        file_ids=ids,
+        collection_name=collection_name,
+        queue="short",
+        enqueue_after_commit=True,
+    )
+

@@ -4,39 +4,47 @@
 Manages full-text search index in Meilisearch for Archive Document content.
 Documents are indexed with their full hierarchical path (fonds/record_group/catalog/archival_file)
 plus extracted text content, enabling combined metadata + content search.
+
+Visibility is decided at index time and re-evaluated whenever the parent Archival File changes:
+`confidentiality_priority` (fail-closed when the level is unknown) and `is_published`
+(draft or disposed files are only visible to staff).
 """
 
+import calendar
 import json
 
 import frappe
 
-_meili_client = None
-_meili_index = None
+from document_manager.document_manager.permissions import is_file_published
+from document_manager.document_manager.policy import get_reader_scope
+from document_manager.document_manager.services.errors import log_exception
+
+_clients = {}  # one client / configured index per site (a bench serves several sites)
+_indexes = {}
 INDEX_NAME = "archive_documents"
+CHUNK = 500
+UNKNOWN_LEVEL_PRIORITY = 999  # an unclassified document must never reach a reader
 
 
 def _get_client():
-    """Lazy-initialize Meilisearch client."""
-    global _meili_client
-    if _meili_client is not None:
-        return _meili_client
-
-    import meilisearch
-
+    """Lazy-initialize the Meilisearch client of the current site."""
     host = frappe.conf.get("meilisearch_host") or "http://localhost:7700"
     master_key = frappe.conf.get("meilisearch_master_key") or ""
+    cache_key = (frappe.local.site, host, master_key)
+    if cache_key not in _clients:
+        import meilisearch
 
-    _meili_client = meilisearch.Client(host, master_key)
-    return _meili_client
+        _clients[cache_key] = meilisearch.Client(host, master_key)
+    return _clients[cache_key]
 
 
 def _get_index():
     """Get or create the archive_documents index with proper settings."""
-    global _meili_index
-    if _meili_index is not None:
-        return _meili_index
-
     client = _get_client()
+    site = frappe.local.site
+    if site in _indexes and _indexes[site][0] is client:
+        return _indexes[site][1]
+
     try:
         index = client.get_index(INDEX_NAME)
     except Exception:
@@ -55,9 +63,9 @@ def _get_index():
         "filterableAttributes": [
             "fonds", "record_group", "catalog", "archival_file",
             "file_type", "confidentiality_level", "confidentiality_priority",
-            "storage_tier", "search_index_status",
+            "storage_tier", "search_index_status", "is_published", "document_ts",
         ],
-        "sortableAttributes": ["document_date", "modified", "created"],
+        "sortableAttributes": ["document_date", "document_ts", "modified", "created"],
         "displayedAttributes": [
             "id", "document_title", "document_number", "content_text", "archival_file",
             "archival_file_title", "fonds", "fonds_name", "file_type",
@@ -68,112 +76,166 @@ def _get_index():
     if settings_result.status != "succeeded":
         raise RuntimeError(f"Could not configure Meilisearch index: {settings_result.error}")
 
-    _meili_index = index
-    return _meili_index
+    _indexes[site] = (client, index)
+    return index
+
+
+def _build_documents(names) -> list[dict]:
+    """Meilisearch payloads for `names`, using a handful of queries instead of one per document."""
+    names = list(names)
+    if not names:
+        return []
+    rows = frappe.get_all(
+        "Archive Document",
+        filters={"name": ["in", names]},
+        fields=["name", "document_title", "document_number", "content_text", "author", "archival_file",
+                "catalog", "record_group", "fonds", "file_type", "confidentiality_level",
+                "storage_tier", "document_date", "modified", "creation"],
+        limit_page_length=0,
+    )
+    file_names = {r.archival_file for r in rows if r.archival_file}
+    files = {
+        f.name: f for f in frappe.get_all(
+            "Archival File", filters={"name": ["in", list(file_names)]},
+            fields=["name", "file_title", "status", "disposal_status"], limit_page_length=0)
+    } if file_names else {}
+    fonds_ids = {r.fonds for r in rows if r.fonds}
+    fonds = {
+        f.name: f.fonds_name for f in frappe.get_all(
+            "Fonds", filters={"name": ["in", list(fonds_ids)]}, fields=["name", "fonds_name"],
+            limit_page_length=0)
+    } if fonds_ids else {}
+    levels = {
+        l.name: l.priority for l in frappe.get_all(
+            "Confidentiality Level", fields=["name", "priority"], limit_page_length=0)
+    }
+
+    documents = []
+    for r in rows:
+        parent = files.get(r.archival_file)
+        level = r.confidentiality_level
+        priority = levels.get(level) if level else None
+        documents.append({
+            "id": r.name,
+            "document_title": r.document_title or "",
+            "document_number": r.document_number or "",
+            "content_text": (r.content_text or "")[:100000],  # Limit to 100K chars
+            "author": r.author or "",
+            "archival_file": r.archival_file or "",
+            "archival_file_title": (parent.file_title if parent else "") or "",
+            "catalog": r.catalog or "",
+            "record_group": r.record_group or "",
+            "fonds": r.fonds or "",
+            "fonds_name": fonds.get(r.fonds, ""),
+            "file_type": r.file_type or "",
+            "confidentiality_level": level or "",
+            "confidentiality_priority": int(priority) if priority else UNKNOWN_LEVEL_PRIORITY,
+            "is_published": bool(parent and is_file_published(parent.status, parent.disposal_status)),
+            "storage_tier": r.storage_tier or "Hot",
+            "document_date": str(r.document_date) if r.document_date else "",
+            "document_ts": calendar.timegm(r.document_date.timetuple()) if r.document_date else None,
+            "modified": str(r.modified),
+            "created": str(r.creation),
+        })
+    return documents
+
+
+def index_documents(names):
+    """Index several documents with one Meilisearch task; mark the failures."""
+    documents = _build_documents(names)
+    if not documents:
+        return 0
+    ids = [d["id"] for d in documents]
+    try:
+        index = _get_index()
+        task = index.add_documents(documents)
+        result = _get_client().wait_for_task(task.task_uid, timeout_in_ms=60000)
+        if result.status != "succeeded":
+            raise RuntimeError(f"Could not index documents: {result.error}")
+    except Exception:
+        frappe.db.sql(
+            "update `tabArchive Document` set search_index_status=%s where name in %s",
+            ("Lỗi", tuple(ids)),
+        )
+        frappe.db.commit()
+        raise
+    frappe.db.sql(
+        "update `tabArchive Document` set search_index_status=%s where name in %s",
+        ("Đã index", tuple(ids)),
+    )
+    frappe.db.commit()
+    return len(documents)
 
 
 def index_document(doc_name: str):
-    """Index a document and persist a useful failure state when indexing fails."""
-    try:
-        return _index_document(doc_name)
-    except Exception:
-        if frappe.db.exists("Archive Document", doc_name):
-            frappe.db.set_value(
-                "Archive Document", doc_name, "search_index_status", "Lỗi",
-                update_modified=False,
-            )
-            frappe.db.commit()
-        raise
-
-
-def _index_document(doc_name: str):
-    """Index a single Archive Document into Meilisearch."""
-    doc = frappe.get_doc("Archive Document", doc_name)
-
-    # Get parent titles for better search results
-    fonds_name = ""
-    af_title = ""
-    if doc.fonds:
-        fonds_name = frappe.db.get_value("Fonds", doc.fonds, "fonds_name") or ""
-    if doc.archival_file:
-        af_title = frappe.db.get_value("Archival File", doc.archival_file, "file_title") or ""
-
-    # Get confidentiality priority for filtering
-    conf_priority = 1
-    if doc.confidentiality_level:
-        conf_priority = frappe.db.get_value(
-            "Confidentiality Level", doc.confidentiality_level, "priority"
-        ) or 1
-
-    document = {
-        "id": doc.name,
-        "document_title": doc.document_title or "",
-        "document_number": doc.document_number or "",
-        "content_text": (doc.content_text or "")[:100000],  # Limit to 100K chars
-        "author": doc.author or "",
-        "archival_file": doc.archival_file or "",
-        "archival_file_title": af_title,
-        "catalog": doc.catalog or "",
-        "record_group": doc.record_group or "",
-        "fonds": doc.fonds or "",
-        "fonds_name": fonds_name,
-        "file_type": doc.file_type or "",
-        "confidentiality_level": doc.confidentiality_level or "Thường",
-        "confidentiality_priority": int(conf_priority),
-        "storage_tier": doc.storage_tier or "Hot",
-        "document_date": str(doc.document_date) if doc.document_date else "",
-        "modified": str(doc.modified),
-        "created": str(doc.creation),
-    }
-
-    index = _get_index()
-    index_task = index.add_documents([document])
-    index_result = _get_client().wait_for_task(index_task.task_uid, timeout_in_ms=10000)
-    if index_result.status != "succeeded":
-        raise RuntimeError(f"Could not index document: {index_result.error}")
-
-    frappe.db.set_value(
-        "Archive Document", doc_name, "search_index_status", "Đã index",
-        update_modified=False,
-    )
+    """Index one document (raises on failure after recording the "Lỗi" state)."""
+    return index_documents([doc_name])
 
 
 def deindex_document(doc_name: str):
-    """Remove a document from Meilisearch index."""
+    """Remove a document from Meilisearch index (a failure is logged; reconcile retries it)."""
     try:
-        index = _get_index()
-        index.delete_document(doc_name)
+        _get_index().delete_document(doc_name)
     except Exception:
-        pass
+        log_exception("Search Index Error", f"Cannot remove {doc_name} from the search index")
 
 
-def search(query: str, fonds=None, confidentiality_level=None, file_type=None,
-           sort_by=None, offset=0, limit=20) -> dict:
+def index_file_documents(file_name: str):
+    """Re-index every document of an Archival File, in chunks."""
+    names = frappe.get_all("Archive Document", filters={"archival_file": file_name}, pluck="name",
+                           limit_page_length=0)
+    for start in range(0, len(names), CHUNK):
+        index_documents(names[start:start + CHUNK])
+
+
+def reindex_all():
+    """Queue a re-index of every document (after a schema/visibility change of the index)."""
+    names = frappe.get_all("Archive Document", pluck="name", limit_page_length=0)
+    for start in range(0, len(names), CHUNK):
+        frappe.enqueue(
+            "document_manager.document_manager.services.search_index.index_documents",
+            names=names[start:start + CHUNK],
+            queue="long",
+            timeout=1800,
+        )
+    return len(names)
+
+
+FILTERABLE_EQUALS = ("fonds", "record_group", "catalog", "archival_file", "file_type",
+                     "confidentiality_level", "storage_tier")
+
+
+def search(query: str, filters=None, date_from=None, date_to=None, sort_by=None, offset=0, limit=20,
+           fonds=None, confidentiality_level=None, file_type=None) -> dict:
     """Search documents in Meilisearch.
 
-    Returns Meilisearch result dict with hits, estimatedTotalHits, etc.
+    `filters` maps filterable attributes (FILTERABLE_EQUALS) to a value; `date_from` / `date_to` are
+    epoch seconds bounding `document_ts`. `fonds`, `confidentiality_level`, `file_type` stay
+    accepted for older callers. Returns the Meilisearch result dict (hits, estimatedTotalHits, ...).
     """
     index = _get_index()
 
-    filter_parts = []
-    if fonds:
-        filter_parts.append(f"fonds = {json.dumps(str(fonds), ensure_ascii=False)}")
-    if confidentiality_level:
-        filter_parts.append(
-            f"confidentiality_level = {json.dumps(str(confidentiality_level), ensure_ascii=False)}"
-        )
-    if file_type:
-        filter_parts.append(f"file_type = {json.dumps(str(file_type), ensure_ascii=False)}")
+    wanted = {"fonds": fonds, "confidentiality_level": confidentiality_level, "file_type": file_type,
+              **(filters or {})}
+    filter_parts = [
+        f"{field} = {json.dumps(str(value), ensure_ascii=False)}"
+        for field, value in wanted.items() if value and field in FILTERABLE_EQUALS
+    ]
+    if date_from is not None:
+        filter_parts.append(f"document_ts >= {int(date_from)}")
+    if date_to is not None:
+        filter_parts.append(f"document_ts <= {int(date_to)}")
 
-    # Apply Reader permission filter
-    user_roles = frappe.get_roles(frappe.session.user)
-    staff_roles = {"Document Admin", "Cataloger", "Reading Room Officer",
-                   "Preservation Officer", "System Manager", "Administrator"}
-    if not staff_roles.intersection(set(user_roles)):
-        max_priority = frappe.db.get_value(
-            "Reader", {"user": frappe.session.user}, "max_confidentiality_priority"
-        ) or 1
-        filter_parts.append(f"confidentiality_priority <= {int(max_priority)}")
+    # Readers: only published documents, up to their clearance, inside their fonds.
+    scope = get_reader_scope()
+    if not scope.is_staff:
+        if not scope.allowed:
+            return {"hits": [], "estimatedTotalHits": 0}
+        filter_parts.append(f"confidentiality_priority <= {int(scope.max_priority)}")
+        filter_parts.append("is_published = true")
+        if scope.fonds is not None:
+            quoted = ", ".join(json.dumps(f, ensure_ascii=False) for f in scope.fonds) or '""'
+            filter_parts.append(f"fonds IN [{quoted}]")
 
     search_params = {
         "offset": offset,
@@ -199,6 +261,8 @@ def search(query: str, fonds=None, confidentiality_level=None, file_type=None,
 
 
 # === Enqueue functions (called from hooks.py doc_events) ===
+# All jobs wait for the surrounding transaction to commit: a worker must never see a state the
+# request has not committed yet.
 
 def enqueue_index(doc, method=None):
     """Enqueue index job for an Archive Document (called on on_update)."""
@@ -207,6 +271,7 @@ def enqueue_index(doc, method=None):
         doc_name=doc.name,
         queue="short",
         at_front=True,
+        enqueue_after_commit=True,
     )
     frappe.db.set_value(
         "Archive Document", doc.name, "search_index_status", "Đang xử lý",
@@ -220,28 +285,40 @@ def enqueue_deindex(doc, method=None):
         "document_manager.document_manager.services.search_index.deindex_document",
         doc_name=doc.name,
         queue="short",
+        enqueue_after_commit=True,
     )
 
 
+INDEX_RELEVANT_FILE_FIELDS = (
+    "file_title", "confidentiality_level", "status", "disposal_status", "fonds", "catalog", "record_group",
+)
+
+
 def enqueue_index_file(doc, method=None):
-    """Re-index all documents under an Archival File when it's updated."""
-    docs = frappe.get_all("Archive Document", filters={"archival_file": doc.name}, pluck="name")
-    for d in docs:
-        frappe.enqueue(
-            "document_manager.document_manager.services.search_index.index_document",
-            doc_name=d,
-            queue="short",
-        )
+    """Re-index the documents of an Archival File when something the index shows changed."""
+    if not doc.is_new() and not any(doc.has_value_changed(f) for f in INDEX_RELEVANT_FILE_FIELDS):
+        return
+    frappe.enqueue(
+        "document_manager.document_manager.services.search_index.index_file_documents",
+        file_name=doc.name,
+        queue="long",
+        timeout=1800,
+        job_id=f"dm-reindex-file-{doc.name}",
+        deduplicate=True,
+        enqueue_after_commit=True,
+    )
 
 
 def enqueue_deindex_file(doc, method=None):
     """Deindex all documents under an Archival File when it's trashed."""
-    docs = frappe.get_all("Archive Document", filters={"archival_file": doc.name}, pluck="name")
-    for d in docs:
+    names = frappe.get_all("Archive Document", filters={"archival_file": doc.name}, pluck="name",
+                           limit_page_length=0)
+    for name in names:
         frappe.enqueue(
             "document_manager.document_manager.services.search_index.deindex_document",
-            doc_name=d,
+            doc_name=name,
             queue="short",
+            enqueue_after_commit=True,
         )
 
 
@@ -266,17 +343,16 @@ def reconcile_index():
         offset += 1000
 
     # Get all doc names from DB
-    db_ids = set(
-        frappe.get_all("Archive Document", pluck="name")
-    )
+    db_ids = set(frappe.get_all("Archive Document", pluck="name", limit_page_length=0))
 
-    # Documents in DB but not in index → index them
-    missing = db_ids - indexed_ids
-    for doc_name in missing:
+    # Documents in DB but not in index → index them (in chunks)
+    missing = sorted(db_ids - indexed_ids)
+    for start in range(0, len(missing), CHUNK):
         frappe.enqueue(
-            "document_manager.document_manager.services.search_index.index_document",
-            doc_name=doc_name,
+            "document_manager.document_manager.services.search_index.index_documents",
+            names=missing[start:start + CHUNK],
             queue="long",
+            timeout=1800,
         )
 
     # Documents in index but not in DB → deindex them

@@ -35,20 +35,6 @@ web_include_js = [
 ]
 
 # =============================================================================
-# Website / Portal
-# =============================================================================
-website_route_rules = [
-    {"from_route": "/documents/<path:app_path>", "to_route": "documents"},
-]
-
-portal_menu_items = [
-    {"title": "Tìm kiếm tài liệu", "route": "/portal", "role": "Reader"},
-    {"title": "Phiếu yêu cầu", "route": "/usage-requests", "role": "Reader"},
-    {"title": "Phiếu sao chụp", "route": "/copy-requests", "role": "Reader"},
-    {"title": "Góp ý", "route": "/feedback", "role": "Reader"},
-]
-
-# =============================================================================
 # Fixtures — exported to JSON, imported on app install
 # =============================================================================
 fixtures = [
@@ -82,6 +68,25 @@ doc_events = {
     },
 }
 
+# Audit trail: every business DocType also reports create / update / delete to the activity log.
+_AUDIT_HANDLER = "document_manager.document_manager.services.audit.audit_doc_event"
+_AUDITED = (
+    "Fonds", "Record Group", "Catalog", "Archival File", "Archive Document",
+    "Archival Agency", "Document Group", "Document Type Category", "Classification Scheme",
+    "Confidentiality Level", "Storage Warehouse", "Quick Entry Dictionary",
+    "Reader", "Reader Group", "Usage Request", "Copy Request", "Reader Feedback",
+    "Backup Batch", "Restore Batch", "Integrity Check",
+    "Organization Info", "Reader Settings", "Document Manager Settings",
+)
+for _doctype in _AUDITED:
+    _events = doc_events.setdefault(_doctype, {})
+    for _event in ("after_insert", "on_update", "on_update_after_submit", "on_trash"):
+        _existing = _events.get(_event)
+        _events[_event] = [_existing, _AUDIT_HANDLER] if isinstance(_existing, str) else [*(_existing or []), _AUDIT_HANDLER]
+
+on_login = "document_manager.document_manager.services.audit.on_login"
+on_logout = "document_manager.document_manager.services.audit.on_logout"
+
 # =============================================================================
 # Scheduled Tasks
 # =============================================================================
@@ -105,21 +110,36 @@ scheduler_events = {
 permission_query_conditions = {
     "Archival File": "document_manager.document_manager.permissions.archival_file_query",
     "Archive Document": "document_manager.document_manager.permissions.archive_document_query",
+    "Fonds": "document_manager.document_manager.permissions.fonds_query",
+    "Record Group": "document_manager.document_manager.permissions.record_group_query",
+    "Catalog": "document_manager.document_manager.permissions.catalog_query",
+    "Usage Request": "document_manager.document_manager.permissions.usage_request_query",
+    "Copy Request": "document_manager.document_manager.permissions.copy_request_query",
+    "Reader Feedback": "document_manager.document_manager.permissions.reader_feedback_query",
+    "Reader": "document_manager.document_manager.permissions.reader_query",
 }
 
 has_permission = {
     "Archival File": "document_manager.document_manager.permissions.has_archival_file_permission",
     "Archive Document": "document_manager.document_manager.permissions.has_archive_document_permission",
+    "Fonds": "document_manager.document_manager.permissions.has_fonds_permission",
+    "Record Group": "document_manager.document_manager.permissions.has_record_group_permission",
+    "Catalog": "document_manager.document_manager.permissions.has_catalog_permission",
+    "Usage Request": "document_manager.document_manager.permissions.has_usage_request_permission",
+    "Copy Request": "document_manager.document_manager.permissions.has_copy_request_permission",
+    "Reader Feedback": "document_manager.document_manager.permissions.has_reader_feedback_permission",
+    "Reader": "document_manager.document_manager.permissions.has_reader_permission",
 }
 
 # =============================================================================
 # Jinja template helpers (for Print Formats, Portal pages)
 # =============================================================================
-# jinja = {
-#     "methods": [
-#         "document_manager.document_manager.utils.jinja_helpers",
-#     ],
-# }
+jinja = {
+    "methods": [
+        "document_manager.document_manager.permissions.dm_is_staff",
+        "document_manager.document_manager.permissions.dm_display_name",
+    ],
+}
 
 # =============================================================================
 # Override default Frappe whitelisted methods (if needed)
@@ -129,7 +149,7 @@ has_permission = {
 # =============================================================================
 # Installation hooks
 # =============================================================================
-# after_install = "document_manager.document_manager.setup.after_install"
+after_install = "document_manager.document_manager.setup.after_install"
 after_migrate = "document_manager.document_manager.setup.after_migrate"
 
 # =============================================================================

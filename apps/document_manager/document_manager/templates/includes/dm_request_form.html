@@ -1,0 +1,124 @@
+{# Shared form body for Usage Request / Copy Request. Context: cfg, doc, docname, state, actions, can_edit, readers, reader_profile, items, is_staff, state_class #}
+<div class="dm-card">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid var(--brand-border); padding-bottom: 16px; margin-bottom: 24px;">
+        <div>
+            <h2 style="margin: 0; color: var(--text-main); font-size: 1.5rem;">Thông tin Phiếu</h2>
+            {% if docname %}
+            <div style="color: var(--text-muted); font-size: 0.9rem; margin-top: 4px;">Mã phiếu: <strong>{{ docname }}</strong></div>
+            {% endif %}
+        </div>
+        <div>
+            {% if state %}
+            <span class="dm-badge {{ state_class.get(state, '') }}" style="font-size: 0.9rem; padding: 6px 12px;">{{ state }}</span>
+            {% else %}
+            <span class="dm-badge" style="font-size: 0.9rem; padding: 6px 12px;">Tạo mới</span>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if doc and doc.rejection_reason and state == 'Từ chối' %}
+    <div class="dm-alert-item danger" style="margin-bottom: 20px; display: block;">
+        <strong>Lý do từ chối:</strong> {{ doc.rejection_reason }}
+    </div>
+    {% endif %}
+    {% if doc and doc.approved_by and state in ('Đã duyệt', 'Đã trả', 'Đã hoàn thành') %}
+    <div style="margin-bottom: 20px; color: var(--text-muted); font-size: 0.9rem;">
+        Duyệt bởi <strong>{{ doc.approved_by }}</strong> lúc {{ frappe.utils.format_datetime(doc.approved_date) }}
+    </div>
+    {% endif %}
+
+    {% if needs_profile %}
+    <div class="dm-alert-item warning" style="display: block; margin-bottom: 20px;">
+        Tài khoản của bạn chưa có hồ sơ độc giả nên chưa thể lập phiếu. Vui lòng liên hệ phòng đọc để được cấp hồ sơ.
+    </div>
+    {% endif %}
+
+    <form id="requestForm" onsubmit="return false;">
+        <input type="hidden" id="docname" value="{{ docname or '' }}">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+            <div class="dm-form-group">
+                <label class="dm-form-label">Độc giả</label>
+                {% if is_staff and not doc and readers %}
+                <select id="reader" class="dm-form-control" required>
+                    {% if not reader_profile %}<option value="">-- Chọn Độc giả --</option>{% endif %}
+                    {% for r in readers %}
+                    <option value="{{ r.name }}" {% if r.name == reader_profile %}selected{% endif %}>{{ r.full_name }} ({{ r.name }})</option>
+                    {% endfor %}
+                </select>
+                {% if reader_profile %}<div style="color: var(--text-muted); font-size: 0.8rem; margin-top: 4px;">Mặc định là hồ sơ của bạn; đổi nếu lập phiếu hộ độc giả khác.</div>{% endif %}
+                {% else %}
+                <input type="text" class="dm-form-control" value="{{ doc.reader_name if doc else (reader_name or '') }}" disabled>
+                {% endif %}
+            </div>
+            <div class="dm-form-group">
+                <label class="dm-form-label">Ngày yêu cầu</label>
+                <input type="date" class="dm-form-control" value="{{ doc.request_date if doc else frappe.utils.nowdate() }}" disabled>
+            </div>
+        </div>
+
+        <div class="dm-form-group">
+            <label class="dm-form-label">{{ cfg.purpose_label }}</label>
+            <textarea id="purpose" class="dm-form-control" rows="2" {% if not can_edit %}disabled{% endif %}>{{ doc.purpose if doc and doc.purpose else '' }}</textarea>
+        </div>
+
+        <h3 style="margin-top: 32px; color: var(--brand-primary); font-size: 1.1rem; border-bottom: 1px solid var(--brand-border); padding-bottom: 8px; margin-bottom: 16px;">
+            {{ cfg.items_title }}
+        </h3>
+
+        <div class="dm-table-wrapper" style="margin-bottom: 16px;">
+            <table class="dm-table" id="itemsTable">
+                <thead>
+                    <tr>
+                        <th>Hồ sơ lưu trữ</th>
+                        <th>Văn bản / Tài liệu</th>
+                        {% if cfg.copy_count %}<th style="width: 110px;">Số bản</th>{% endif %}
+                        <th>Ghi chú</th>
+                        {% if can_edit %}<th style="width: 60px; text-align: center;">Xóa</th>{% endif %}
+                    </tr>
+                </thead>
+                <tbody id="itemsBody" data-copy-count="{{ 1 if cfg.copy_count else 0 }}" data-editable="{{ 1 if can_edit else 0 }}">
+                    {% for item in items %}
+                    <tr class="item-row">
+                        <td><input type="text" class="dm-form-control item-archival-file" list="dl-file" value="{{ item.archival_file or '' }}" {% if not can_edit %}disabled{% endif %}></td>
+                        <td><input type="text" class="dm-form-control item-archive-document" list="dl-document" value="{{ item.archive_document or '' }}" {% if not can_edit %}disabled{% endif %}></td>
+                        {% if cfg.copy_count %}<td><input type="number" min="1" class="dm-form-control item-copy-count" value="{{ item.copy_count or 1 }}" {% if not can_edit %}disabled{% endif %}></td>{% endif %}
+                        <td><input type="text" class="dm-form-control item-notes" value="{{ item.notes or '' }}" {% if not can_edit %}disabled{% endif %}></td>
+                        {% if can_edit %}<td style="text-align: center;"><button type="button" class="dm-btn danger" style="padding: 6px 10px;" onclick="this.closest('tr').remove()"><i class="fa fa-trash"></i></button></td>{% endif %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <datalist id="dl-file"></datalist>
+        <datalist id="dl-document"></datalist>
+
+        {% if can_edit %}
+        <button type="button" class="dm-btn" onclick="dmAddItemRow()"><i class="fa fa-plus"></i> Thêm dòng</button>
+        <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 12px;">
+            Gõ mã hoặc tiêu đề để tìm. Chỉ hiển thị hồ sơ/văn bản bạn được phép khai thác.
+        </p>
+        {% endif %}
+
+        {% if doc and doc.docstatus > 0 and actions %}
+        <div style="margin-top: 32px; background: var(--c-gray-50); padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--brand-border);">
+            <h3 style="margin-top: 0; color: var(--brand-primary); font-size: 1.1rem; margin-bottom: 16px;">Xử lý phiếu</h3>
+            {% if is_staff %}
+            <div class="dm-form-group">
+                <label class="dm-form-label">Lý do (bắt buộc khi từ chối)</label>
+                <textarea id="action_text" class="dm-form-control" rows="2"></textarea>
+            </div>
+            <div class="dm-form-group">
+                <label class="dm-form-label">Ghi chú thêm</label>
+                <textarea id="action_notes" class="dm-form-control" rows="2">{{ doc.notes or '' }}</textarea>
+            </div>
+            {% endif %}
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                {% for a in actions %}
+                <button type="button" class="dm-btn {% if a.action in ('Từ chối', 'Hủy phiếu') %}danger{% else %}primary{% endif %}"
+                        data-action="{{ a.action }}" onclick="dmRequestAction(this)">{{ a.action }}</button>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </form>
+</div>

@@ -1,172 +1,29 @@
 {% extends base_template or "templates/dm_portal_base.html" %}
 
 {% block page_actions %}
-<button type="button" class="dm-btn" onclick="window.history.back()">
-    <i class="fa fa-arrow-left"></i> Quay lại
-</button>
-
-{% if not docname %}
-<button type="button" class="dm-btn primary" onclick="saveFeedback()" id="saveBtn">
-    <i class="fa fa-paper-plane"></i> Gửi Góp ý
-</button>
-{% endif %}
-
-{% if docname and is_officer and doc.status != 'Đã phản hồi' %}
-<button type="button" class="dm-btn" onclick="submitResponse()" id="responseBtn" style="background: #10b981; color: white; border: none;">
-    <i class="fa fa-reply"></i> Lưu & Cập nhật phản hồi
-</button>
+<a href="{{ cfg.route }}" class="dm-btn"><i class="fa fa-arrow-left"></i> Quay lại</a>
+{% if not doc and not needs_profile %}
+<button type="button" class="dm-btn primary" onclick="dmSubmitFeedback()"><i class="fa fa-paper-plane"></i> Gửi Góp ý</button>
 {% endif %}
 {% endblock %}
 
 {% block dm_content %}
-<div class="dm-card">
-    <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid var(--brand-border); padding-bottom: 16px; margin-bottom: 24px;">
-        <div>
-            <h2 style="margin: 0; color: var(--text-main); font-size: 1.5rem;">Chi tiết Góp ý</h2>
-            {% if docname %}
-            <div style="color: var(--text-muted); font-size: 0.9rem; margin-top: 4px;">Mã phiếu: <strong>{{ docname }}</strong></div>
-            {% endif %}
-        </div>
-        <div>
-            {% if doc %}
-                {% if doc.status == 'Mới' %}
-                <span class="dm-badge" style="background: var(--brand-primary); color: white; font-size: 0.9rem; padding: 6px 12px;">Mới</span>
-                {% elif doc.status == 'Đã xem' %}
-                <span class="dm-badge warning" style="font-size: 0.9rem; padding: 6px 12px;">Đã xem</span>
-                {% elif doc.status == 'Đã phản hồi' %}
-                <span class="dm-badge success" style="font-size: 0.9rem; padding: 6px 12px;">Đã phản hồi</span>
-                {% endif %}
-            {% else %}
-                <span class="dm-badge" style="background: var(--c-gray-200); font-size: 0.9rem; padding: 6px 12px;">Tạo mới</span>
-            {% endif %}
-        </div>
-    </div>
-
-    <form id="feedbackForm">
-        <input type="hidden" id="docname" value="{{ docname or '' }}">
-        
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
-            <div class="dm-form-group">
-                <label class="dm-form-label">Độc giả <span style="color: red;">*</span></label>
-                {% if is_officer %}
-                    <select id="reader" class="dm-form-control" {% if docname %}disabled{% endif %} required>
-                        <option value="">-- Chọn Độc giả --</option>
-                        {% for r in readers_list %}
-                        <option value="{{ r.name }}" {% if (doc and doc.reader == r.name) or (not doc and reader_profile == r.name) %}selected{% endif %}>
-                            {{ r.full_name }} ({{ r.name }})
-                        </option>
-                        {% endfor %}
-                    </select>
-                {% else %}
-                    <input type="hidden" id="reader" value="{{ doc.reader if doc else reader_profile }}">
-                    <input type="text" class="dm-form-control" value="{{ doc.reader_name if doc else frappe.session.user_fullname }}" disabled>
-                {% endif %}
-            </div>
-            
-            <div class="dm-form-group">
-                <label class="dm-form-label">Ngày gửi</label>
-                <input type="date" id="feedback_date" class="dm-form-control" value="{{ doc.feedback_date if doc else frappe.utils.nowdate() }}" disabled>
-            </div>
-        </div>
-        
-        <div class="dm-form-group">
-            <label class="dm-form-label">Tiêu đề <span style="color: red;">*</span></label>
-            <input type="text" id="subject" class="dm-form-control" value="{{ doc.subject or '' }}" {% if docname %}disabled{% endif %} required>
-        </div>
-
-        <div class="dm-form-group">
-            <label class="dm-form-label">Nội dung chi tiết <span style="color: red;">*</span></label>
-            <textarea id="content" class="dm-form-control" rows="6" {% if docname %}disabled{% endif %} required>{{ doc.content or '' }}</textarea>
-        </div>
-
-        {% if docname %}
-        <div style="margin-top: 32px; background: var(--c-gray-50); padding: 24px; border-radius: var(--radius-md); border: 1px solid var(--brand-border);">
-            <h3 style="margin-top: 0; color: var(--brand-primary); font-size: 1.1rem; margin-bottom: 16px;">Phản hồi từ Cán bộ</h3>
-            
-            {% if is_officer and doc.status != 'Đã phản hồi' %}
-                <div class="dm-form-group">
-                    <label class="dm-form-label">Nhập nội dung phản hồi</label>
-                    <textarea id="response" class="dm-form-control" rows="5">{{ doc.response or '' }}</textarea>
-                </div>
-            {% else %}
-                {% if doc.response %}
-                <div style="background: white; padding: 16px; border-radius: var(--radius-sm); border: 1px solid var(--brand-border); min-height: 100px;">
-                    {{ doc.response | replace('\n', '<br>') | safe }}
-                </div>
-                <div style="margin-top: 12px; font-size: 0.85rem; color: var(--text-muted); text-align: right;">
-                    Phản hồi bởi: <strong>{{ doc.responded_by }}</strong> vào lúc {{ frappe.format_date(doc.responded_date) }}
-                </div>
-                {% else %}
-                <div style="color: var(--text-muted); font-style: italic;">Chưa có phản hồi.</div>
-                {% endif %}
-            {% endif %}
-        </div>
-        {% endif %}
-    </form>
-</div>
+{% include "templates/includes/dm_feedback_form.html" %}
 {% endblock %}
 
 {% block dm_scripts %}
 <script>
+    window.DM_REQUEST = {{ {"doctype": cfg.doctype, "route": cfg.route} | tojson }};
+    {% if doc and is_staff and state == 'Mới' %}
+    // Staff opening a new feedback marks it as seen (POST, not a side effect of GET).
     frappe.ready(function() {
-        window.saveFeedback = function() {
-            const btnSave = document.getElementById('saveBtn');
-            const reader = document.getElementById('reader').value;
-            const subject = document.getElementById('subject').value.trim();
-            const content = document.getElementById('content').value.trim();
-            
-            if (!reader || !subject || !content) {
-                frappe.msgprint({title: 'Lỗi', indicator: 'red', message: 'Vui lòng điền đầy đủ thông tin bắt buộc'});
-                return;
-            }
-            
-            const data = {
-                reader: reader,
-                feedback_date: document.getElementById('feedback_date').value,
-                subject: subject,
-                content: content,
-                status: 'Mới'
-            };
-            
-            window.dmSaveRecord('Reader Feedback', '', data, '/reader_feedbacks/form', btnSave);
-        };
-        
-        window.submitResponse = async function() {
-            const docname = document.getElementById('docname').value;
-            const responseText = document.getElementById('response').value.trim();
-            
-            if (!responseText) {
-                frappe.msgprint({title: 'Lỗi', indicator: 'red', message: 'Vui lòng nhập nội dung phản hồi'});
-                return;
-            }
-            
-            const data = {
-                response: responseText,
-                status: 'Đã phản hồi',
-                responded_by: frappe.session.user,
-                responded_date: frappe.datetime.now_datetime()
-            };
-            
-            try {
-                const response = await fetch('/api/resource/Reader Feedback/' + docname, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-Frappe-CSRF-Token': csrf_token
-                    },
-                    body: JSON.stringify(data)
-                });
-                
-                if (response.ok) {
-                    frappe.msgprint({title: 'Thành công', indicator: 'green', message: 'Đã cập nhật phản hồi!'});
-                    setTimeout(() => window.location.reload(), 1000);
-                } else {
-                    frappe.msgprint({title: 'Lỗi', indicator: 'red', message: 'Không thể cập nhật phản hồi'});
-                }
-            } catch(e) {
-                frappe.msgprint({title: 'Lỗi', indicator: 'red', message: 'Lỗi kết nối'});
-            }
-        };
+        dmCall('document_manager.document_manager.api.requests.apply_action',
+               {doctype: window.DM_REQUEST.doctype, name: {{ doc.name | tojson }}, action: 'Đánh dấu đã xem'}).then(function() {
+            var badge = document.getElementById('state-badge');
+            if (badge) { badge.textContent = 'Đã xem'; badge.className = 'dm-badge'; }
+            document.querySelectorAll('[data-action="Đánh dấu đã xem"]').forEach(function(b) { b.remove(); });
+        }).catch(function() {});
     });
+    {% endif %}
 </script>
 {% endblock %}

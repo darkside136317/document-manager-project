@@ -1,0 +1,13 @@
+{
+  "name": "Reader Group Scope",
+  "module": "Document Manager",
+  "doctype": "DocType",
+  "document_type": "Setup",
+  "istable": 1,
+  "engine": "InnoDB",
+  "fields": [
+    {"fieldname": "fonds", "fieldtype": "Link", "label": "Phông", "options": "Fonds", "reqd": 1, "in_list_view": 1},
+    {"fieldname": "fonds_name", "fieldtype": "Data", "label": "Tên phông", "fetch_from": "fonds.fonds_name", "read_only": 1, "in_list_view": 1}
+  ],
+  "permissions": []
+}

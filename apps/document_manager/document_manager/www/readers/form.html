@@ -39,7 +39,7 @@
                 </div>
                 <div class="dm-form-group">
                     <label class="dm-form-label">Tài khoản liên kết (User)</label>
-                    <input type="text" id="user" class="dm-form-control" value="{{ doc.user or '' }}" placeholder="Tự động tạo nếu để trống">
+                    <input type="text" id="user" class="dm-form-control" value="{{ doc.user or '' }}" placeholder="Để trống; tự gắn khi nhập mật khẩu bên dưới">
                 </div>
                 <div class="dm-form-group">
                     <label class="dm-form-label">Mật khẩu (Nhập để đổi hoặc tạo mới)</label>
@@ -70,20 +70,32 @@
                 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
                     <div class="dm-form-group">
-                        <label class="dm-form-label">Mức mật tối đa</label>
-                        <select id="max_confidentiality_priority" class="dm-form-control">
-                            <option value="1" {% if doc and doc.max_confidentiality_priority == 1 %}selected{% endif %}>1 - Thường</option>
-                            <option value="2" {% if doc and doc.max_confidentiality_priority == 2 %}selected{% endif %}>2 - Mật</option>
-                            <option value="3" {% if doc and doc.max_confidentiality_priority == 3 %}selected{% endif %}>3 - Tối mật</option>
-                            <option value="4" {% if doc and doc.max_confidentiality_priority == 4 %}selected{% endif %}>4 - Tuyệt mật</option>
+                        <label class="dm-form-label">Nhóm độc giả</label>
+                        <select id="reader_group" class="dm-form-control" {% if not can_set_access %}disabled{% endif %}>
+                            {% set current_group = doc.reader_group if doc else '' %}
+                            <option value="">(nhóm mặc định)</option>
+                            {% for g in groups %}
+                            <option value="{{ g.name }}" {% if current_group == g.name %}selected{% endif %}>{{ g.name }}{% if g.is_default %} — mặc định{% endif %}</option>
+                            {% endfor %}
                         </select>
+                        <small style="color: var(--text-muted);">Nhóm quyết định phạm vi phông, mức mật và chức năng được dùng.</small>
                     </div>
                     <div class="dm-form-group">
-                        <label class="dm-form-label">Nhóm độc giả</label>
-                        <input type="text" id="reader_group" class="dm-form-control" value="{{ doc.reader_group if doc else '' }}">
+                        <label class="dm-form-label">Mức mật riêng (ghi đè nhóm)</label>
+                        <select id="max_confidentiality_priority" class="dm-form-control" {% if not can_set_access %}disabled{% endif %}>
+                            {% set current = doc.max_confidentiality_priority if doc else 0 %}
+                            <option value="0" {% if not current %}selected{% endif %}>0 - Theo nhóm</option>
+                            {% for l in levels %}
+                            <option value="{{ l.priority }}" {% if current == l.priority %}selected{% endif %}>{{ l.priority }} - {{ l.name }}</option>
+                            {% endfor %}
+                            {% if current and current not in levels | map(attribute='priority') | list %}
+                            <option value="{{ current }}" selected>{{ current }}</option>
+                            {% endif %}
+                        </select>
+                        {% if not can_set_access %}<small style="color: var(--text-muted);">Chỉ Quản trị tài liệu mới thay đổi nhóm và mức mật.</small>{% endif %}
                     </div>
                 </div>
-                
+
                 <div class="dm-form-group">
                     <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
                         <input type="checkbox" id="is_active" {% if not doc or doc.is_active %}checked{% endif %}>
@@ -135,11 +147,13 @@
                 organization: document.getElementById('organization').value,
                 position: document.getElementById('position').value,
                 address: document.getElementById('address').value,
-                max_confidentiality_priority: parseInt(document.getElementById('max_confidentiality_priority').value) || 1,
-                reader_group: document.getElementById('reader_group').value,
                 is_active: document.getElementById('is_active').checked ? 1 : 0,
                 notes: document.getElementById('notes').value
             };
+            if (!document.getElementById('reader_group').disabled) {
+                data.reader_group = document.getElementById('reader_group').value || null;
+                data.max_confidentiality_priority = parseInt(document.getElementById('max_confidentiality_priority').value) || 0;
+            }
             
             try {
                 btn.disabled = true;
@@ -157,8 +171,8 @@
                     body: JSON.stringify(data)
                 });
                 
-                if (!response.ok) throw new Error('Lưu dữ liệu thất bại');
-                let result = await response.json();
+                let result = await response.json().catch(() => ({}));
+                if (!response.ok) throw new Error(dmServerMessage(result, 'Lưu dữ liệu thất bại'));
                 let newDocname = result.data.name;
                 
                 let pwdToSet = document.getElementById('new_password').value;
@@ -173,7 +187,8 @@
                     });
                     
                     if (!pwdResp.ok) {
-                        frappe.msgprint({title: 'Cảnh báo', indicator: 'orange', message: 'Lưu thông tin thành công nhưng thiết lập mật khẩu thất bại. Vui lòng kiểm tra lại quyền.'});
+                        const pwdBody = await pwdResp.json().catch(() => ({}));
+                        frappe.msgprint({title: 'Cảnh báo', indicator: 'orange', message: 'Đã lưu thông tin nhưng chưa đặt được mật khẩu: ' + dmServerMessage(pwdBody, 'vui lòng kiểm tra lại quyền.')});
                         setTimeout(() => window.location.href = '/readers/form?name=' + newDocname, 2500);
                         return;
                     }

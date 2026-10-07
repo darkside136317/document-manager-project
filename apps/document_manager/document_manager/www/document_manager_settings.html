@@ -12,39 +12,21 @@
 <div class="dm-card" style="padding: 24px;">
     <form id="frmDocumentManagerSettings">
         
-        <h3 class="dm-section-title"><i class="fa fa-database"></i> Cơ sở dữ liệu MongoDB Atlas</h3>
-        <div class="dm-form-grid">
+        <h3 class="dm-section-title"><i class="fa fa-heartbeat"></i> Trạng thái dịch vụ</h3>
+        <p style="color: var(--text-muted); margin-top: 0;">Địa chỉ và khóa kết nối của MongoDB Atlas và Meilisearch được cấu hình ở máy chủ (<code>site_config.json</code> / <code>.env</code>), không sửa tại đây.</p>
+        <div class="dm-form-grid" id="dm-service-health">
             <div class="dm-form-group">
-                <label class="dm-form-label">MongoDB Atlas URI</label>
-                <input type="password" name="mongodb_atlas_uri" class="dm-form-control" value="{{ doc.mongodb_atlas_uri or '' }}" {% if not can_edit %}disabled{% endif %}>
+                <label class="dm-form-label">MongoDB Atlas (lưu tệp)</label>
+                <input type="text" id="health-mongodb" class="dm-form-control" value="Đang kiểm tra..." disabled style="background-color: var(--c-gray-100);">
             </div>
             <div class="dm-form-group">
-                <label class="dm-form-label">Tên Database</label>
-                <input type="text" name="mongodb_database" class="dm-form-control" value="{{ doc.mongodb_database or 'docmanager_files' }}" {% if not can_edit %}disabled{% endif %}>
-            </div>
-            <div class="dm-form-group">
-                <label class="dm-form-label">Trạng thái kết nối</label>
-                <input type="text" class="dm-form-control" value="{{ doc.mongodb_status or 'Chưa kết nối' }}" disabled style="background-color: var(--c-gray-100);">
-            </div>
-        </div>
-
-        <h3 class="dm-section-title" style="margin-top: 32px;"><i class="fa fa-search"></i> Công cụ tìm kiếm Meilisearch</h3>
-        <div class="dm-form-grid">
-            <div class="dm-form-group">
-                <label class="dm-form-label">Meilisearch Host</label>
-                <input type="text" name="meilisearch_host" class="dm-form-control" value="{{ doc.meilisearch_host or 'http://localhost:7700' }}" {% if not can_edit %}disabled{% endif %}>
-            </div>
-            <div class="dm-form-group">
-                <label class="dm-form-label">Master Key</label>
-                <input type="password" name="meilisearch_master_key" class="dm-form-control" value="{{ doc.meilisearch_master_key or '' }}" {% if not can_edit %}disabled{% endif %}>
-            </div>
-            <div class="dm-form-group">
-                <label class="dm-form-label">Số tài liệu đã Index</label>
-                <input type="text" class="dm-form-control" value="{{ doc.total_indexed or '0' }}" disabled style="background-color: var(--c-gray-100);">
+                <label class="dm-form-label">Meilisearch (tìm kiếm)</label>
+                <input type="text" id="health-meilisearch" class="dm-form-control" value="Đang kiểm tra..." disabled style="background-color: var(--c-gray-100);">
             </div>
         </div>
 
         <h3 class="dm-section-title" style="margin-top: 32px;"><i class="fa fa-shield"></i> Sao lưu tự động</h3>
+        <p style="color: var(--text-muted); margin-top: 0;">Lịch sao lưu tự động chưa có hiệu lực: sao lưu hiện chạy khi cán bộ tạo đợt sao lưu. Các giá trị này sẽ được áp dụng khi lịch tự động được triển khai.</p>
         <div class="dm-form-grid">
             <div class="dm-form-group" style="grid-column: 1 / -1;">
                 <label class="dm-checkbox-label">
@@ -90,6 +72,21 @@
 {% endblock %}
 
 {% block dm_scripts %}
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        function show(id, r) {
+            var el = document.getElementById(id);
+            if (!el) return;
+            var extra = r.files !== undefined ? " — " + r.files + " tệp" : (r.documents !== undefined ? " — " + r.documents + " tài liệu đã lập chỉ mục" : "");
+            el.value = (r.ok ? "✅ " : "❌ ") + r.message + (r.ok ? extra : "");
+        }
+        frappe.call({
+            method: "document_manager.document_manager.api.admin.get_service_health",
+            callback: function(r) { if (r.message) { show("health-mongodb", r.message.mongodb); show("health-meilisearch", r.message.meilisearch); } },
+            error: function() { show("health-mongodb", {ok: false, message: "Không kiểm tra được"}); show("health-meilisearch", {ok: false, message: "Không kiểm tra được"}); }
+        });
+    });
+</script>
 <div id="dm-context-data" data-can-edit="{{ 1 if can_edit else 0 }}" style="display: none;"></div>
 <script>
     document.addEventListener("DOMContentLoaded", function() {

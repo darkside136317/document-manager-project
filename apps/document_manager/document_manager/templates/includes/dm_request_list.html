@@ -1,0 +1,81 @@
+{# Shared list body for reader requests. Context: cfg, rows, state_class, search_term, status_filter, start, limit, total_count, has_more, query_base #}
+<div class="dm-card" style="margin-bottom: 24px; padding: 16px 24px;">
+    <form method="GET" action="{{ cfg.route }}" style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+        <div style="flex: 1; min-width: 200px; position: relative;">
+            <i class="fa fa-search" style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--c-gray-400);"></i>
+            <input type="text" name="search" class="dm-form-control" placeholder="Tìm kiếm theo mã phiếu..." value="{{ search_term }}" style="padding-left: 42px;">
+        </div>
+        <div style="width: 200px;">
+            <select name="status" class="dm-form-control">
+                <option value="">-- Tất cả trạng thái --</option>
+                {% for s in cfg.states %}
+                <option value="{{ s }}" {% if status_filter == s %}selected{% endif %}>{{ s }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="dm-btn">Lọc</button>
+        {% if search_term or status_filter %}
+        <a href="{{ cfg.route }}" class="dm-btn" style="color: var(--c-gray-500);"><i class="fa fa-times"></i> Xóa lọc</a>
+        {% endif %}
+    </form>
+</div>
+
+<div class="dm-table-wrapper">
+    <table class="dm-table">
+        <thead>
+            <tr>
+                <th>Mã phiếu</th>
+                <th>Độc giả</th>
+                <th>{% if cfg.doctype == 'Reader Feedback' %}Tiêu đề{% else %}Ngày yêu cầu{% endif %}</th>
+                {% if cfg.doctype != 'Reader Feedback' %}<th>Mục đích</th>{% endif %}
+                <th>Trạng thái</th>
+                <th style="text-align: right;">Thao tác</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in rows %}
+            <tr>
+                <td style="font-weight: 600;">
+                    <a href="{{ cfg.route }}/form?name={{ row.name | urlencode }}" style="color: var(--brand-primary); text-decoration: none;">{{ row.name }}</a>
+                </td>
+                <td>{{ row.reader_name or '-' }}</td>
+                {% if cfg.doctype == 'Reader Feedback' %}
+                <td>{{ (row.subject or '-') | truncate(60) }}</td>
+                {% else %}
+                <td>{{ frappe.utils.formatdate(row.request_date) }}</td>
+                <td>{{ (row.purpose or '-') | truncate(50) }}</td>
+                {% endif %}
+                <td><span class="dm-badge {{ state_class.get(row.state, '') }}">{{ row.state or '-' }}</span></td>
+                <td style="text-align: right;">
+                    <a href="{{ cfg.route }}/form?name={{ row.name | urlencode }}" class="dm-btn" style="padding: 6px 12px; font-size: 0.85rem;">Chi tiết</a>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="6" style="text-align: center; padding: 40px; color: var(--c-gray-400);">
+                    <i class="fa fa-inbox" style="font-size: 32px; margin-bottom: 12px; display: block;"></i>
+                    Không tìm thấy bản ghi nào.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="dm-pagination">
+    <div class="dm-pagination-info">
+        Hiển thị {{ start + 1 if total_count > 0 else 0 }} - {{ start + rows|length }} trong số {{ total_count }} bản ghi
+    </div>
+    <div class="dm-pagination-controls">
+        {% if start > 0 %}
+        <a href="?{{ query_base }}&start={{ start - limit }}" class="dm-btn" style="padding: 6px 12px;"><i class="fa fa-chevron-left"></i> Trước</a>
+        {% else %}
+        <button class="dm-btn" style="padding: 6px 12px; opacity: 0.5; cursor: not-allowed;" disabled><i class="fa fa-chevron-left"></i> Trước</button>
+        {% endif %}
+        {% if has_more %}
+        <a href="?{{ query_base }}&start={{ start + limit }}" class="dm-btn" style="padding: 6px 12px;">Tiếp <i class="fa fa-chevron-right"></i></a>
+        {% else %}
+        <button class="dm-btn" style="padding: 6px 12px; opacity: 0.5; cursor: not-allowed;" disabled>Tiếp <i class="fa fa-chevron-right"></i></button>
+        {% endif %}
+    </div>
+</div>

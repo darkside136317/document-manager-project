@@ -2,6 +2,8 @@
 import frappe
 from frappe.model.document import Document
 
+from document_manager.document_manager.services.archive.counters import refresh_fonds_file_count
+
 
 class Fonds(Document):
     """Phông lưu trữ — Tầng 1 trong mô hình phân cấp 5 tầng."""
@@ -18,8 +20,4 @@ class Fonds(Document):
 
     def update_total_files(self):
         """Cập nhật tổng số hồ sơ thuộc phông này."""
-        count = frappe.db.count("Archival File", filters={
-            "fonds": self.name
-        })
-        if count != self.total_files:
-            frappe.db.set_value("Fonds", self.name, "total_files", count, update_modified=False)
+        refresh_fonds_file_count(self.name)

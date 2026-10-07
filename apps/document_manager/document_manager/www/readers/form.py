@@ -1,10 +1,10 @@
 import frappe
+from document_manager.document_manager.permissions import is_staff as _is_staff
+from document_manager.document_manager.permissions import require_staff
 from frappe import _
 
 def get_context(context):
-    if frappe.session.user == 'Guest':
-        frappe.local.flags.redirect_location = '/login'
-        raise frappe.Redirect
+    require_staff('/readers/form')
         
     docname = frappe.form_dict.get('name')
     doc = None
@@ -24,12 +24,17 @@ def get_context(context):
             frappe.throw(_('Bạn không có quyền tạo Độc giả mới'), frappe.PermissionError)
             
         context.page_title = 'Thêm Độc giả mới'
-        
-    user_roles = frappe.get_roles()
-    is_staff = any(r in user_roles for r in ('Document Admin', 'Cataloger', 'System Manager', 'Administrator', 'Reading Room Officer', 'Archivist'))
+    is_staff = _is_staff()
     context.base_template = "templates/dm_dashboard_base.html" if is_staff else "templates/dm_portal_base.html"
     
+    levels = frappe.get_all('Confidentiality Level', fields=['name', 'priority'], order_by='priority')
+    groups = frappe.get_all('Reader Group', fields=['name', 'is_default'], order_by='group_name')
+    # Group and clearance are permlevel-1 fields: only these roles may change them.
+    can_set_access = bool({'Document Admin', 'System Manager'} & set(frappe.get_roles()))
     context.update({
+        'levels': levels,
+        'groups': groups,
+        'can_set_access': can_set_access,
         'doc': doc,
         'docname': docname,
         'page_icon': 'fa-user',

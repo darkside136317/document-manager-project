@@ -1,0 +1,91 @@
+# =============================================================================
+# Docker Compose DEV override — edit code on the host, see it live
+# =============================================================================
+# Usage (from this folder):
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --no-build
+#
+# What it does:
+#   * bind-mounts apps/document_manager into backend, workers, scheduler and the watcher
+#   * gunicorn --reload and dev/autoreload.py restart on Python changes
+#   * dev-watcher runs `bench migrate` when DocTypes/workflows/patches/hooks change and
+#     clears the website cache when templates, www pages or assets change
+# Never use this file in production (see docker-compose.prod.yml).
+# =============================================================================
+
+x-app-mounts: &app-mounts
+  - ../apps/document_manager:/home/frappe/frappe-bench/apps/document_manager
+  - ./dev:/dev-tools:ro
+
+services:
+  backend:
+    volumes: *app-mounts
+    command:
+      - /home/frappe/frappe-bench/env/bin/gunicorn
+      - --chdir=/home/frappe/frappe-bench/sites
+      - --bind=0.0.0.0:8000
+      - --threads=${GUNICORN_THREADS:-4}
+      - --workers=${GUNICORN_WORKERS:-2}
+      - --worker-class=gthread
+      - --worker-tmp-dir=/dev/shm
+      - --timeout=${GUNICORN_TIMEOUT:-120}
+      - --reload
+      - --reload-engine=poll
+      - frappe.app:application
+
+  # nginx serves /assets from its own filesystem, so it needs the source mounted too,
+  # otherwise browsers keep getting the JS/CSS baked into the image.
+  frontend:
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+      - logs:/home/frappe/frappe-bench/logs
+      - ../apps/document_manager:/home/frappe/frappe-bench/apps/document_manager
+
+  queue-long:
+    volumes: *app-mounts
+    command:
+      - /home/frappe/frappe-bench/env/bin/python
+      - /dev-tools/autoreload.py
+      - bench
+      - worker
+      - --queue
+      - long,default,short
+
+  queue-short:
+    volumes: *app-mounts
+    command:
+      - /home/frappe/frappe-bench/env/bin/python
+      - /dev-tools/autoreload.py
+      - bench
+      - worker
+      - --queue
+      - short,default
+
+  scheduler:
+    volumes: *app-mounts
+    command:
+      - /home/frappe/frappe-bench/env/bin/python
+      - /dev-tools/autoreload.py
+      - bench
+      - schedule
+
+  meilisearch:
+    ports:
+      - "127.0.0.1:7700:7700"   # debugging only; never exposed beyond the host
+
+  dev-watcher:
+    image: docmanager-custom:${ERPNEXT_VERSION:?}
+    networks:
+      - frappe_network
+    restart: unless-stopped
+    depends_on:
+      - backend
+    command:
+      - /home/frappe/frappe-bench/env/bin/python
+      - /dev-tools/watcher.py
+    environment:
+      FRAPPE_SITE_NAME: ${FRAPPE_SITE_NAME:-}
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+      - logs:/home/frappe/frappe-bench/logs
+      - ../apps/document_manager:/home/frappe/frappe-bench/apps/document_manager
+      - ./dev:/dev-tools:ro

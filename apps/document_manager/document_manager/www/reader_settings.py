@@ -1,10 +1,9 @@
 import frappe
+from document_manager.document_manager.permissions import require_staff
 from frappe import _
 
 def get_context(context):
-    if frappe.session.user == 'Guest':
-        frappe.local.flags.redirect_location = '/login'
-        raise frappe.Redirect
+    require_staff('/reader_settings')
         
     if not frappe.has_permission('Reader Settings', 'read'):
         frappe.throw(_('Bạn không có quyền truy cập trang này'), frappe.PermissionError)

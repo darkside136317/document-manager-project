@@ -1,33 +1,9 @@
 # -*- coding: utf-8 -*-
-import frappe
-from frappe.model.document import Document
+from document_manager.document_manager.services.request_base import RequestDocument
 
-class CopyRequest(Document):
-    """Phiếu đăng ký sao chụp tài liệu."""
-    def validate(self):
-        if not self.items:
-            frappe.throw("Phải có ít nhất một tài liệu trong phiếu sao chụp")
 
-    def on_submit(self):
-        self.db_set("workflow_state", "Chờ duyệt")
+class CopyRequest(RequestDocument):
+    """Phiếu đăng ký sao chụp tài liệu. Chuyển trạng thái qua Workflow "Copy Request"."""
 
-    def on_cancel(self):
-        self.db_set("workflow_state", "Từ chối")
-
-    @frappe.whitelist()
-    def approve(self):
-        self.db_set("workflow_state", "Đã duyệt")
-        self.db_set("approved_by", frappe.session.user)
-        self.db_set("approved_date", frappe.utils.now())
-
-    @frappe.whitelist()
-    def reject(self, reason=""):
-        self.db_set("workflow_state", "Từ chối")
-        self.db_set("rejection_reason", reason)
-        self.db_set("approved_by", frappe.session.user)
-        self.db_set("approved_date", frappe.utils.now())
-
-    @frappe.whitelist()
-    def mark_completed(self):
-        self.db_set("workflow_state", "Đã hoàn thành")
-        self.db_set("completed_date", frappe.utils.now())
+    final_state_field = {"Đã hoàn thành": "completed_date"}
+    required_feature = "can_request_copy"

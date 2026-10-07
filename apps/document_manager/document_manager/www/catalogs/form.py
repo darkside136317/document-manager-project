@@ -1,10 +1,10 @@
 import frappe
+from document_manager.document_manager.permissions import is_staff as _is_staff
+from document_manager.document_manager.permissions import require_staff
 from frappe import _
 
 def get_context(context):
-    if frappe.session.user == 'Guest':
-        frappe.local.flags.redirect_location = '/login'
-        raise frappe.Redirect
+    require_staff('/catalogs/form')
         
     if not frappe.has_permission('Catalog', 'read'):
         frappe.throw(_('Bạn không có quyền truy cập trang này'), frappe.PermissionError)
@@ -29,7 +29,7 @@ def get_context(context):
     record_groups = frappe.get_all('Record Group', fields=['name', 'group_title', 'fonds'])
         
     user_roles = frappe.get_roles()
-    is_staff = any(r in user_roles for r in ('Document Admin', 'Cataloger', 'System Manager', 'Administrator', 'Reading Room Officer', 'Archivist'))
+    is_staff = _is_staff()
     context.base_template = "templates/dm_dashboard_base.html" if is_staff else "templates/dm_portal_base.html"
     
     context.update({

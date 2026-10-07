@@ -1,9 +1,10 @@
 import frappe
+from document_manager.document_manager.permissions import require_staff
 
 def get_context(context):
-    if frappe.session.user == 'Guest':
-        frappe.local.flags.redirect_location = '/login'
-        raise frappe.Redirect
+    require_staff('/reports/thong_ke_tai_lieu')
+    if not frappe.has_permission('Archival File', 'read'):
+        frappe.throw('Bạn không có quyền truy cập', frappe.PermissionError)
     
     # Import the report logic directly since it's a python module
     from document_manager.document_manager.report.thong_ke_tai_lieu.thong_ke_tai_lieu import execute

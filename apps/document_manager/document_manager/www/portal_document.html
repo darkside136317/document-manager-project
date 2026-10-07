@@ -1,0 +1,39 @@
+{% extends "templates/dm_portal_base.html" %}
+
+{% block page_actions %}
+<a href="/portal" class="dm-btn"><i class="fa fa-arrow-left"></i> Quay lại tìm kiếm</a>
+{% if preview.download_url %}<a href="{{ preview.download_url }}" class="dm-btn primary"><i class="fa fa-download"></i> Tải tệp gốc</a>{% endif %}
+{% endblock %}
+
+{% block dm_content %}
+<div class="dm-card" style="margin-bottom: 24px;">
+    <h2 style="margin: 0 0 16px 0; font-size: 1.2rem;">Thông tin tài liệu</h2>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px 24px;">
+        {% for label, value in fields %}
+        <div>
+            <div style="color: var(--text-muted); font-size: 0.8rem;">{{ label }}</div>
+            <div style="font-weight: 600;">{{ value }}</div>
+        </div>
+        {% endfor %}
+    </div>
+    {% if doc.description %}
+    <p style="margin-top: 16px; color: var(--text-muted);">{{ doc.description }}</p>
+    {% endif %}
+</div>
+
+<div class="dm-card">
+    <h2 style="margin: 0 0 16px 0; font-size: 1.2rem;">Bản xem trước</h2>
+    {% if preview.kind == 'inline' %}
+        {% if preview.file_type in ('JPG', 'PNG') %}
+        <img src="{{ preview.preview_url }}" alt="{{ doc.document_title }}" style="max-width: 100%; height: auto;">
+        {% else %}
+        <iframe src="{{ preview.preview_url }}" title="{{ doc.document_title }}" style="width: 100%; height: 75vh; border: 1px solid var(--brand-border); border-radius: 8px;"></iframe>
+        {% endif %}
+    {% elif preview.kind == 'text' %}
+        <p style="color: var(--text-muted);">{{ preview.notice }}</p>
+        <pre style="white-space: pre-wrap; max-height: 70vh; overflow: auto; background: var(--c-gray-50); padding: 16px; border-radius: 8px;">{{ preview.content }}</pre>
+    {% else %}
+        <p style="color: var(--text-muted);">{{ preview.notice }}</p>
+    {% endif %}
+</div>
+{% endblock %}

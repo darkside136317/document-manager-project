@@ -198,13 +198,14 @@
             </div>
             <p class="dm-search-hint">Nhấn Enter để tìm kiếm · Kết quả được tìm trong cả nội dung tệp PDF, DOCX và XLSX</p>
             
-            {% if frappe.session.user != "Guest" %}
             <div class="dm-reader-actions">
                 <a href="/usage_requests" class="dm-reader-btn"><i class="fa fa-history"></i> Lịch sử Yêu cầu</a>
-                <a href="/usage_requests/form" class="dm-reader-btn"><i class="fa fa-file-text"></i> Tạo Y/C Khai thác</a>
-                <a href="/copy_requests/form" class="dm-reader-btn"><i class="fa fa-copy"></i> Tạo Y/C Sao chụp</a>
-                <a href="/reader_feedbacks/form" class="dm-reader-btn"><i class="fa fa-comment"></i> Gửi Góp ý</a>
+                {% if can_request %}<a href="/usage_requests/form" class="dm-reader-btn"><i class="fa fa-file-text"></i> Tạo Y/C Khai thác</a>{% endif %}
+                {% if can_copy %}<a href="/copy_requests/form" class="dm-reader-btn"><i class="fa fa-copy"></i> Tạo Y/C Sao chụp</a>{% endif %}
+                {% if can_feedback %}<a href="/reader_feedbacks/form" class="dm-reader-btn"><i class="fa fa-comment"></i> Gửi Góp ý</a>{% endif %}
             </div>
+            {% if not has_profile and not dm_is_staff() %}
+            <p class="dm-search-hint" style="color: #b45309;">Tài khoản của bạn chưa có hồ sơ độc giả nên chưa thể tìm kiếm hoặc lập phiếu. Vui lòng liên hệ phòng đọc.</p>
             {% endif %}
         </form>
     </section>
@@ -402,7 +403,7 @@
                 ? '<p class="dm-snippet">' + safeHighlighted(formatted.content_text) + '</p>'
                 : '<p class="dm-snippet">Không có nội dung trích xuất để hiển thị.</p>';
             const fileType = escapeHTML(doc.file_type || "Tệp");
-            const href = "/archive_documents/form?name=" + encodeURIComponent(doc.id || "");
+            const href = "/portal_document?name=" + encodeURIComponent(doc.id || "");
             const meta = [];
             if (doc.fonds_name || doc.fonds) meta.push('<span class="dm-meta-item"><i class="fa fa-archive"></i>' + escapeHTML(doc.fonds_name || doc.fonds) + '</span>');
             if (doc.archival_file_title || doc.archival_file) meta.push('<span class="dm-meta-item"><i class="fa fa-folder-o"></i>' + escapeHTML(doc.archival_file_title || doc.archival_file) + '</span>');

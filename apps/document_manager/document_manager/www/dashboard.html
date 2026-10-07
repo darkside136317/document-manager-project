@@ -450,7 +450,7 @@
     <section class="dm-hero">
         <div class="dm-hero-header">
             <div class="dm-hero-badge"><i class="fa fa-server"></i> TRUNG TÂM DỮ LIỆU</div>
-            <h1 class="dm-hero-title">Chào mừng trở lại, {{ frappe.session.user_fullname or frappe.session.user }}</h1>
+            <h1 class="dm-hero-title">Chào mừng trở lại, {{ dm_display_name() }}</h1>
             <p class="dm-hero-subtitle">Hệ thống quản lý, biên mục và khai thác tài liệu lưu trữ toàn diện.</p>
         </div>
 
@@ -530,6 +530,7 @@
                 </div>
                 <ul class="dm-nav-list">
                     <li><a href="/readers">Hồ sơ Độc giả</a></li>
+                    <li><a href="/app/reader-group">Nhóm độc giả</a></li>
                     <li><a href="/usage_requests">Phiếu Y/C Khai thác</a></li>
                     <li><a href="/copy_requests">Phiếu Y/C Sao chụp</a></li>
                     <li><a href="/reader_feedbacks">Phản hồi độc giả</a></li>
