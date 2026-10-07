@@ -7,14 +7,8 @@ import frappe
 def _permitted_count(doctype, filters=None):
     if not frappe.has_permission(doctype, "read"):
         return 0
-    return len(
-        frappe.get_list(
-            doctype,
-            filters=filters or {},
-            pluck="name",
-            limit_page_length=10000,
-        )
-    )
+    rows = frappe.get_list(doctype, filters=filters or {}, fields=[{"COUNT": "name", "as": "c"}])
+    return rows[0].c if rows else 0
 
 
 @frappe.whitelist()

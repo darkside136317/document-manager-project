@@ -1,0 +1,101 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ---------------------------------------------------------------------------
+   Dark theme: only the staff app sets data-theme, so the legacy pages keep their look.
+   --------------------------------------------------------------------------- */
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --dm-ink: #e6edf5;
+  --dm-ink-soft: #c3cfdd;
+  --dm-muted: #93a4b8;
+  --dm-subtle: #6c7f95;
+  --dm-border: #1f3047;
+  --dm-border-strong: #2c4260;
+  --dm-surface: #0f2034;
+  --dm-surface-muted: #132840;
+  --dm-background: #08131f;
+  --dm-primary: #4b8bd1;
+  --dm-primary-hover: #6aa2e0;
+  --dm-primary-soft: #12304d;
+  --dm-accent-soft: #2a2410;
+  --dm-success-soft: #0f2e25;
+  --dm-warning-soft: #33260c;
+  --dm-danger-soft: #3a1618;
+  --dm-info-soft: #0f2a4a;
+  --dm-brand-navy: #06121f;
+  --dm-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --dm-shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.55);
+}
+
+@layer base {
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    @apply bg-canvas text-ink font-sans antialiased;
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  :focus-visible { outline: 2px solid var(--dm-accent); outline-offset: 2px; }
+  h1, h2, h3 { margin: 0; }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-md border border-line-strong bg-surface px-3.5 py-2
+      text-sm font-medium text-ink transition-colors;
+    cursor: pointer;
+    min-height: 38px;
+  }
+  .btn:hover:not(:disabled) { @apply bg-surface-muted; }
+  .btn:disabled { opacity: 0.55; cursor: not-allowed; }
+  .btn-primary { @apply border-transparent bg-primary text-white; }
+  .btn-primary:hover:not(:disabled) { @apply bg-primary-hover; }
+  .btn-danger { @apply border-transparent bg-danger text-white; }
+  .btn-danger:hover:not(:disabled) { filter: brightness(0.92); background: var(--dm-danger); }
+  .btn-ghost { @apply border-transparent bg-transparent; }
+  .btn-icon { @apply px-2; min-width: 36px; }
+
+  .input {
+    @apply block w-full rounded-md border border-line-strong bg-surface px-3 py-2 text-sm text-ink;
+    min-height: 38px;
+  }
+  .input::placeholder { color: var(--dm-subtle); }
+  .input:disabled, .input[readonly] { @apply bg-surface-muted text-ink-muted; cursor: not-allowed; }
+  .input.is-invalid { border-color: var(--dm-danger); }
+  textarea.input { min-height: 84px; resize: vertical; }
+
+  .card { @apply rounded-xl border border-line bg-surface shadow-card; }
+  .label { @apply mb-1 block text-xs font-semibold uppercase tracking-wide text-ink-muted; }
+
+  .badge { @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium; }
+  .badge-success { @apply bg-success-soft text-success; }
+  .badge-muted { @apply bg-surface-muted text-ink-muted; }
+  .badge-info { @apply bg-info-soft text-info; }
+  .badge-warning { @apply bg-warning-soft text-warning; }
+  .badge-danger { @apply bg-danger-soft text-danger; }
+
+  .table-wrap { @apply overflow-x-auto; }
+  .data-table { @apply w-full border-collapse text-sm; }
+  .data-table th {
+    @apply border-b border-line bg-surface-muted px-4 py-2.5 text-left text-xs font-semibold uppercase
+      tracking-wide text-ink-muted;
+    white-space: nowrap;
+  }
+  .data-table td { @apply border-b border-line px-4 py-3 align-middle; }
+  .data-table tbody tr:last-child td { border-bottom: 0; }
+  .data-table tbody tr.is-clickable { cursor: pointer; }
+  .data-table tbody tr.is-clickable:hover { @apply bg-surface-muted; }
+}
+
+/* Rich-text editor surface (contenteditable) */
+.rich-surface { min-height: 120px; max-height: 320px; overflow-y: auto; }
+.rich-surface:empty::before { content: attr(data-placeholder); color: var(--dm-subtle); }
+.rich-surface ul { list-style: disc; padding-left: 1.4rem; }
+.rich-surface ol { list-style: decimal; padding-left: 1.4rem; }
+.rich-surface a { color: var(--dm-primary); text-decoration: underline; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}

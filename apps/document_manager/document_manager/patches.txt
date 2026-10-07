@@ -8,3 +8,5 @@ document_manager.patches.migrate_request_workflows
 document_manager.patches.reindex_search_visibility
 document_manager.patches.create_reader_groups
 document_manager.patches.purge_infrastructure_settings
+document_manager.patches.upgrade_quick_entry_dictionary
+document_manager.patches.use_vietnamese_language

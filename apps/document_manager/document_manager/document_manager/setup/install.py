@@ -28,6 +28,7 @@ CONFIDENTIALITY_LEVELS = (
 
 
 def after_install():
+    set_vietnamese_defaults()
     seed_all()
 
 
@@ -73,3 +74,19 @@ def ensure_default_reader_group() -> str:
                     "is_active": 1, "max_confidentiality_priority": 1,
                     "description": "Nhóm áp dụng cho độc giả chưa được xếp nhóm"}).insert(ignore_permissions=True)
     return DEFAULT_READER_GROUP
+
+
+def set_vietnamese_defaults() -> bool:
+    """Frappe's own messages (link checks, validation, ...) should read Vietnamese on this app.
+
+    Only a site still on the factory default (English) is switched, and only once: running it
+    again never overrides a language an administrator chose later. Returns True when it changed.
+    """
+    if frappe.db.get_single_value("System Settings", "language") not in (None, "", "en"):
+        return False
+    if not frappe.db.exists("Language", "vi"):
+        return False
+    frappe.db.set_value("Language", "vi", "enabled", 1)
+    frappe.db.set_single_value("System Settings", "language", "vi")
+    frappe.clear_cache()
+    return True

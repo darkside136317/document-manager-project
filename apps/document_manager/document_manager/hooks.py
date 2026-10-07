@@ -68,6 +68,23 @@ doc_events = {
     },
 }
 
+# The staff app is a single-page application served by www/dashboard; its client-side routes
+# (/dashboard/danh-muc/...) all render the same page.
+website_route_rules = [
+    {"from_route": "/dashboard/<path:app_path>", "to_route": "dashboard"},
+]
+
+# The catalogue screens moved into the staff app; old bookmarks keep working.
+website_redirects = [
+    {"source": f"{old}(/.*)?", "target": f"/dashboard/danh-muc/{slug}", "redirect_http_status": 301}
+    for old, slug in (
+        ("archival_agencies", "co-quan-luu-tru"), ("fonds", "phong-luu-tru"),
+        ("document_type_categories", "loai-hinh-tai-lieu"), ("document_groups", "nhom-tai-lieu"),
+        ("storage_warehouses", "kho-luu-tru"), ("confidentiality_levels", "muc-do-mat"),
+        ("classification_schemes", "khung-phan-loai"), ("quick_entry_dictionaries", "tu-dien"),
+    )
+]
+
 # Audit trail: every business DocType also reports create / update / delete to the activity log.
 _AUDIT_HANDLER = "document_manager.document_manager.services.audit.audit_doc_event"
 _AUDITED = (

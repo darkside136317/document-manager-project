@@ -89,3 +89,19 @@ services:
       - logs:/home/frappe/frappe-bench/logs
       - ../apps/document_manager:/home/frappe/frappe-bench/apps/document_manager
       - ./dev:/dev-tools:ro
+
+  # Rebuilds the staff UI (Vue) whenever a file in apps/document_manager/frontend changes. The bundle
+  # lands in document_manager/public/staff, which every container above already mounts.
+  staff-ui:
+    image: node:20-slim
+    working_dir: /app/frontend
+    restart: unless-stopped
+    environment:
+      DM_WATCH_POLL: "1"   # bind mounts from Windows deliver no file events
+    command: sh -c "npm ci && npm run watch"
+    volumes:
+      - ../apps/document_manager:/app
+      - staff-ui-node-modules:/app/frontend/node_modules   # Linux modules, kept out of the host folder
+
+volumes:
+  staff-ui-node-modules:

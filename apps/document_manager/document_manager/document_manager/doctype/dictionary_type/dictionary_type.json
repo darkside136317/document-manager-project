@@ -1,0 +1,26 @@
+{
+  "name": "Dictionary Type",
+  "module": "Document Manager",
+  "doctype": "DocType",
+  "document_type": "Setup",
+  "engine": "InnoDB",
+  "naming_rule": "By fieldname",
+  "autoname": "field:type_name",
+  "allow_rename": 0,
+  "quick_entry": 1,
+  "track_changes": 1,
+  "fields": [
+    {"fieldname": "type_name", "fieldtype": "Data", "label": "Tên loại từ điển", "reqd": 1, "unique": 1, "in_list_view": 1, "in_standard_filter": 1, "description": "VD: Chức danh, Địa danh, Tình trạng vật lý, Ngôn ngữ..."},
+    {"fieldname": "is_hierarchical", "fieldtype": "Check", "label": "Từ điển đa cấp", "in_list_view": 1, "description": "Bật để các giá trị có thể xếp thành cây (giá trị cha - con). Tắt: từ điển đơn cấp."},
+    {"fieldname": "column_break_1", "fieldtype": "Column Break"},
+    {"fieldname": "is_active", "fieldtype": "Check", "label": "Đang sử dụng", "default": "1", "in_list_view": 1},
+    {"fieldname": "description", "fieldtype": "Small Text", "label": "Mô tả"}
+  ],
+  "permissions": [
+    {"role": "Document Admin", "read": 1, "write": 1, "create": 1, "delete": 1, "print": 1, "export": 1, "import": 1, "share": 1, "report": 1},
+    {"role": "Cataloger", "read": 1, "write": 1, "create": 1},
+    {"role": "Reading Room Officer", "read": 1}
+  ],
+  "sort_field": "type_name",
+  "sort_order": "ASC"
+}

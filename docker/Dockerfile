@@ -8,6 +8,21 @@
 # =============================================================================
 
 ARG ERPNEXT_VERSION=v16.26.2
+
+# -----------------------------------------------------------------------------
+# Stage 1 - build the staff single-page application (Vue 3 + Vite).
+# vite.config.js writes the bundle to ../document_manager/public/staff.
+# -----------------------------------------------------------------------------
+FROM node:20-slim AS staff-ui
+WORKDIR /src/apps/document_manager/frontend
+COPY apps/document_manager/frontend/package.json apps/document_manager/frontend/package-lock.json ./
+RUN npm ci
+COPY apps/document_manager/frontend/ ./
+RUN npm test && npm run build
+
+# -----------------------------------------------------------------------------
+# Stage 2 - Frappe / ERPNext image with the app
+# -----------------------------------------------------------------------------
 FROM frappe/erpnext:${ERPNEXT_VERSION}
 
 # Switch to root for system-level installs
@@ -24,6 +39,9 @@ USER frappe
 
 # Copy custom app source code into the bench apps directory
 COPY --chown=frappe:frappe apps/document_manager /home/frappe/frappe-bench/apps/document_manager
+
+# The built staff UI (the host's public/staff is excluded by .dockerignore: always build it here)
+COPY --from=staff-ui --chown=frappe:frappe /src/apps/document_manager/document_manager/public/staff      /home/frappe/frappe-bench/apps/document_manager/document_manager/public/staff
 
 # Install app into the Frappe VIRTUALENV (not system pip!)
 # Frappe uses /home/frappe/frappe-bench/env/ as its virtualenv

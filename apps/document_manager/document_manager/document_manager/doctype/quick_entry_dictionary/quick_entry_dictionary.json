@@ -5,64 +5,34 @@
   "document_type": "Setup",
   "engine": "InnoDB",
   "naming_rule": "Expression",
-  "autoname": "format:{dictionary_type}-{entry_value}",
+  "autoname": "format:DICT-{#####}",
+  "is_tree": 1,
+  "nsm_parent_field": "parent_entry",
   "is_submittable": 0,
   "allow_rename": 0,
   "quick_entry": 1,
   "track_changes": 0,
+  "title_field": "entry_value",
+  "show_title_field_in_link": 1,
+  "search_fields": "entry_value,entry_code,dictionary_type",
   "fields": [
-    {
-      "fieldname": "dictionary_type",
-      "fieldtype": "Data",
-      "label": "Loại từ điển",
-      "reqd": 1,
-      "in_list_view": 1,
-      "in_standard_filter": 1,
-      "description": "VD: Tên người, Địa danh, Chức danh, Cơ quan..."
-    },
-    {
-      "fieldname": "entry_value",
-      "fieldtype": "Data",
-      "label": "Giá trị",
-      "reqd": 1,
-      "in_list_view": 1,
-      "in_standard_filter": 1
-    },
-    {
-      "fieldname": "column_break_1",
-      "fieldtype": "Column Break"
-    },
-    {
-      "fieldname": "parent_entry",
-      "fieldtype": "Link",
-      "label": "Giá trị cha (từ điển đa cấp)",
-      "options": "Quick Entry Dictionary",
-      "in_standard_filter": 1,
-      "description": "Để trống nếu là từ điển đơn cấp. Chọn giá trị cha nếu là từ điển đa cấp."
-    },
-    {
-      "fieldname": "sort_order",
-      "fieldtype": "Int",
-      "label": "Thứ tự sắp xếp",
-      "default": "0"
-    },
-    {
-      "fieldname": "is_active",
-      "fieldtype": "Check",
-      "label": "Đang sử dụng",
-      "default": "1"
-    }
+    {"fieldname": "dictionary_type", "fieldtype": "Link", "label": "Loại từ điển", "options": "Dictionary Type", "reqd": 1, "in_list_view": 1, "in_standard_filter": 1, "search_index": 1},
+    {"fieldname": "entry_value", "fieldtype": "Data", "label": "Giá trị", "reqd": 1, "in_list_view": 1, "in_standard_filter": 1},
+    {"fieldname": "entry_code", "fieldtype": "Data", "label": "Mã", "in_list_view": 1},
+    {"fieldname": "column_break_1", "fieldtype": "Column Break"},
+    {"fieldname": "parent_entry", "fieldtype": "Link", "label": "Giá trị cha", "options": "Quick Entry Dictionary", "in_standard_filter": 1, "description": "Chỉ dùng với từ điển đa cấp; phải cùng loại từ điển."},
+    {"fieldname": "is_group", "fieldtype": "Check", "label": "Có giá trị con", "read_only": 1, "default": "0"},
+    {"fieldname": "sort_order", "fieldtype": "Int", "label": "Thứ tự sắp xếp", "default": "0"},
+    {"fieldname": "is_active", "fieldtype": "Check", "label": "Đang sử dụng", "default": "1"},
+    {"fieldname": "lft", "fieldtype": "Int", "label": "Left", "hidden": 1},
+    {"fieldname": "rgt", "fieldtype": "Int", "label": "Right", "hidden": 1},
+    {"fieldname": "old_parent", "fieldtype": "Link", "label": "Old Parent", "options": "Quick Entry Dictionary", "hidden": 1}
   ],
   "permissions": [
-    {
-      "role": "Document Admin",
-      "read": 1, "write": 1, "create": 1, "delete": 1, "print": 1, "export": 1, "import": 1, "share": 1, "report": 1
-    },
-    {
-      "role": "Cataloger",
-      "read": 1, "write": 1, "create": 1
-    }
+    {"role": "Document Admin", "read": 1, "write": 1, "create": 1, "delete": 1, "print": 1, "export": 1, "import": 1, "share": 1, "report": 1},
+    {"role": "Cataloger", "read": 1, "write": 1, "create": 1, "delete": 1},
+    {"role": "Reading Room Officer", "read": 1}
   ],
-  "sort_field": "dictionary_type",
+  "sort_field": "sort_order",
   "sort_order": "ASC"
 }
