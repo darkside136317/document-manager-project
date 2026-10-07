@@ -1,0 +1,52 @@
+{% extends "templates/reader/base.html" %}
+{% from "templates/reader/macros.html" import icon, state_badge, pager %}
+
+{% block main %}{% autoescape true %}
+{% if item %}
+<ol class="breadcrumb"><li><a href="/portal/gop-y">Góp ý</a></li><li aria-current="page">{{ item.name }}</li></ol>
+<div class="page-head"><div><h1>{{ item.subject }}</h1><p>{{ state_badge(item.status) }} · Gửi ngày {{ item.feedback_date.strftime("%d/%m/%Y") if item.feedback_date else "" }}</p></div></div>
+<div class="stack-lg">
+  <section class="card"><div class="card-head"><h2>Nội dung góp ý</h2></div><div class="card-body prose">{{ content_html | safe }}</div></section>
+  {% if response_html %}
+  <section class="card"><div class="card-head"><h2>Phản hồi của đơn vị</h2></div><div class="card-body prose">{{ response_html | safe }}</div></section>
+  {% else %}
+  <div class="alert alert-info">{{ icon("clock") }}<span>Đơn vị chưa phản hồi góp ý này.</span></div>
+  {% endif %}
+</div>
+
+{% else %}
+<div class="page-head"><div><h1>Góp ý</h1><p>Gửi ý kiến về việc khai thác tài liệu và theo dõi phản hồi của đơn vị.</p></div></div>
+<div class="grid grid-2" style="align-items: start">
+  <section class="card">
+    <div class="card-head"><h2>Gửi góp ý mới</h2></div>
+    <div class="card-body">
+      {% if can_send %}
+      <form class="stack" x-data="feedbackForm()" @submit.prevent="submit()" novalidate>
+        <div class="alert alert-danger" x-show="error" x-cloak role="alert">{{ icon("triangle-alert") }}<span x-text="error"></span></div>
+        <div class="field"><label for="subject">Tiêu đề <span class="req">*</span></label><input id="subject" class="input" maxlength="140" x-model="subject" required></div>
+        <div class="field"><label for="content">Nội dung <span class="req">*</span></label><textarea id="content" x-model="content" style="min-height: 140px" required></textarea></div>
+        <button class="btn btn-primary" type="submit" :disabled="busy"><span x-show="busy" x-cloak>{{ icon("loader", "spin") }}</span>{{ icon("send") }} Gửi góp ý</button>
+      </form>
+      {% else %}
+      <div class="alert alert-warning">{{ icon("info") }}<span>Tài khoản của bạn chưa gửi được góp ý. Vui lòng liên hệ cán bộ phòng đọc.</span></div>
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-head"><h2>Góp ý đã gửi <span class="badge badge-muted">{{ total }}</span></h2></div>
+    {% if rows %}
+    <ul class="note-list">
+      {% for r in rows %}
+      <li><div style="flex: 1"><a href="/portal/gop-y/{{ r.name }}">{{ r.subject }}</a>
+        <div class="muted small">{{ r.feedback_date.strftime("%d/%m/%Y") if r.feedback_date else "" }}</div></div>{{ state_badge(r.status) }}</li>
+      {% endfor %}
+    </ul>
+    <div style="padding: 0 20px 16px">{{ pager(page, pages, "/portal/gop-y?") }}</div>
+    {% else %}
+    <div class="empty">{{ icon("message-square") }}<h3>Bạn chưa gửi góp ý nào</h3></div>
+    {% endif %}
+  </section>
+</div>
+{% endif %}
+{% endautoescape %}{% endblock %}

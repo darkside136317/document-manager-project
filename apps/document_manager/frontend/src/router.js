@@ -6,6 +6,7 @@ import DocumentPage from "./pages/DocumentPage.vue";
 import FilePage from "./pages/FilePage.vue";
 import MasterPage from "./pages/MasterPage.vue";
 import NotFound from "./pages/NotFound.vue";
+import RegistrationsPage from "./pages/RegistrationsPage.vue";
 import SearchPage from "./pages/SearchPage.vue";
 
 // Frappe serves this app for /dashboard and every /dashboard/... path (hooks.website_route_rules).
@@ -15,6 +16,7 @@ export const routes = [
   { path: "/ho-so/:name", name: "file", component: FilePage, meta: { title: "Hồ sơ" } },
   { path: "/van-ban/:name", name: "document", component: DocumentPage, meta: { title: "Văn bản" } },
   { path: "/tim-kiem", name: "search", component: SearchPage, meta: { title: "Tìm kiếm" } },
+  { path: "/doc-gia/dang-ky", name: "registrations", component: RegistrationsPage, meta: { title: "Đăng ký độc giả" } },
   { path: "/danh-muc/:slug", name: "master", component: MasterPage, meta: { title: "Danh mục" } },
   { path: "/:pathMatch(.*)*", name: "not-found", component: NotFound, meta: { title: "Không tìm thấy" } },
 ];

@@ -22,7 +22,9 @@ READER_EMAIL = "ac.reader@example.com"
 OUTSIDER_EMAIL = "ac.outsider@example.com"
 
 # Pages only for staff, and pages reader-facing. Derived from the www folder so new pages are covered.
-READER_FACING = {"usage_requests", "copy_requests", "reader_feedbacks", "organization_info", "portal", "portal_document", "search"}
+# Pages for readers (and the public pages of the reader site) are tested in test_reader_pages.py.
+READER_FACING = {"usage_requests", "copy_requests", "reader_feedbacks", "portal", "search",
+                 "don_vi", "dang_nhap", "dang_ky", "quen_mat_khau", "dat_mat_khau"}
 
 
 def _staff_email(role):
@@ -80,7 +82,7 @@ class TestAccessControl(IntegrationTestCase):
     def test_guest_redirected_to_login_from_dashboard(self):
         frappe.set_user("Guest")
         loc = _redirect_location(require_staff)
-        self.assertEqual(loc, "/login?redirect-to=/dashboard")
+        self.assertEqual(loc, "/dang-nhap?redirect-to=/dashboard")
 
     def test_every_staff_role_can_open_dashboard(self):
         for role in STAFF_TEST_ROLES:
@@ -109,7 +111,7 @@ class TestAccessControl(IntegrationTestCase):
     # ---- require_portal_user ( /portal )
     def test_guest_redirected_to_login_from_portal(self):
         frappe.set_user("Guest")
-        self.assertEqual(_redirect_location(require_portal_user), "/login?redirect-to=/portal")
+        self.assertEqual(_redirect_location(require_portal_user), "/dang-nhap?redirect-to=/portal")
 
     def test_staff_and_reader_can_open_portal(self):
         for email in [_staff_email(r) for r in STAFF_TEST_ROLES] + [READER_EMAIL]:
@@ -165,7 +167,7 @@ class TestAccessControl(IntegrationTestCase):
             module = importlib.import_module(mod)
             frappe.set_user("Guest")
             loc = _redirect_location(module.get_context, frappe._dict())
-            self.assertTrue(loc and loc.startswith("/login"), f"{mod}: guest -> {loc}")
+            self.assertTrue(loc and loc.startswith("/dang-nhap"), f"{mod}: guest -> {loc}")
             frappe.set_user(READER_EMAIL)
             loc = _redirect_location(module.get_context, frappe._dict())
             self.assertEqual(loc, "/portal", f"{mod}: reader -> {loc}")

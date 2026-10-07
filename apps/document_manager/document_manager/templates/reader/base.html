@@ -1,0 +1,131 @@
+{#- Layout of every page of the reader site: public (guest) pages and the reader area.
+    The context comes from www/_reader_ui.py (`page_context`). The page is its own HTML document:
+    Frappe's website template (Bootstrap, jQuery) is not loaded. -#}
+{%- from "templates/reader/macros.html" import icon -%}
+{#- Frappe's Jinja does not escape by default: every template of the reader site turns autoescape on, and | safe marks the few trusted HTML values. -#}
+{% autoescape true %}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>{{ title }} — {{ org.name }}</title>
+  <meta name="description" content="{{ description or org.tagline }}">
+  {% if not public_page %}<meta name="robots" content="noindex, nofollow">{% endif %}
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230a1f35'/%3E%3Cpath d='M7 10h18v4H7zM9 14h14v10H9z' fill='%23d4af37'/%3E%3Crect x='13' y='17' width='6' height='2' rx='1' fill='%230a1f35'/%3E%3C/svg%3E">
+  <script>(function(){try{var t=localStorage.getItem("dm-theme");if(t!=="dark"&&t!=="light"){t=window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"}document.documentElement.setAttribute("data-theme",t)}catch(e){}})()</script>
+  <link rel="stylesheet" href="/assets/document_manager/css/theme-tokens.css?v={{ asset_v }}">
+  <link rel="stylesheet" href="/assets/document_manager/css/dm-reader.css?v={{ asset_v }}">
+  {% block head %}{% endblock %}
+</head>
+<body class="reader-site">
+  <a class="skip-link" href="#main">Bỏ qua, đến nội dung chính</a>
+  {% include "templates/reader/icons.html" %}
+
+  <header class="site-header" x-data="{ nav: false, account: false, basket: false }"
+          @keydown.escape.window="nav = false; account = false; basket = false">
+    <div class="container header-bar">
+      <a class="brand" href="{{ '/portal' if signed_in else '/' }}" aria-label="{{ org.name }} — trang chủ">
+        <span class="brand-mark">{% if org.logo %}<img src="{{ org.logo }}" alt="">{% else %}{{ icon("archive", "icon-lg") }}{% endif %}</span>
+        <span class="brand-name">{{ org.name }}</span>
+      </a>
+      <nav class="main-nav" aria-label="Điều hướng chính">
+        {% for item in nav %}<a href="{{ item.href }}"{% if item.key == active %} aria-current="page"{% endif %}>{{ item.label }}</a>{% endfor %}
+      </nav>
+      <span class="header-spacer"></span>
+      <div class="header-actions">
+        <button class="icon-btn" type="button" @click="$store.theme.toggle()"
+                :aria-label="$store.theme.value === 'dark' ? 'Chuyển sang giao diện sáng' : 'Chuyển sang giao diện tối'">
+          <span x-show="$store.theme.value === 'dark'" x-cloak>{{ icon("sun") }}</span>
+          <span x-show="$store.theme.value !== 'dark'">{{ icon("moon") }}</span>
+        </button>
+        {% if signed_in %}
+          {% if has_profile %}
+          <div class="menu" @click.outside="basket = false">
+            <button class="icon-btn" type="button" @click="basket = !basket" aria-haspopup="menu" :aria-expanded="basket" aria-label="Phiếu đang soạn">
+              {{ icon("clipboard-list") }}
+              <span class="count-badge" x-show="$store.basket.total" x-text="$store.basket.total" x-cloak></span>
+            </button>
+            <div class="menu-panel" x-show="basket" x-cloak role="menu">
+              <div class="menu-head"><strong>Phiếu đang soạn</strong><span>Thêm hồ sơ, văn bản từ kết quả tìm kiếm</span></div>
+              <a role="menuitem" :href="$store.basket.usage.name ? $store.basket.usage.route + '/' + $store.basket.usage.name : '/portal/phieu'">
+                {{ icon("file-text") }} Phiếu yêu cầu sử dụng <span class="badge badge-muted" x-text="$store.basket.usage.count"></span></a>
+              <a role="menuitem" :href="$store.basket.copy.name ? $store.basket.copy.route + '/' + $store.basket.copy.name : '/portal/sao-chep'">
+                {{ icon("copy") }} Phiếu sao chụp <span class="badge badge-muted" x-text="$store.basket.copy.count"></span></a>
+            </div>
+          </div>
+          {% endif %}
+          <a class="icon-btn" href="/portal/thong-bao" aria-label="Thông báo">
+            {{ icon("bell") }}
+            <span class="count-badge" x-show="$store.notes.unread" x-text="$store.notes.unread" x-cloak></span>
+          </a>
+          <div class="menu" @click.outside="account = false">
+            <button class="btn btn-ghost" type="button" @click="account = !account" aria-haspopup="menu" :aria-expanded="account" aria-label="Tài khoản: {{ display_name }}">
+              {{ icon("user") }}<span class="only-xwide">{{ display_name }}</span>{{ icon("chevron-down") }}
+            </button>
+            <div class="menu-panel" x-show="account" x-cloak role="menu">
+              <div class="menu-head"><strong>{{ display_name }}</strong><span>{{ user_email }}</span></div>
+              {% if has_profile %}<a role="menuitem" href="/portal/tai-khoan">{{ icon("user") }} Tài khoản của tôi</a>{% endif %}
+              {% if is_staff %}<a role="menuitem" href="/dashboard">{{ icon("layers") }} Giao diện cán bộ</a>{% endif %}
+              <button type="button" role="menuitem" @click="dm.signOut()">{{ icon("log-out") }} Đăng xuất</button>
+            </div>
+          </div>
+        {% else %}
+          <a class="btn btn-ghost only-wide" href="/dang-nhap">{{ icon("log-in") }} Đăng nhập</a>
+          <a class="btn btn-accent only-wide" href="/dang-ky">{{ icon("user-plus") }} Đăng ký</a>
+        {% endif %}
+        <button class="icon-btn nav-toggle" type="button" @click="nav = !nav" :aria-expanded="nav" aria-controls="mobile-nav" aria-label="Mở menu">
+          <span x-show="!nav">{{ icon("menu") }}</span><span x-show="nav" x-cloak>{{ icon("x") }}</span>
+        </button>
+      </div>
+    </div>
+    <nav id="mobile-nav" class="mobile-nav" :class="{ open: nav }" aria-label="Điều hướng trên điện thoại">
+      {% for item in nav %}<a href="{{ item.href }}"{% if item.key == active %} aria-current="page"{% endif %}>{{ icon(item.icon) }} {{ item.label }}</a>{% endfor %}
+      {% if not signed_in %}<hr><a href="/dang-nhap">{{ icon("log-in") }} Đăng nhập</a><a href="/dang-ky">{{ icon("user-plus") }} Đăng ký tài khoản</a>{% endif %}
+    </nav>
+  </header>
+
+  <main id="main" class="container" tabindex="-1">
+    {% block main %}{% endblock %}
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div>
+        <h2>{{ org.name }}</h2>
+        {% if org.address %}<p>{{ org.address }}</p>{% endif %}
+        <p>{% if org.phone %}Điện thoại: {{ org.phone }}{% endif %}{% if org.phone and org.email %} · {% endif %}{% if org.email %}<a href="mailto:{{ org.email }}">{{ org.email }}</a>{% endif %}</p>
+      </div>
+      <div>
+        <h2>Về đơn vị</h2>
+        <ul>{% for item in about_nav %}<li><a href="{{ item.href }}">{{ item.label }}</a></li>{% endfor %}</ul>
+      </div>
+      <div>
+        <h2>Độc giả</h2>
+        <ul>
+          {% if signed_in %}<li><a href="/portal">Tra cứu tài liệu</a></li><li><a href="/portal/phieu">Phiếu yêu cầu sử dụng</a></li>
+          {% else %}<li><a href="/dang-nhap">Đăng nhập</a></li><li><a href="/dang-ky">Đăng ký tài khoản</a></li><li><a href="/quen-mat-khau">Quên mật khẩu</a></li>{% endif %}
+        </ul>
+      </div>
+      <p class="legal">© {{ year }} {{ org.name }}. Tài liệu lưu trữ được khai thác theo quy định về mức độ mật và quyền của từng nhóm độc giả.</p>
+    </div>
+  </footer>
+
+  <div class="toast-host" aria-live="polite" x-data>
+    <template x-for="t in $store.toast.items" :key="t.id">
+      <div class="toast" :class="{ error: t.error }" role="status">
+        <svg class="icon" aria-hidden="true"><use :href="t.error ? '#i-triangle-alert' : '#i-circle-check'"/></svg>
+        <span x-text="t.message"></span>
+        <a x-show="t.link" :href="t.link" x-text="t.label"></a>
+      </div>
+    </template>
+  </div>
+
+  <script>window.__DM__ = {{ boot_json | safe }};</script>
+  <script src="/assets/document_manager/js/dm-reader.js?v={{ asset_v }}"></script>
+  {% block scripts %}{% endblock %}
+  <script defer src="/assets/document_manager/js/vendor/alpine.min.js?v={{ asset_v }}"></script>
+</body>
+</html>
+{% endautoescape %}

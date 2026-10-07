@@ -6,7 +6,8 @@
   "scripts": {
     "build": "vite build",
     "watch": "vite build --watch",
-    "test": "vitest run"
+    "test": "vitest run",
+    "icons": "node scripts/build-reader-icons.mjs"
   },
   "dependencies": {
     "lucide-vue-next": "^1.0.0",

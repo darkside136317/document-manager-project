@@ -106,7 +106,7 @@ describe("call", () => {
     vi.stubGlobal("location", { pathname: "/dashboard/danh-muc/tu-dien", search: "?a=1", assign });
     const fetcher = vi.fn().mockResolvedValue(reply({}, 401));
     await call("x", {}, { fetcher }).catch(() => {});
-    expect(assign).toHaveBeenCalledWith("/login?redirect-to=%2Fdashboard%2Fdanh-muc%2Ftu-dien%3Fa%3D1");
+    expect(assign).toHaveBeenCalledWith("/dang-nhap?redirect-to=%2Fdashboard%2Fdanh-muc%2Ftu-dien%3Fa%3D1");
     vi.unstubAllGlobals();
   });
 });

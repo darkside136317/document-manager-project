@@ -78,6 +78,20 @@ CONFIGS = {
 }
 
 
+# Readers work in the reader site now; these pages stay for staff until their queue moves to the staff app.
+PORTAL_PAGES = {"usage_requests": "/portal/phieu", "copy_requests": "/portal/sao-chep", "reader_feedbacks": "/portal/gop-y"}
+
+
+def readers_to_portal(key):
+    """Guests sign in first; readers are sent to the same record in the reader site; staff stay here."""
+    require_portal_user(PORTAL_PAGES[key])
+    if is_staff():
+        return
+    name = frappe.form_dict.get("name")
+    frappe.local.flags.redirect_location = PORTAL_PAGES[key] + (f"/{quote(name)}" if name else "")
+    raise frappe.Redirect(302)  # depends on the session: never a cacheable 301
+
+
 def _can_create(key):
     """Show the 'new' button only to users who can actually file this kind of record."""
     cfg = CONFIGS[key]

@@ -1,0 +1,138 @@
+{% extends "templates/reader/base.html" %}
+{% from "templates/reader/macros.html" import icon %}
+
+{% block main %}{% autoescape true %}
+<div class="page-head">
+  <div>
+    <h1>Tra cứu tài liệu</h1>
+    <p>Tìm hồ sơ và văn bản lưu trữ trong phạm vi bạn được khai thác.</p>
+  </div>
+</div>
+
+{% if not allowed %}
+  <div class="alert alert-warning">{{ icon("triangle-alert") }}<div>Tài khoản của bạn chưa có hồ sơ độc giả đang hoạt động nên chưa tra cứu được. Vui lòng <a href="/lien-he">liên hệ cán bộ phòng đọc</a>.</div></div>
+{% elif not can_search %}
+  <div class="alert alert-warning">{{ icon("triangle-alert") }}<div>Nhóm độc giả của bạn không được phép tìm kiếm tài liệu. Vui lòng <a href="/lien-he">liên hệ cán bộ phòng đọc</a>.</div></div>
+{% else %}
+{% if is_staff and not has_profile %}
+  <div class="alert alert-info" style="margin-bottom: 16px">{{ icon("info") }}<div>Bạn đang xem với tư cách cán bộ: thấy toàn bộ tài liệu nhưng tài khoản này không có hồ sơ độc giả nên không lập phiếu được.</div></div>
+{% endif %}
+
+<div class="stack" x-data="searchPage({{ search_config | forceescape }})">
+  <div class="tabs" role="tablist" aria-label="Loại tài liệu cần tìm">
+    <button class="tab" type="button" role="tab" :aria-selected="kind === 'files'" @click="setKind('files')">{{ icon("folder") }} Hồ sơ</button>
+    <button class="tab" type="button" role="tab" :aria-selected="kind === 'documents'" @click="setKind('documents')">{{ icon("file-text") }} Văn bản, tài liệu</button>
+  </div>
+
+  <form class="stack" role="search" @submit.prevent="submit()">
+    <div class="search-bar">
+      <label class="sr-only" for="q">Từ khóa</label>
+      <input id="q" class="input" type="search" x-model="q" autocomplete="off" autofocus
+             :placeholder="kind === 'files' ? 'Nhập tiêu đề hoặc số hồ sơ' : 'Nhập tiêu đề, số ký hiệu, tác giả hoặc nội dung văn bản'">
+      <button class="btn btn-primary" type="submit" :disabled="loading">
+        <span x-show="!loading">{{ icon("search") }}</span><span x-show="loading" x-cloak>{{ icon("loader", "spin") }}</span>
+        <span>Tìm kiếm</span>
+      </button>
+    </div>
+
+    <div class="cluster-between">
+      <button class="btn btn-sm btn-ghost" type="button" @click="adv = !adv" :aria-expanded="adv" aria-controls="advanced">
+        {{ icon("sliders-horizontal") }} Tìm nâng cao
+        <span style="display: inline-flex; transition: transform 0.15s" :style="adv ? 'transform: rotate(180deg)' : ''">{{ icon("chevron-down") }}</span>
+      </button>
+      <div class="cluster">
+        <label class="small muted" for="sort">Sắp xếp</label>
+        <select id="sort" style="width: auto; min-height: 36px" x-model="sort" @change="submit()">
+          <option value="modified">Mới cập nhật</option>
+          <option value="newest">Mới nhất</option>
+          <option value="oldest">Cũ nhất</option>
+          <option value="title">Tiêu đề A–Z</option>
+        </select>
+        <button class="btn btn-sm btn-ghost" type="button" @click="reset()" x-show="hasCriteria() || searched" x-cloak>Xóa điều kiện</button>
+      </div>
+    </div>
+
+    <div id="advanced" class="advanced" x-show="adv" x-cloak>
+      <div class="form-grid" x-show="kind === 'files'">
+        <div class="field"><label for="a-fonds">Phông</label>
+          <select id="a-fonds" x-model="f.files.fonds"><option value="">Tất cả phông</option>
+            {% for row in fonds %}<option value="{{ row.name }}">{{ row.fonds_name }}</option>{% endfor %}</select></div>
+        <div class="field"><label for="a-level">Mức độ mật</label>
+          <select id="a-level" x-model="f.files.confidentiality_level"><option value="">Tất cả</option>
+            {% for level in levels %}<option>{{ level }}</option>{% endfor %}</select></div>
+        <div class="field"><label for="a-fnum">Số, ký hiệu hồ sơ</label><input id="a-fnum" class="input" x-model="f.files.file_number"></div>
+        <div class="field"><label for="a-ftitle">Tiêu đề hồ sơ</label><input id="a-ftitle" class="input" x-model="f.files.file_title"></div>
+        <div class="field"><label for="a-ffrom">Thời gian bắt đầu từ</label><input id="a-ffrom" class="input" type="date" x-model="f.files.start_date_from"></div>
+        <div class="field"><label for="a-fto">đến</label><input id="a-fto" class="input" type="date" x-model="f.files.start_date_to"></div>
+      </div>
+      <div class="form-grid" x-show="kind === 'documents'" x-cloak>
+        <div class="field"><label for="d-fonds">Phông</label>
+          <select id="d-fonds" x-model="f.documents.fonds"><option value="">Tất cả phông</option>
+            {% for row in fonds %}<option value="{{ row.name }}">{{ row.fonds_name }}</option>{% endfor %}</select></div>
+        <div class="field"><label for="d-level">Mức độ mật</label>
+          <select id="d-level" x-model="f.documents.confidentiality_level"><option value="">Tất cả</option>
+            {% for level in levels %}<option>{{ level }}</option>{% endfor %}</select></div>
+        <div class="field"><label for="d-num">Số, ký hiệu văn bản</label><input id="d-num" class="input" x-model="f.documents.document_number"></div>
+        <div class="field"><label for="d-title">Tiêu đề, trích yếu</label><input id="d-title" class="input" x-model="f.documents.document_title"></div>
+        <div class="field"><label for="d-author">Tác giả, cơ quan ban hành</label><input id="d-author" class="input" x-model="f.documents.author"></div>
+        <div class="field"><label for="d-type">Loại tệp</label>
+          <select id="d-type" x-model="f.documents.file_type"><option value="">Tất cả</option>
+            {% for t in file_types %}<option>{{ t }}</option>{% endfor %}</select></div>
+        <div class="field"><label for="d-from">Ngày văn bản từ</label><input id="d-from" class="input" type="date" x-model="f.documents.date_from"></div>
+        <div class="field"><label for="d-to">đến</label><input id="d-to" class="input" type="date" x-model="f.documents.date_to"></div>
+      </div>
+      <p class="help" style="margin: 12px 0 0">Các điều kiện được kết hợp: kết quả phải thỏa mãn tất cả.</p>
+    </div>
+  </form>
+
+  <div class="alert alert-danger" x-show="error" x-cloak role="alert">{{ icon("triangle-alert") }}<span x-text="error"></span></div>
+
+  <section id="results" aria-live="polite" aria-label="Kết quả tìm kiếm">
+    <p class="muted small" x-show="searched && total" x-cloak>
+      Hiển thị <strong x-text="from + '–' + to"></strong> trong <strong x-text="total"></strong> kết quả
+      <span x-show="engine === 'meilisearch'" x-cloak>· tìm theo cả nội dung văn bản</span>
+    </p>
+
+    <ul class="results">
+      <template x-for="row in rows" :key="id(row)">
+        <li class="result">
+          <h3><a :href="href(row)" x-html="titleHtml(row)"></a></h3>
+          <div class="meta">
+            <span x-show="kind === 'files' && row.file_number" x-cloak>{{ icon("hash") }} <span x-text="row.file_number"></span></span>
+            <span x-show="kind === 'documents' && row.document_number" x-cloak>{{ icon("hash") }} <span x-text="row.document_number"></span></span>
+            <span x-show="kind === 'documents' && row.author" x-cloak>{{ icon("user") }} <span x-text="row.author"></span></span>
+            <span x-show="fondsLabel(row)" x-cloak>{{ icon("archive") }} <span x-text="fondsLabel(row)"></span></span>
+            <span x-show="kind === 'files' && period(row)" x-cloak>{{ icon("calendar") }} <span x-text="period(row)"></span></span>
+            <span x-show="kind === 'documents' && row.document_date" x-cloak>{{ icon("calendar") }} <span x-text="date(row.document_date)"></span></span>
+            <span x-show="kind === 'files' && row.total_documents" x-cloak>{{ icon("file-text") }} <span x-text="row.total_documents + ' văn bản'"></span></span>
+            <span x-show="kind === 'documents' && row.file_type" x-cloak><span x-text="row.file_type"></span></span>
+            <span class="badge badge-level" x-show="row.confidentiality_level" x-text="row.confidentiality_level" x-cloak></span>
+          </div>
+          <p class="snippet" x-show="snippet(row)" x-html="snippet(row)" x-cloak></p>
+          <div class="actions">
+            <a class="btn btn-sm" :href="href(row)">{{ icon("eye") }} Xem chi tiết</a>
+            <button class="btn btn-sm" type="button" x-show="canAdd.usage" x-cloak @click="add(row, 'usage')" :disabled="$store.basket.busy">{{ icon("plus") }} Phiếu sử dụng</button>
+            <button class="btn btn-sm" type="button" x-show="canAdd.copy" x-cloak @click="add(row, 'copy')" :disabled="$store.basket.busy">{{ icon("copy") }} Phiếu sao chụp</button>
+          </div>
+        </li>
+      </template>
+    </ul>
+
+    <div class="card empty" x-show="searched && !rows.length && !loading" x-cloak>
+      {{ icon("search") }}<h3>Không tìm thấy kết quả</h3><p>Thử từ khóa ngắn hơn hoặc bớt điều kiện tìm nâng cao.</p>
+    </div>
+    <div class="card empty" x-show="!searched && !loading" x-cloak>
+      {{ icon("search") }}<h3>Bắt đầu tra cứu</h3><p>Nhập từ khóa hoặc mở “Tìm nâng cao” để chọn nhiều điều kiện.</p>
+    </div>
+
+    <nav class="pager" x-show="totalPages > 1" x-cloak aria-label="Phân trang kết quả">
+      <span class="muted small">Trang <span x-text="page"></span> / <span x-text="totalPages"></span></span>
+      <span class="cluster">
+        <button class="btn btn-sm" type="button" :disabled="page <= 1 || loading" @click="go(page - 1)">{{ icon("chevron-left") }} Trước</button>
+        <button class="btn btn-sm" type="button" :disabled="page >= totalPages || loading" @click="go(page + 1)">Sau {{ icon("chevron-right") }}</button>
+      </span>
+    </nav>
+  </section>
+</div>
+{% endif %}
+{% endautoescape %}{% endblock %}

@@ -18,7 +18,7 @@ async function logout() {
   try {
     await call("logout", {}, { post: true });
   } finally {
-    window.location.assign("/login");
+    window.location.assign("/dang-nhap");
   }
 }
 </script>

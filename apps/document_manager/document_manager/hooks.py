@@ -66,16 +66,42 @@ doc_events = {
         "on_update": "document_manager.document_manager.services.search_index.enqueue_index_file",
         "on_trash": "document_manager.document_manager.services.search_index.enqueue_deindex_file",
     },
+    # The reader hears (bell of the reader site) when an officer decides on a slip or answers a feedback.
+    "Usage Request": {
+        "on_update_after_submit": "document_manager.document_manager.services.notify.on_slip_change",
+    },
+    "Copy Request": {
+        "on_update_after_submit": "document_manager.document_manager.services.notify.on_slip_change",
+    },
+    "Reader Feedback": {
+        "on_update": "document_manager.document_manager.services.notify.on_feedback_change",
+    },
 }
 
 # The staff app is a single-page application served by www/dashboard; its client-side routes
 # (/dashboard/danh-muc/...) all render the same page.
 website_route_rules = [
     {"from_route": "/dashboard/<path:app_path>", "to_route": "dashboard"},
+    # Public pages about the unit: one page, five sections.
+    {"from_route": "/<any('gioi-thieu', 'lanh-dao', 'co-cau', 'lien-he', 'huong-dan'):section>", "to_route": "don-vi"},
+    # Reader site: lists and details share a page, the detail adds the record name.
+    {"from_route": "/portal/ho-so/<name>", "to_route": "portal/ho-so"},
+    {"from_route": "/portal/van-ban/<name>", "to_route": "portal/van-ban"},
+    {"from_route": "/portal/phieu/<name>", "to_route": "portal/phieu"},
+    {"from_route": "/portal/sao-chep/<name>", "to_route": "portal/sao-chep"},
+    {"from_route": "/portal/gop-y/<name>", "to_route": "portal/gop-y"},
 ]
+
+# The unit's introduction is the public home page of the site; signed-in users go to their role's page.
+home_page = "gioi-thieu"
 
 # The catalogue screens moved into the staff app; old bookmarks keep working.
 website_redirects = [
+    {"source": "organization_info", "target": "/app/organization-info", "redirect_http_status": 301},
+    # The document viewer moved into the reader site; the query string (?name=DOC-...) is kept.
+    {"source": "portal_document", "target": "/portal/van-ban", "redirect_http_status": 301,
+     "forward_query_parameters": True},
+] + [
     {"source": f"{old}(/.*)?", "target": f"/dashboard/danh-muc/{slug}", "redirect_http_status": 301}
     for old, slug in (
         ("archival_agencies", "co-quan-luu-tru"), ("fonds", "phong-luu-tru"),
@@ -96,7 +122,8 @@ _AUDITED = (
     "Confidentiality Level", "Storage Warehouse", "Quick Entry Dictionary",
     "Reader", "Reader Group", "Usage Request", "Copy Request", "Reader Feedback",
     "Backup Batch", "Restore Batch", "Integrity Check",
-    "Organization Info", "Reader Settings", "Document Manager Settings",
+    "Organization Info", "Organization Unit", "Reader Settings", "Document Manager Settings",
+    "Reader Registration",
 )
 for _doctype in _AUDITED:
     _events = doc_events.setdefault(_doctype, {})

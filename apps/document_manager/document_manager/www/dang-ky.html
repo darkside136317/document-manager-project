@@ -1,0 +1,60 @@
+{% extends "templates/reader/base.html" %}
+{% from "templates/reader/macros.html" import icon %}
+
+{% block main %}{% autoescape true %}
+<div class="card card-wide" style="margin-top: 24px">
+  {% if not settings.allow_self_registration %}
+  <div class="card-body stack">
+    <h1>Đăng ký tài khoản độc giả</h1>
+    <div class="alert alert-warning">{{ icon("info") }}<div>Đơn vị hiện chưa mở đăng ký trực tuyến. Vui lòng liên hệ trực tiếp để được cấp tài khoản.</div></div>
+    <div class="cluster"><a class="btn" href="/lien-he">{{ icon("phone") }} Thông tin liên hệ</a><a class="btn" href="/dang-nhap">Đã có tài khoản? Đăng nhập</a></div>
+  </div>
+  {% else %}
+  <div class="card-body stack" x-data="registerForm()">
+    <div>
+      <h1>Đăng ký tài khoản độc giả</h1>
+      <p class="muted" style="margin: 4px 0 0">
+        {% if settings.require_approval %}Cán bộ sẽ xem xét yêu cầu và gửi cho bạn liên kết đặt mật khẩu.
+        {% else %}Tài khoản được tạo ngay; bạn sẽ đặt mật khẩu ở bước tiếp theo.{% endif %}
+      </p>
+    </div>
+
+    <div x-show="done" x-cloak class="stack">
+      <div class="alert alert-success" role="status">{{ icon("circle-check") }}<div><strong x-text="result && result.message"></strong></div></div>
+      <template x-if="result && result.status === 'approved'">
+        <a class="btn btn-primary" :href="result.set_password_path">{{ icon("key-round") }} Đặt mật khẩu</a>
+      </template>
+      <a class="btn" href="/">Về trang chủ</a>
+    </div>
+
+    <form class="stack" x-show="!done" @submit.prevent="submit()" novalidate>
+      <div class="alert alert-danger" x-show="error" x-cloak role="alert">{{ icon("triangle-alert") }}<span x-text="error"></span></div>
+      <div class="form-grid">
+        <div class="field"><label for="full_name">Họ và tên <span class="req">*</span></label>
+          <input id="full_name" class="input" autocomplete="name" required maxlength="140" x-model="v.full_name"></div>
+        <div class="field"><label for="email">Email <span class="req">*</span></label>
+          <input id="email" class="input" type="email" autocomplete="email" inputmode="email" required maxlength="140" x-model="v.email">
+          <span class="help">Dùng làm tên đăng nhập.</span></div>
+        <div class="field"><label for="phone">Điện thoại</label>
+          <input id="phone" class="input" type="tel" autocomplete="tel" inputmode="tel" maxlength="20" x-model="v.phone"></div>
+        <div class="field"><label for="id_number">Số CMND/CCCD</label>
+          <input id="id_number" class="input" maxlength="20" autocomplete="off" x-model="v.id_number"></div>
+        <div class="field"><label for="organization">Cơ quan, đơn vị</label>
+          <input id="organization" class="input" autocomplete="organization" maxlength="140" x-model="v.organization"></div>
+        <div class="field"><label for="position">Chức vụ</label>
+          <input id="position" class="input" autocomplete="organization-title" maxlength="140" x-model="v.position"></div>
+        <div class="field span-2"><label for="address">Địa chỉ liên hệ</label>
+          <input id="address" class="input" autocomplete="street-address" maxlength="300" x-model="v.address"></div>
+        <div class="field span-2"><label for="purpose">Mục đích khai thác tài liệu</label>
+          <textarea id="purpose" maxlength="500" x-model="v.purpose" placeholder="Ví dụ: nghiên cứu lịch sử địa phương giai đoạn 1954–1975"></textarea></div>
+      </div>
+      <div class="hp" aria-hidden="true"><label>Để trống trường này <input tabindex="-1" autocomplete="off" x-model="website"></label></div>
+      <div class="cluster-between">
+        <a class="small" href="/dang-nhap">Đã có tài khoản? Đăng nhập</a>
+        <button class="btn btn-primary" type="submit" :disabled="busy"><span x-show="busy" x-cloak>{{ icon("loader", "spin") }}</span> Gửi đăng ký</button>
+      </div>
+    </form>
+  </div>
+  {% endif %}
+</div>
+{% endautoescape %}{% endblock %}

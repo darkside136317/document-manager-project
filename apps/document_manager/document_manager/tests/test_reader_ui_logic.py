@@ -155,21 +155,21 @@ class TestReaderUiLogic(IntegrationTestCase):
         self.assertFalse(has_archive_document_permission(doc, "read", READER))
         self.assertTrue(has_archive_document_permission(doc, "read", OFFICER))
 
-    def test_preview_points_to_portal_document_page(self):
+    def test_preview_points_to_the_reader_site_document_page(self):
         docs = frappe.get_all("Archive Document", pluck="name", limit=1)
         if not docs:
             self.skipTest("no Archive Document in the site")
         frappe.set_user(OFFICER)
-        self.assertTrue(file_access.get_preview(docs[0])["document_url"].startswith("/portal_document?name="))
+        self.assertEqual(file_access.get_preview(docs[0])["document_url"], f"/portal/van-ban/{docs[0]}")
 
-    def test_portal_document_page_gates_access(self):
-        page = importlib.import_module("document_manager.www.portal_document")
+    def test_document_page_gates_access(self):
+        page = importlib.import_module("document_manager.www.portal.van_ban")
         frappe.set_user("Guest")
         frappe.local.form_dict = frappe._dict(name="DOC-NOPE")
         with self.assertRaises(frappe.Redirect):
             page.get_context(frappe._dict())
         frappe.set_user(READER)
-        with self.assertRaises(frappe.PermissionError):
+        with self.assertRaises(frappe.DoesNotExistError):
             page.get_context(frappe._dict())  # unknown document: same answer as "not allowed"
 
     # ---- reader account safety

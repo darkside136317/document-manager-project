@@ -10,6 +10,8 @@ confidentiality up to the group's level, only the fonds of the group's scope, an
 that are drafts ("Nháp") or disposed of ("Đã tiêu hủy") nor the documents inside them.
 """
 
+from urllib.parse import quote
+
 import frappe
 from frappe import _
 
@@ -67,13 +69,21 @@ def display_name(user: str | None = None) -> str:
 
 def _redirect(location: str):
     frappe.local.flags.redirect_location = location
-    raise frappe.Redirect
+    raise frappe.Redirect(302)  # depends on the session: never a cacheable 301
+
+
+LOGIN_PATH = "/dang-nhap"  # the site's own sign-in page, shared by readers and staff
+
+
+def login_redirect(route: str):
+    """Send a guest to the sign-in page, which returns them to `route` afterwards."""
+    _redirect(f"{LOGIN_PATH}?redirect-to={quote(route, safe='/')}")
 
 
 def require_staff(route: str = "/dashboard"):
     """Gate for staff-only pages. Guest -> login (back to `route`), Reader -> /portal."""
     if frappe.session.user == "Guest":
-        _redirect(f"/login?redirect-to={route}")
+        login_redirect(route)
     if not _is_staff_user():
         _redirect("/portal")
 
@@ -81,7 +91,7 @@ def require_staff(route: str = "/dashboard"):
 def require_portal_user(route: str = "/portal"):
     """Gate for portal pages: any logged-in staff or Reader."""
     if frappe.session.user == "Guest":
-        _redirect(f"/login?redirect-to={route}")
+        login_redirect(route)
     if not (_is_staff_user() or "Reader" in frappe.get_roles(frappe.session.user)):
         frappe.throw("Bạn không có quyền truy cập cổng thông tin", frappe.PermissionError)
 

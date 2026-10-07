@@ -94,7 +94,7 @@ def get_preview(doc_name):
         "filename": filename,
         "file_type": file_type or _("Tệp"),
         "download_url": _download_url(doc.name) if get_reader_scope().can_download else None,
-        "document_url": f"/portal_document?name={quote(doc.name)}",
+        "document_url": f"/portal/van-ban/{quote(doc.name)}",
     }
 
     if file_type in INLINE_FILE_TYPES:

@@ -1,0 +1,151 @@
+{% extends "templates/reader/base.html" %}
+{% from "templates/reader/macros.html" import icon %}
+
+{% macro unit_tree(nodes) %}{% autoescape true %}
+<ul class="org-tree">
+  {% for node in nodes %}
+  <li>
+    <div class="org-node">
+      <h3>{{ node.unit_name }}</h3>
+      <div class="meta">
+        {% if node.head_name %}<span>{{ icon("user") }} {{ node.head_position + ": " if node.head_position }}{{ node.head_name }}</span>{% endif %}
+        {% if node.phone %}<span>{{ icon("phone") }} {{ node.phone }}</span>{% endif %}
+        {% if node.email %}<span>{{ icon("mail") }} <a href="mailto:{{ node.email }}">{{ node.email }}</a></span>{% endif %}
+      </div>
+      {% if node.description %}<p class="small" style="margin:6px 0 0">{{ node.description }}</p>{% endif %}
+    </div>
+    {% if node.children %}{{ unit_tree(node.children) }}{% endif %}
+  </li>
+  {% endfor %}
+</ul>
+{% endautoescape %}{% endmacro %}
+
+{% macro leader_card(leader) %}{% autoescape true %}
+<article class="card"><div class="card-body leader">
+  <div class="avatar">{% if leader.photo %}<img src="{{ leader.photo }}" alt="Ảnh {{ leader.full_name }}">{% else %}{{ leader.full_name[:1] | upper }}{% endif %}</div>
+  <div>
+    <h3>{{ leader.full_name }}</h3>
+    {% if leader.position %}<div class="role">{{ leader.position }}</div>{% endif %}
+    {% if leader.bio %}<p class="small muted" style="margin-top:6px">{{ leader.bio }}</p>{% endif %}
+  </div>
+</div></article>
+{% endautoescape %}{% endmacro %}
+
+{% macro contact_cards(org) %}{% autoescape true %}
+<div class="grid grid-3">
+  <div class="card"><div class="card-body fact">{{ icon("map-pin") }}<div><strong>Địa chỉ</strong>
+    <p>{{ org.address or "Đơn vị chưa cập nhật địa chỉ." }}</p>
+    {% if org.map_url %}<a class="small" href="{{ org.map_url }}" target="_blank" rel="noopener noreferrer">Xem bản đồ {{ icon("external-link") }}</a>{% endif %}</div></div></div>
+  <div class="card"><div class="card-body fact">{{ icon("phone") }}<div><strong>Điện thoại</strong>
+    <p>{{ org.phone or "Chưa cập nhật" }}{% if org.fax %}<br><span class="muted small">Fax: {{ org.fax }}</span>{% endif %}</p></div></div></div>
+  <div class="card"><div class="card-body fact">{{ icon("clock") }}<div><strong>Giờ mở cửa phòng đọc</strong>
+    {% if org.hours %}<ul class="hours small">{% for line in org.hours %}<li>{{ line }}</li>{% endfor %}</ul>{% else %}<p>Chưa cập nhật</p>{% endif %}</div></div></div>
+</div>
+{% endautoescape %}{% endmacro %}
+
+{% block main %}{% autoescape true %}
+{% if section == "gioi-thieu" %}
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="container">
+      <span class="eyebrow">{{ org.type or "Khai thác tài liệu lưu trữ trực tuyến" }}</span>
+      <h1 id="hero-title">{{ org.name }}</h1>
+      <p>{{ org.tagline }}</p>
+      <div class="cluster">
+        {% if signed_in %}
+          <a class="btn btn-accent" href="/portal">{{ icon("search") }} Tra cứu tài liệu</a>
+        {% else %}
+          <a class="btn btn-accent" href="/dang-nhap">{{ icon("log-in") }} Đăng nhập để tra cứu</a>
+          <a class="btn" href="/dang-ky">{{ icon("user-plus") }} Đăng ký độc giả</a>
+        {% endif %}
+        <a class="btn" href="/huong-dan">{{ icon("book-open-text") }} Hướng dẫn</a>
+      </div>
+    </div>
+  </section>
+
+  <div class="stack-lg">
+    {{ contact_cards(org) }}
+
+    <section class="card" aria-labelledby="intro-title">
+      <div class="card-head"><h2 id="intro-title">Giới thiệu đơn vị</h2></div>
+      <div class="card-body prose">
+        {% if org.introduction %}{{ org.introduction | safe }}
+        {% else %}<p class="muted">Đơn vị chưa cập nhật phần giới thiệu.</p>{% endif %}
+      </div>
+    </section>
+
+    <section aria-labelledby="steps-title">
+      <div class="page-head"><h2 id="steps-title">Khai thác tài liệu trong bốn bước</h2></div>
+      <div class="grid grid-4 steps-grid">
+        <div class="card step-card"><div class="card-body"><h3>Đăng ký tài khoản</h3><p class="small muted">Điền thông tin độc giả. Cán bộ xét duyệt và cấp liên kết đặt mật khẩu.</p></div></div>
+        <div class="card step-card"><div class="card-body"><h3>Tra cứu</h3><p class="small muted">Tìm hồ sơ và văn bản theo từ khóa hoặc điều kiện nâng cao.</p></div></div>
+        <div class="card step-card"><div class="card-body"><h3>Lập phiếu</h3><p class="small muted">Thêm tài liệu vào phiếu yêu cầu sử dụng hoặc phiếu sao chụp rồi gửi duyệt.</p></div></div>
+        <div class="card step-card"><div class="card-body"><h3>Nhận kết quả</h3><p class="small muted">Theo dõi trạng thái phiếu và nhận thông báo khi cán bộ xử lý.</p></div></div>
+      </div>
+    </section>
+
+    {% if org.show_leaders and org.leaders %}
+    <section aria-labelledby="leaders-title">
+      <div class="cluster-between page-head"><h2 id="leaders-title">Ban lãnh đạo</h2><a href="/lanh-dao">Xem tất cả {{ icon("arrow-right") }}</a></div>
+      <div class="grid grid-3">{% for leader in org.leaders[:3] %}{{ leader_card(leader) }}{% endfor %}</div>
+    </section>
+    {% endif %}
+  </div>
+
+{% elif section == "lanh-dao" %}
+  <div class="page-head"><div><h1>Ban lãnh đạo</h1><p>{{ org.name }}</p></div></div>
+  <div class="stack-lg">
+    {% if org.leadership_info %}<div class="card"><div class="card-body prose">{{ org.leadership_info | safe }}</div></div>{% endif %}
+    {% if org.leaders %}
+      <div class="grid grid-2">{% for leader in org.leaders %}{{ leader_card(leader) }}{% endfor %}</div>
+    {% elif not org.leadership_info %}
+      <div class="card empty">{{ icon("users") }}<h3>Chưa có thông tin lãnh đạo</h3><p>Đơn vị sẽ cập nhật sớm.</p></div>
+    {% endif %}
+  </div>
+
+{% elif section == "co-cau" %}
+  <div class="page-head"><div><h1>Cơ cấu tổ chức</h1><p>{{ org.name }}</p></div></div>
+  <div class="stack-lg">
+    {% if org.structure_info %}<div class="card"><div class="card-body prose">{{ org.structure_info | safe }}</div></div>{% endif %}
+    {% if units %}{{ unit_tree(units) }}
+    {% elif not org.structure_info %}
+      <div class="card empty">{{ icon("network") }}<h3>Chưa có thông tin cơ cấu tổ chức</h3><p>Đơn vị sẽ cập nhật sớm.</p></div>
+    {% endif %}
+  </div>
+
+{% elif section == "lien-he" %}
+  <div class="page-head"><div><h1>Liên hệ</h1><p>{{ org.name }}</p></div></div>
+  <div class="stack-lg">
+    {{ contact_cards(org) }}
+    <div class="grid grid-2">
+      <div class="card"><div class="card-body fact">{{ icon("mail") }}<div><strong>Email</strong>
+        <p>{% if org.email %}<a href="mailto:{{ org.email }}">{{ org.email }}</a>{% else %}Chưa cập nhật{% endif %}</p></div></div></div>
+      <div class="card"><div class="card-body fact">{{ icon("globe") }}<div><strong>Website</strong>
+        <p>{% if org.website %}<a href="{{ org.website }}" target="_blank" rel="noopener noreferrer">{{ org.website }}</a>{% else %}Chưa cập nhật{% endif %}</p></div></div></div>
+    </div>
+  </div>
+
+{% else %}
+  <div class="page-head"><div><h1>Hướng dẫn khai thác tài liệu</h1><p>Các bước để tra cứu và gửi yêu cầu khai thác tại {{ org.name }}.</p></div></div>
+  <div class="stack-lg">
+    <div class="grid grid-2">
+      <section class="card"><div class="card-head"><h2>1. Đăng ký và đăng nhập</h2></div><div class="card-body">
+        <p>Người dùng chưa có tài khoản gửi yêu cầu ở trang <a href="/dang-ky">Đăng ký</a>. Cán bộ phòng đọc xem xét và cấp <strong>liên kết đặt mật khẩu dùng một lần</strong>; liên kết hết hạn sau một thời gian, khi đó hãy yêu cầu cấp lại ở trang <a href="/quen-mat-khau">Quên mật khẩu</a>.</p>
+        <p class="muted small" style="margin:0">Cán bộ cũng đăng nhập tại trang này và được chuyển tới giao diện quản trị.</p></div></section>
+      <section class="card"><div class="card-head"><h2>2. Tra cứu</h2></div><div class="card-body">
+        <p><strong>Tìm cơ bản:</strong> nhập từ khóa vào ô tìm kiếm — hệ thống tìm theo tiêu đề, số ký hiệu, tác giả và cả nội dung văn bản đã số hóa.</p>
+        <p style="margin:0"><strong>Tìm nâng cao:</strong> kết hợp phông, số ký hiệu, tiêu đề, cơ quan ban hành, loại tệp và khoảng thời gian. Bạn chỉ thấy tài liệu thuộc phạm vi và mức độ mật của nhóm độc giả mình.</p></div></section>
+      <section class="card"><div class="card-head"><h2>3. Lập phiếu</h2></div><div class="card-body">
+        <p>Ở kết quả tìm kiếm, bấm <em>Phiếu sử dụng</em> (đọc tại phòng đọc) hoặc <em>Phiếu sao chụp</em> để thêm hồ sơ, văn bản vào phiếu đang soạn. Mở phiếu để ghi mục đích, kiểm tra danh sách rồi bấm <em>Gửi yêu cầu</em>.</p></div></section>
+      <section class="card"><div class="card-head"><h2>4. Theo dõi và góp ý</h2></div><div class="card-body">
+        <p>Trạng thái phiếu hiển thị ở mục Phiếu sử dụng và Phiếu sao chụp; chuông thông báo cho bạn biết khi phiếu được duyệt, bị từ chối hoặc đã hoàn thành. Mọi ý kiến gửi ở mục <em>Góp ý</em>.</p></div></section>
+    </div>
+    {% if org.reader_guide %}
+    <section class="card"><div class="card-head"><h2>Nội quy và lưu ý của đơn vị</h2></div><div class="card-body prose">{{ org.reader_guide | safe }}</div></section>
+    {% endif %}
+    <div class="cluster">
+      {% if signed_in %}<a class="btn btn-primary" href="/portal">{{ icon("search") }} Bắt đầu tra cứu</a>
+      {% else %}<a class="btn btn-primary" href="/dang-ky">{{ icon("user-plus") }} Đăng ký tài khoản</a><a class="btn" href="/dang-nhap">{{ icon("log-in") }} Đăng nhập</a>{% endif %}
+    </div>
+  </div>
+{% endif %}
+{% endautoescape %}{% endblock %}

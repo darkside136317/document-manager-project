@@ -1,0 +1,53 @@
+{% extends "templates/reader/base.html" %}
+{% from "templates/reader/macros.html" import icon %}
+
+{% block main %}{% autoescape true %}
+<ol class="breadcrumb">
+  <li><a href="/portal">Tra cứu</a></li>
+  {% if doc.archival_file %}<li><a href="/portal/ho-so/{{ doc.archival_file }}">Hồ sơ {{ doc.archival_file }}</a></li>{% endif %}
+  <li aria-current="page">{{ doc.name }}</li>
+</ol>
+
+<div class="page-head">
+  <div>
+    <h1>{{ doc.document_title or doc.name }}</h1>
+    <p>{{ icon("file-text") }} Văn bản {{ doc.name }}</p>
+  </div>
+  <div class="cluster no-print" x-data>
+    {% if can_download %}<a class="btn btn-primary" href="{{ preview.download_url }}">{{ icon("download") }} Tải tệp gốc</a>{% endif %}
+    {% if can_add.usage %}<button class="btn" type="button" @click="$store.basket.add('document', {{ doc.name | tojson | forceescape }}, 'usage')" :disabled="$store.basket.busy">{{ icon("plus") }} Thêm vào phiếu sử dụng</button>{% endif %}
+    {% if can_add.copy %}<button class="btn" type="button" @click="$store.basket.add('document', {{ doc.name | tojson | forceescape }}, 'copy')" :disabled="$store.basket.busy">{{ icon("copy") }} Thêm vào phiếu sao chụp</button>{% endif %}
+  </div>
+</div>
+
+<div class="stack-lg">
+  <section class="card" aria-label="Thông tin văn bản">
+    <div class="card-body stack">
+      <dl class="kv">
+        {% for label, value, link in facts %}<div><dt>{{ label }}</dt><dd>{% if link %}<a href="{{ link }}">{{ value }}</a>{% else %}{{ value }}{% endif %}</dd></div>{% endfor %}
+      </dl>
+      {% if doc.description %}<p class="muted" style="margin: 0">{{ doc.description }}</p>{% endif %}
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="preview-title">
+    <div class="card-head"><h2 id="preview-title">Bản xem trước</h2></div>
+    <div class="card-body">
+      {% if not preview %}
+        <div class="alert alert-info">{{ icon("info") }}<span>{{ preview_note }}</span></div>
+      {% elif preview.kind == "inline" %}
+        {% if preview.file_type in ("JPG", "PNG") %}
+        <img src="{{ preview.preview_url }}" alt="{{ doc.document_title or doc.name }}">
+        {% else %}
+        <iframe src="{{ preview.preview_url }}" title="{{ doc.document_title or doc.name }}" style="width: 100%; height: 75vh; border: 1px solid var(--r-line); border-radius: 8px"></iframe>
+        {% endif %}
+      {% elif preview.kind == "text" %}
+        <p class="muted small">{{ preview.notice }}</p>
+        <pre style="white-space: pre-wrap; max-height: 70vh; overflow: auto; background: var(--r-surface-2); padding: 16px; border-radius: 8px; margin: 0">{{ preview.content }}</pre>
+      {% else %}
+        <div class="alert alert-info">{{ icon("info") }}<span>{{ preview.notice }}</span></div>
+      {% endif %}
+    </div>
+  </section>
+</div>
+{% endautoescape %}{% endblock %}

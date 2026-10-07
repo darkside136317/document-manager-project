@@ -1,0 +1,30 @@
+{% extends "templates/reader/base.html" %}
+{% from "templates/reader/macros.html" import icon, pager %}
+
+{% block main %}{% autoescape true %}
+<div x-data="notificationsPage({{ notes_config | forceescape }})">
+  <div class="page-head">
+    <div><h1>Thông báo</h1><p>Kết quả xử lý phiếu và phản hồi góp ý của đơn vị.</p></div>
+    <button class="btn" type="button" @click="markAll()" x-show="unread" x-cloak>{{ icon("check") }} Đánh dấu đã đọc tất cả</button>
+  </div>
+
+  {% if rows %}
+  <section class="card">
+    <ul class="note-list">
+      {% for n in rows %}
+      <li data-note class="{{ 'unread' if not n.read }}">
+        <span class="dot" aria-hidden="true"></span>
+        <div style="flex: 1">
+          {% if n.link %}<a href="{{ n.link }}" @click="open({{ n.name | tojson | forceescape }})">{{ n.subject }}</a>{% else %}<span style="font-weight: 600">{{ n.subject }}</span>{% endif %}
+          <div class="muted small">{{ n.when }}{% if not n.read %} · <strong>Mới</strong>{% endif %}</div>
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+  {{ pager(page, pages, "/portal/thong-bao?") }}
+  {% else %}
+  <div class="card empty">{{ icon("bell") }}<h3>Chưa có thông báo nào</h3><p>Bạn sẽ nhận thông báo khi phiếu được duyệt, từ chối hoặc hoàn thành.</p></div>
+  {% endif %}
+</div>
+{% endautoescape %}{% endblock %}

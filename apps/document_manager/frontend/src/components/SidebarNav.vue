@@ -1,5 +1,6 @@
 <script setup>
 import { boot } from "../lib/boot.js";
+import { badges } from "../lib/registrations.js";
 import Icon from "./Icon.vue";
 
 defineEmits(["navigate"]);
@@ -26,6 +27,7 @@ const toPath = (route) => route.replace(/^\/dashboard/, "") || "/";
         >
           <Icon :name="item.icon" :size="18" />
           <span class="truncate">{{ item.label }}</span>
+          <span v-if="badges[item.route]" class="ml-auto rounded-full bg-accent px-2 text-xs font-semibold text-primary" :aria-label="`${badges[item.route]} cần xử lý`">{{ badges[item.route] }}</span>
         </a>
       </RouterLink>
     </section>

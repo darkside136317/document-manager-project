@@ -1,0 +1,50 @@
+{% extends "templates/reader/base.html" %}
+{% from "templates/reader/macros.html" import icon %}
+
+{% block main %}{% autoescape true %}
+<div class="page-head"><div><h1>Tài khoản của tôi</h1><p>{{ profile.full_name }} · {{ profile.email }}</p></div></div>
+
+<div class="grid grid-2" style="align-items: start" x-data="accountPage({{ account_config | forceescape }})">
+  <section class="card">
+    <div class="card-head"><h2>Thông tin liên hệ</h2></div>
+    <form class="card-body stack" @submit.prevent="saveProfile()" novalidate>
+      <div class="alert alert-success" x-show="profileOk" x-cloak role="status">{{ icon("circle-check") }}<span>Đã lưu thông tin.</span></div>
+      <div class="alert alert-danger" x-show="profileError" x-cloak role="alert">{{ icon("triangle-alert") }}<span x-text="profileError"></span></div>
+      <div class="field"><label>Họ và tên</label><input class="input" value="{{ profile.full_name }}" disabled></div>
+      <div class="field"><label>Email đăng nhập</label><input class="input" value="{{ profile.email or '' }}" disabled>
+        <span class="help">Họ tên và email do cán bộ quản lý; liên hệ phòng đọc nếu cần chỉnh sửa.</span></div>
+      <div class="field"><label for="phone">Điện thoại</label><input id="phone" class="input" type="tel" maxlength="20" x-model="p.phone"></div>
+      <div class="field"><label for="organization">Cơ quan, đơn vị</label><input id="organization" class="input" maxlength="140" x-model="p.organization"></div>
+      <div class="field"><label for="position">Chức vụ</label><input id="position" class="input" maxlength="140" x-model="p.position"></div>
+      <div class="field"><label for="address">Địa chỉ</label><textarea id="address" maxlength="300" style="min-height: 64px" x-model="p.address"></textarea></div>
+      <div><button class="btn btn-primary" type="submit" :disabled="saving"><span x-show="saving" x-cloak>{{ icon("loader", "spin") }}</span> Lưu thông tin</button></div>
+    </form>
+  </section>
+
+  <div class="stack">
+    <section class="card">
+      <div class="card-head"><h2>Đổi mật khẩu</h2></div>
+      <form class="card-body stack" @submit.prevent="changePassword()" novalidate>
+        <div class="alert alert-success" x-show="passOk" x-cloak role="status">{{ icon("circle-check") }}<span>Đã đổi mật khẩu.</span></div>
+        <div class="alert alert-danger" x-show="passError" x-cloak role="alert">{{ icon("triangle-alert") }}<span x-text="passError" style="white-space: pre-line"></span></div>
+        <div class="field"><label for="old">Mật khẩu hiện tại</label><input id="old" class="input" type="password" autocomplete="current-password" x-model="old"></div>
+        <div class="field"><label for="next">Mật khẩu mới</label><input id="next" class="input" type="password" autocomplete="new-password" x-model="next"></div>
+        <div class="field"><label for="again">Nhập lại mật khẩu mới</label><input id="again" class="input" type="password" autocomplete="new-password" x-model="again"></div>
+        <div><button class="btn btn-primary" type="submit" :disabled="changing"><span x-show="changing" x-cloak>{{ icon("loader", "spin") }}</span> Đổi mật khẩu</button></div>
+      </form>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><h2>Quyền khai thác của bạn</h2></div>
+      <div class="card-body stack">
+        <p class="small muted" style="margin: 0">Nhóm độc giả: <strong>{{ account.group or "Mặc định" }}</strong></p>
+        <ul style="list-style: none; margin: 0; padding: 0; display: grid; gap: 8px">
+          {% for f in account.features %}
+          <li class="cluster">{% if f.allowed %}<span class="badge badge-success">{{ icon("check") }} Được phép</span>{% else %}<span class="badge badge-muted">{{ icon("lock") }} Không</span>{% endif %}<span>{{ f.label | capitalize }}</span></li>
+          {% endfor %}
+        </ul>
+      </div>
+    </section>
+  </div>
+</div>
+{% endautoescape %}{% endblock %}

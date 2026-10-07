@@ -27,6 +27,31 @@ frappe.init(site=SITE)
 frappe.connect()
 frappe.set_user("Administrator")
 
+def purge_reader(email):
+    """A reader account and everything that points at it (slips, feedback, notifications)."""
+    reader = frappe.db.get_value("Reader", {"user": email})
+    if reader:
+        for doctype in ("Usage Request", "Copy Request", "Reader Feedback"):
+            for name in frappe.get_all(doctype, filters={"reader": reader}, pluck="name"):
+                doc = frappe.get_doc(doctype, name)
+                if doc.docstatus == 1:
+                    doc.flags.ignore_permissions = True
+                    doc.cancel()
+                frappe.delete_doc(doctype, name, force=True, ignore_permissions=True)
+        frappe.delete_doc("Reader", reader, force=True, ignore_permissions=True)
+    frappe.db.delete("Notification Log", {"for_user": email})
+    for name in frappe.get_all("Reader Registration", filters={"email": email}, pluck="name"):
+        frappe.delete_doc("Reader Registration", name, force=True, ignore_permissions=True)
+    if frappe.db.exists("User", email):
+        frappe.delete_doc("User", email, force=True, ignore_permissions=True)
+
+
+# readers created by the browser flows (reader.mjs registers e2e.newreader.<n>@example.com)
+for email in frappe.get_all("User", filters={"name": ["like", "e2e.%@example.com"]}, pluck="name"):
+    purge_reader(email)
+for name in frappe.get_all("Reader Registration", filters={"email": ["like", "e2e.%@example.com"]}, pluck="name"):
+    frappe.delete_doc("Reader Registration", name, force=True, ignore_permissions=True)
+
 for email, (roles, user_type, profile) in ACCOUNTS.items():
     reader = frappe.db.get_value("Reader", {"user": email})
     if reader:
@@ -43,5 +68,6 @@ for email, (roles, user_type, profile) in ACCOUNTS.items():
     if profile:
         frappe.get_doc({"doctype": "Reader", "full_name": "E2E Reader", "user": email, "email": email,
                         "is_active": 1}).insert(ignore_permissions=True)
+frappe.cache.delete_keys("rl:*")  # the sign-up and password endpoints are rate limited per IP: a rerun starts fresh
 frappe.db.commit()
 print(mode, "ok:", ", ".join(ACCOUNTS))

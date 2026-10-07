@@ -1,0 +1,25 @@
+{% extends "templates/reader/base.html" %}
+{% from "templates/reader/macros.html" import icon %}
+
+{% block main %}{% autoescape true %}
+<div class="card card-narrow" style="margin-top: 24px" x-data="forgotForm()">
+  <div class="card-body stack">
+    <div>
+      <h1>Quên mật khẩu</h1>
+      <p class="muted" style="margin: 4px 0 0">Nhập email đã đăng ký. Cán bộ sẽ gửi cho bạn một liên kết để đặt mật khẩu mới.</p>
+    </div>
+    <div x-show="done" x-cloak class="stack">
+      <div class="alert alert-success" role="status">{{ icon("circle-check") }}<strong x-text="result && result.message"></strong></div>
+      <a class="btn" href="/dang-nhap">Về trang đăng nhập</a>
+    </div>
+    <form class="stack" x-show="!done" @submit.prevent="submit()" novalidate>
+      <div class="alert alert-danger" x-show="error" x-cloak role="alert">{{ icon("triangle-alert") }}<span x-text="error"></span></div>
+      <div class="field"><label for="email">Email đã đăng ký</label>
+        <input id="email" class="input" type="email" autocomplete="email" inputmode="email" required x-model="email" autofocus></div>
+      <div class="hp" aria-hidden="true"><label>Để trống trường này <input tabindex="-1" autocomplete="off" x-model="website"></label></div>
+      <button class="btn btn-primary btn-block" type="submit" :disabled="busy"><span x-show="busy" x-cloak>{{ icon("loader", "spin") }}</span> Gửi yêu cầu</button>
+      <a class="small" href="/dang-nhap">Quay lại đăng nhập</a>
+    </form>
+  </div>
+</div>
+{% endautoescape %}{% endblock %}

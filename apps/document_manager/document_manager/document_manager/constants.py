@@ -18,6 +18,7 @@ STAFF_HOME = "/dashboard"
 # sidebar sections
 GROUP_CATALOGUES = "Danh mục"
 GROUP_CATALOGUING = "Biên mục"
+GROUP_READERS = "Độc giả"
 
 # `slug` is the URL segment: /dashboard/danh-muc/<slug>
 MASTERS = [
@@ -76,5 +77,6 @@ LEGACY_LINKS = [
     ("Khôi phục dữ liệu", "/restore_batches", "Restore Batch", "Bảo quản"),
     ("Nhật ký hệ thống", "/business_activity_log", "Business Activity Log", "Quản trị"),
     ("Thiết lập hệ thống", "/document_manager_settings", "Document Manager Settings", "Quản trị"),
-    ("Thông tin đơn vị", "/organization_info", "Organization Info", "Quản trị"),
+    ("Thông tin đơn vị", "/app/organization-info", "Organization Info", "Quản trị"),
+    ("Cơ cấu tổ chức", "/app/organization-unit", "Organization Unit", "Quản trị"),
 ]

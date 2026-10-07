@@ -1,0 +1,17 @@
+{
+  "name": "Organization Leader",
+  "module": "Document Manager",
+  "doctype": "DocType",
+  "document_type": "Setup",
+  "istable": 1,
+  "engine": "InnoDB",
+  "fields": [
+    {"fieldname": "full_name", "fieldtype": "Data", "label": "Họ và tên", "reqd": 1, "in_list_view": 1},
+    {"fieldname": "position", "fieldtype": "Data", "label": "Chức vụ", "in_list_view": 1},
+    {"fieldname": "display_order", "fieldtype": "Int", "label": "Thứ tự hiển thị", "default": "0", "in_list_view": 1},
+    {"fieldname": "is_visible", "fieldtype": "Check", "label": "Hiển thị công khai", "default": "1", "in_list_view": 1},
+    {"fieldname": "photo", "fieldtype": "Attach Image", "label": "Ảnh", "description": "Dùng tệp công khai: trang giới thiệu mở cho mọi người"},
+    {"fieldname": "bio", "fieldtype": "Small Text", "label": "Giới thiệu ngắn"}
+  ],
+  "permissions": []
+}

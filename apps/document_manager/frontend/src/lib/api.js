@@ -69,7 +69,7 @@ function toQuery(args) {
 
 export function redirectToLogin() {
   const here = window.location.pathname + window.location.search;
-  window.location.assign(`/login?redirect-to=${encodeURIComponent(here)}`);
+  window.location.assign(`/dang-nhap?redirect-to=${encodeURIComponent(here)}`);
 }
 
 /**
@@ -137,11 +137,17 @@ export const api = {
     files: (params) => call(`${BASE}.search.search_archival_files`, params),
     documents: (params) => call(`${BASE}.search.search_documents`, params),
   },
+  registrations: {
+    list: (params) => call(`${BASE}.registration.list_registrations`, params),
+    pending: () => call(`${BASE}.registration.pending_registrations`),
+    groups: () => call(`${BASE}.registration.reader_groups`),
+    approve: (name, readerGroup) =>
+      call(`${BASE}.registration.approve_registration`, { name, reader_group: readerGroup || null }, { post: true }),
+    reject: (name, reason) => call(`${BASE}.registration.reject_registration`, { name, reason }, { post: true }),
+    reissue: (name) => call(`${BASE}.registration.reissue_link`, { name }, { post: true }),
+  },
   preview: (docName) => call(`${BASE}.file_access.get_preview`, { doc_name: docName }),
+  // Own endpoint: a wrong current password must not end the session (Frappe's update_password would).
   changePassword: (oldPassword, newPassword) =>
-    call(
-      "frappe.core.doctype.user.user.update_password",
-      { old_password: oldPassword, new_password: newPassword, logout_all_sessions: 0 },
-      { post: true, loginOn401: false }, // "Incorrect password" is a 401 too: do not log the user out
-    ),
+    call(`${BASE}.account.change_password`, { old_password: oldPassword, new_password: newPassword }, { post: true, loginOn401: false }),
 };

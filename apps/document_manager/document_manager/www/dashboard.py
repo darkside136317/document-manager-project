@@ -14,6 +14,7 @@ import frappe
 
 from document_manager.document_manager.api.boot import build_boot
 from document_manager.document_manager.permissions import require_staff
+from document_manager.document_manager.services.web import inline_json
 
 STAFF_BUILD = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "public", "staff")
 ASSET_BASE = "/assets/document_manager/staff/"
@@ -32,20 +33,13 @@ def _entry_assets() -> tuple[list[str], list[str]]:
     return [ASSET_BASE + entry["file"]], [ASSET_BASE + css for css in entry.get("css", [])]
 
 
-def _inline_json(data: dict) -> str:
-    """JSON that is safe inside a <script> element (no way to close the tag or open a comment)."""
-    return (json.dumps(data, ensure_ascii=False)
-            .replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
-            .replace("\u2028", "\\u2028").replace("\u2029", "\\u2029"))
-
-
 def get_context(context):
     context.no_cache = 1
     require_staff(frappe.local.request.path if getattr(frappe.local, "request", None) else "/dashboard")
 
     boot = build_boot()
     boot["csrf_token"] = frappe.sessions.get_csrf_token()
-    context.boot_json = _inline_json(boot)
+    context.boot_json = inline_json(boot)
     context.dm_js, context.dm_css = _entry_assets()
     context.title = f"{boot['org']} — Quản lý tài liệu lưu trữ"
     return context

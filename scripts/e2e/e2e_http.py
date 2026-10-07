@@ -6,6 +6,7 @@ Every check prints PASS/FAIL; the exit code is the number of failures.
 import http.cookiejar
 import json
 import os
+import re
 import sys
 import urllib.error
 import urllib.parse
@@ -42,6 +43,20 @@ class Client:
             return status, json.loads(raw)
         except ValueError:
             return status, {}
+
+    def post_json(self, path, data, csrf=""):
+        """POST a JSON body (what the reader site's script sends); returns (status, parsed JSON)."""
+        req = urllib.request.Request(BASE + path, data=json.dumps(data).encode(), method="POST",
+                                     headers={"Content-Type": "application/json", "X-Frappe-CSRF-Token": csrf})
+        try:
+            resp = self.opener.open(req, timeout=60)
+        except urllib.error.HTTPError as e:
+            resp = e
+        raw = resp.read().decode("utf-8", "replace")
+        try:
+            return resp.status, json.loads(raw)
+        except ValueError:
+            return resp.status, {}
 
     def login(self, email):
         status, _ = self.json("/api/method/login", {"usr": email, "pwd": PASSWORD})
@@ -104,8 +119,54 @@ def main():
     status, body = c["admin"].json(api + "admin.get_service_health")
     check("admin reads service health", status == 200 and "meilisearch" in body.get("message", {}), str(status))
 
+    reader_site(c, api)
+
     print(f"\n{failures} failure(s)")
     return failures
+
+
+def reader_site(c, api):
+    """Public pages, the reader area's gates, redirects and the sign-up / account endpoints."""
+    for path in ("/", "/gioi-thieu", "/lanh-dao", "/co-cau", "/lien-he", "/huong-dan", "/dang-nhap", "/dang-ky", "/quen-mat-khau"):
+        status, body, _ = c["guest"].request(path)
+        check(f"guest {path} 200 and its own document", status == 200 and "<!DOCTYPE html>" in body and "frappe.ready" not in body, str(status))
+    check("an unknown set-password link is explained", "không hợp lệ" in c["guest"].request("/dat-mat-khau?key=nope")[1])
+
+    for path in ("/portal", "/portal/phieu", "/portal/sao-chep", "/portal/gop-y", "/portal/tai-khoan", "/portal/thong-bao"):
+        status, _, location = c["guest"].request(path)
+        check(f"guest {path} -> 302 to sign in", status == 302 and location.startswith("/dang-nhap?redirect-to="), f"{status} {location}")
+    for path in ("/portal/phieu", "/portal/sao-chep", "/portal/gop-y", "/portal/tai-khoan", "/portal/thong-bao"):
+        check(f"reader {path} 200", c["reader"].request(path)[0] == 200)
+    check("reader /portal/ho-so/<missing> 404", c["reader"].request("/portal/ho-so/AF-99999")[0] == 404)
+    check("officer /portal 200 (staff may use the reader site)", c["officer"].request("/portal")[0] == 200)
+    status, _, location = c["reader"].request("/usage_requests")
+    check("reader's old slip page -> new page", status == 302 and location == "/portal/phieu", f"{status} {location}")
+    status, _, location = c["guest"].request("/portal_document?name=DOC-000001")
+    check("old document viewer address redirects", status == 301 and location.startswith("/portal/van-ban"), f"{status} {location}")
+
+    # sign-up endpoints: POST only, honeypot, officers only for the queue
+    register = api + "registration.register_reader"
+    check("sign-up refuses GET", c["guest"].json(register + "?full_name=x&email=a@b.vn")[0] in (403, 405))
+    status, body = c["guest"].post_json(register, {"full_name": "Bot", "email": "bot@example.com", "website": "http://spam.example"})
+    check("honeypot answers like a real sign-up", status == 200 and body.get("message", {}).get("status") == "pending", str(status))
+    status, body = c["guest"].post_json(register, {"full_name": "x", "email": "not-an-email"})
+    check("invalid email is refused", status in (400, 417), str(status))
+    for key in ("reader", "noprofile", "guest"):
+        check(f"{key} cannot list registrations", c[key].json(api + "registration.list_registrations")[0] in (401, 403))
+        check(f"{key} cannot read the reader groups", c[key].json(api + "registration.reader_groups")[0] in (401, 403))
+    status, body = c["officer"].json(api + "registration.list_registrations?status=M%E1%BB%9Bi")
+    check("officer lists the queue", status == 200 and "rows" in body.get("message", {}), str(status))
+    check("the honeypot request was not queued",
+          not any(r["email"] == "bot@example.com" for r in body.get("message", {}).get("rows", [])))
+
+    # a wrong current password is a message and the reader stays signed in
+    csrf = re.search(r'"csrf": "([^"]+)"', c["reader"].request("/portal")[1])
+    status, body = c["reader"].post_json(api + "account.change_password", {"old_password": "wrong", "new_password": "Whatever!12345"}, csrf.group(1) if csrf else "")
+    check("wrong current password is refused (417)", status == 417, str(status))
+    check("...and the reader is still signed in", c["reader"].request("/portal/tai-khoan")[0] == 200)
+    status, body = c["reader"].post_json(api + "basket.add_to_basket", {"kind": "file", "name": "AF-99999", "target": "usage"}, csrf.group(1) if csrf else "")
+    check("a missing file cannot be added to the basket", status in (403, 404, 417), str(status))
+    check("guest cannot use the basket", c["guest"].post_json(api + "basket.add_to_basket", {"kind": "file", "name": "x", "target": "usage"})[0] in (401, 403))
 
 
 if __name__ == "__main__":

@@ -1,0 +1,164 @@
+{#- List and detail of a reader's slips. Context: www/_reader_slips.py (`slip_context`). -#}
+{%- from "templates/reader/macros.html" import icon, state_badge, pager -%}
+{#- Frappe's Jinja does not escape by default: every template of the reader site turns autoescape on, and | safe marks the few trusted HTML values. -#}
+{% autoescape true %}
+
+{% if not doc %}
+{#- ================================ LIST ================================ -#}
+<div class="page-head">
+  <div><h1>{{ cfg.title }}</h1><p>{{ cfg.intro }}</p></div>
+  <a class="btn btn-primary" href="/portal">{{ icon("search") }} Tìm tài liệu để thêm vào phiếu</a>
+</div>
+
+{% if not has_profile %}
+  <div class="alert alert-warning">{{ icon("triangle-alert") }}<div>Tài khoản của bạn chưa có hồ sơ độc giả nên chưa lập được phiếu. Vui lòng <a href="/lien-he">liên hệ cán bộ phòng đọc</a>.</div></div>
+{% else %}
+<div class="stack">
+  <nav class="tabs" aria-label="Lọc theo trạng thái">
+    <a class="tab" href="{{ cfg.base }}"{% if not status %} aria-current="page"{% endif %}>Tất cả</a>
+    {% for s in cfg.states %}<a class="tab" href="{{ cfg.base }}?status={{ s }}"{% if status == s %} aria-current="page"{% endif %}>{{ s }}</a>{% endfor %}
+  </nav>
+
+  {% if rows %}
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th scope="col">Số phiếu</th><th scope="col">Ngày lập</th><th scope="col">{{ cfg.purpose_label }}</th><th scope="col">Số mục</th><th scope="col">Trạng thái</th></tr></thead>
+      <tbody>
+      {% for r in rows %}
+        <tr>
+          <td class="nowrap"><a href="{{ cfg.base }}/{{ r.name }}">{{ r.name }}</a></td>
+          <td class="nowrap">{{ r.request_date.strftime("%d/%m/%Y") if r.request_date else "" }}</td>
+          <td>{{ (r.purpose or "—")[:90] }}{{ "…" if r.purpose and r.purpose | length > 90 }}</td>
+          <td>{{ counts.get(r.name, 0) }}</td>
+          <td>{{ state_badge(r.workflow_state or "Nháp") }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {{ pager(page, pages, base_query) }}
+  {% else %}
+  <div class="card empty">
+    {{ icon(cfg.icon) }}
+    <h3>{% if status %}Không có {{ cfg.noun }} ở trạng thái “{{ status }}”{% else %}Bạn chưa có {{ cfg.noun }} nào{% endif %}</h3>
+    <p>Tìm hồ sơ, văn bản rồi bấm <em>{{ "Phiếu sử dụng" if key == "usage" else "Phiếu sao chụp" }}</em> để thêm vào phiếu.</p>
+    <a class="btn btn-primary" href="/portal">{{ icon("search") }} Tra cứu tài liệu</a>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+{% else %}
+{#- ================================ DETAIL ================================ -#}
+<ol class="breadcrumb no-print"><li><a href="{{ cfg.base }}">{{ cfg.title }}</a></li><li aria-current="page">{{ doc.name }}</li></ol>
+
+<div class="print-only" style="margin-bottom: 16px">
+  <strong>{{ org.name }}</strong><br>{{ cfg.title | upper }} — {{ doc.name }}
+</div>
+
+<div {% if editable %}x-data="slipEditor({{ editor_config | forceescape }})"{% else %}x-data{% endif %} class="stack-lg">
+  <div class="page-head" style="margin-bottom: 0">
+    <div>
+      <h1>{{ cfg.title }} {{ doc.name }}</h1>
+      <p>{{ state_badge(state) }} · Độc giả: {{ reader_name }}</p>
+    </div>
+    <div class="cluster no-print">
+      <button class="btn" type="button" onclick="window.print()">{{ icon("printer") }} In phiếu</button>
+      {% if can_cancel and not editable %}
+      <button class="btn btn-danger" type="button" x-data="slipEditor({{ editor_config | forceescape }})" @click="cancelSlip()">{{ icon("x") }} Hủy phiếu</button>
+      {% endif %}
+    </div>
+  </div>
+
+  <section class="card" aria-label="Tiến trình xử lý">
+    <div class="card-body">
+      <ol class="stepper">
+        {% for step in steps %}<li class="{{ step.status }}"{% if step.status == "current" %} aria-current="step"{% endif %}>{{ step.label }}</li>{% endfor %}
+      </ol>
+      {% if state == "Từ chối" and doc.rejection_reason %}
+      <div class="alert alert-danger" style="margin-top: 16px">{{ icon("circle-x") }}<div><strong>Lý do từ chối:</strong> {{ doc.rejection_reason }}</div></div>
+      {% elif state == "Chờ duyệt" %}
+      <div class="alert alert-info" style="margin-top: 16px">{{ icon("clock") }}<div>Phiếu đã gửi và đang chờ cán bộ phòng đọc xem xét. Bạn sẽ nhận thông báo khi có kết quả.</div></div>
+      {% elif state == "Đã duyệt" %}
+      <div class="alert alert-success" style="margin-top: 16px">{{ icon("circle-check") }}<div>Phiếu đã được duyệt. Vui lòng đến phòng đọc{% if org.hours %} ({{ org.hours | join("; ") }}){% endif %} để nhận tài liệu.</div></div>
+      {% endif %}
+    </div>
+  </section>
+
+  {% if editable %}
+  {#- ---- draft: editable ---- -#}
+  <form class="stack" @submit.prevent="send()" novalidate>
+    <section class="card">
+      <div class="card-head"><h2>Thông tin phiếu</h2></div>
+      <div class="card-body stack">
+        <div class="alert alert-danger" x-show="error" x-cloak role="alert">{{ icon("triangle-alert") }}<span x-text="error"></span></div>
+        <div class="field"><label for="purpose">{{ cfg.purpose_label }} <span class="req">*</span></label>
+          <textarea id="purpose" x-model="purpose" maxlength="500" required @input="error = ''" placeholder="Ví dụ: nghiên cứu, viết bài, phục vụ công tác chuyên môn"></textarea></div>
+        <div class="field"><label for="notes">Ghi chú</label><textarea id="notes" x-model="notes" style="min-height: 64px"></textarea></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><h2>Hồ sơ, văn bản trong phiếu <span class="badge badge-muted" x-text="items.length"></span></h2>
+        <a class="btn btn-sm" href="/portal">{{ icon("plus") }} Thêm tài liệu</a></div>
+      <div class="table-wrap" style="border: 0; border-radius: 0" x-show="items.length">
+        <table class="table">
+          <thead><tr><th scope="col">Loại</th><th scope="col">Tài liệu</th>{% if cfg.copies %}<th scope="col">Số bản</th>{% endif %}<th scope="col"><span class="sr-only">Bỏ</span></th></tr></thead>
+          <tbody>
+            <template x-for="item in items" :key="item.row">
+              <tr>
+                <td class="nowrap" x-text="item.kind"></td>
+                <td><a :href="item.href" x-text="item.title"></a><div class="muted small" x-show="item.parent_title" x-text="'Thuộc hồ sơ: ' + item.parent_title"></div></td>
+                {% if cfg.copies %}<td style="width: 110px"><input class="input" type="number" min="1" max="999" x-model.number="item.copy_count" :aria-label="'Số bản của ' + item.title"></td>{% endif %}
+                <td class="right"><button class="btn btn-sm btn-danger" type="button" @click="removeItem(item)" :disabled="busy" :aria-label="'Bỏ ' + item.title">{{ icon("trash-2") }}</button></td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </div>
+      <div class="empty" x-show="!items.length" x-cloak>{{ icon("inbox") }}<h3>Phiếu chưa có tài liệu nào</h3></div>
+    </section>
+
+    <div class="cluster-between no-print">
+      <button class="btn btn-danger" type="button" @click="discard()" :disabled="busy">{{ icon("trash-2") }} Hủy bản nháp</button>
+      <div class="cluster">
+        <button class="btn" type="button" @click="save()" :disabled="busy">Lưu nháp</button>
+        <button class="btn btn-primary" type="submit" :disabled="busy || !items.length">
+          <span x-show="busy" x-cloak>{{ icon("loader", "spin") }}</span>{{ icon("send") }} Gửi yêu cầu</button>
+      </div>
+    </div>
+  </form>
+
+  {% else %}
+  {#- ---- sent: read only ---- -#}
+  <section class="card">
+    <div class="card-head"><h2>Thông tin phiếu</h2></div>
+    <div class="card-body stack">
+      <dl class="kv">
+        {% for label, text in dates %}<div><dt>{{ label }}</dt><dd>{{ text }}</dd></div>{% endfor %}
+        <div style="grid-column: 1 / -1"><dt>{{ cfg.purpose_label }}</dt><dd style="font-weight: 400">{{ doc.purpose or "—" }}</dd></div>
+        {% if doc.notes %}<div style="grid-column: 1 / -1"><dt>Ghi chú</dt><dd style="font-weight: 400">{{ doc.notes }}</dd></div>{% endif %}
+      </dl>
+    </div>
+  </section>
+  <section class="card">
+    <div class="card-head"><h2>Hồ sơ, văn bản trong phiếu <span class="badge badge-muted">{{ items | length }}</span></h2></div>
+    <div class="table-wrap" style="border: 0; border-radius: 0">
+      <table class="table">
+        <thead><tr><th scope="col">Loại</th><th scope="col">Tài liệu</th>{% if cfg.copies %}<th scope="col">Số bản</th>{% endif %}</tr></thead>
+        <tbody>
+        {% for item in items %}
+          <tr>
+            <td class="nowrap">{{ item.kind }}</td>
+            <td><a href="{{ item.href }}">{{ item.title }}</a>{% if item.parent_title %}<div class="muted small">Thuộc hồ sơ: {{ item.parent_title }}</div>{% endif %}</td>
+            {% if cfg.copies %}<td>{{ item.copy_count }}</td>{% endif %}
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  {% endif %}
+</div>
+{% endif %}
+{% endautoescape %}

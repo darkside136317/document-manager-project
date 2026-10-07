@@ -73,6 +73,9 @@ NOTIFICATIONS = [
     ("Góp ý mới của độc giả", "Reader Feedback", "New",
      "Góp ý mới: {{ doc.subject }}",
      "Độc giả {{ doc.reader_name }} gửi góp ý {{ doc.name }}."),
+    ("Đăng ký độc giả mới", "Reader Registration", "New",
+     "{{ doc.request_type }}: {{ doc.full_name }}",
+     "{{ doc.full_name }} ({{ doc.email }}) gửi yêu cầu \"{{ doc.request_type }}\" — {{ doc.name }}."),
 ]
 
 

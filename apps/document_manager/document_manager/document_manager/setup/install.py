@@ -30,6 +30,7 @@ CONFIDENTIALITY_LEVELS = (
 def after_install():
     set_vietnamese_defaults()
     set_upload_limit()
+    set_password_link_expiry()
     seed_all()
 
 
@@ -103,5 +104,24 @@ def set_upload_limit() -> bool:
     if frappe.utils.cint(frappe.db.get_single_value("System Settings", "max_file_size")) >= UPLOAD_MAX_MB:
         return False
     frappe.db.set_single_value("System Settings", "max_file_size", UPLOAD_MAX_MB)
+    frappe.clear_cache()
+    return True
+
+
+PASSWORD_LINK_EXPIRY_SECONDS = 72 * 3600
+FRAPPE_DEFAULT_LINK_EXPIRY = 1200  # 20 minutes: too short for a link an officer passes on to the reader
+
+
+def set_password_link_expiry() -> bool:
+    """One-time "set your password" links of new readers stay valid for 72 hours.
+
+    Only a site still on Frappe's factory value (20 minutes) or on 0 ("never expires") is changed,
+    and only when this runs (install, one patch): a value an administrator chose is kept.
+    Returns True when it changed.
+    """
+    current = frappe.utils.cint(frappe.db.get_single_value("System Settings", "reset_password_link_expiry_duration"))
+    if current not in (0, FRAPPE_DEFAULT_LINK_EXPIRY):
+        return False
+    frappe.db.set_single_value("System Settings", "reset_password_link_expiry_duration", PASSWORD_LINK_EXPIRY_SECONDS)
     frappe.clear_cache()
     return True

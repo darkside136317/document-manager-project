@@ -1,0 +1,35 @@
+{% extends "templates/reader/base.html" %}
+{% from "templates/reader/macros.html" import icon %}
+
+{% block main %}{% autoescape true %}
+<div class="card card-narrow" style="margin-top: 24px">
+  {% if problem %}
+  <div class="card-body stack">
+    <h1>Liên kết không dùng được</h1>
+    <div class="alert alert-warning">{{ icon("triangle-alert") }}<div>
+      {% if problem == "expired" %}Liên kết đặt mật khẩu đã hết hạn.{% else %}Liên kết đặt mật khẩu không hợp lệ hoặc đã được sử dụng.{% endif %}
+      Hãy gửi yêu cầu cấp lại ở trang quên mật khẩu, hoặc liên hệ cán bộ phòng đọc.</div></div>
+    <div class="cluster"><a class="btn btn-primary" href="/quen-mat-khau">Yêu cầu cấp lại</a><a class="btn" href="/lien-he">Liên hệ</a></div>
+  </div>
+  {% else %}
+  <div class="card-body stack" x-data="setPasswordForm({ key: {{ key | tojson | forceescape }} })">
+    <div>
+      <h1>Đặt mật khẩu</h1>
+      <p class="muted" style="margin: 4px 0 0">Tài khoản: <strong>{{ link_user }}</strong></p>
+    </div>
+    <form class="stack" @submit.prevent="submit()" novalidate>
+      <div class="alert alert-danger" x-show="error" x-cloak role="alert">{{ icon("triangle-alert") }}<span x-text="error" style="white-space: pre-line"></span></div>
+      <div class="field"><label for="pwd">Mật khẩu mới</label>
+        <div class="copy-box">
+          <input id="pwd" class="input" :type="show ? 'text' : 'password'" autocomplete="new-password" required x-model="pwd" style="font-family: inherit; font-size: 1rem" autofocus>
+          <button class="btn" type="button" @click="show = !show" :aria-pressed="show" aria-label="Hiện hoặc ẩn mật khẩu">{{ icon("eye") }}</button>
+        </div>
+        <span class="help">Tối thiểu 8 ký tự; nên kết hợp chữ hoa, chữ thường, số và ký hiệu.</span></div>
+      <div class="field"><label for="again">Nhập lại mật khẩu</label>
+        <input id="again" class="input" :type="show ? 'text' : 'password'" autocomplete="new-password" required x-model="again" style="font-family: inherit; font-size: 1rem"></div>
+      <button class="btn btn-primary btn-block" type="submit" :disabled="busy"><span x-show="busy" x-cloak>{{ icon("loader", "spin") }}</span> Lưu mật khẩu và đăng nhập</button>
+    </form>
+  </div>
+  {% endif %}
+</div>
+{% endautoescape %}{% endblock %}

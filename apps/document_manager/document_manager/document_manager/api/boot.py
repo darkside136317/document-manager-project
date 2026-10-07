@@ -7,6 +7,7 @@ from document_manager.document_manager.constants import (
     ARCHIVE_SCREENS,
     GROUP_CATALOGUES,
     GROUP_CATALOGUING,
+    GROUP_READERS,
     LEGACY_LINKS,
     MASTERS,
     UPLOAD_EXTENSIONS,
@@ -36,6 +37,14 @@ def build_boot() -> dict:
         nav.append({"group": GROUP_CATALOGUING, "items": [
             {"label": "Biên mục hồ sơ, văn bản", "route": "/dashboard/bien-muc", "icon": "folder-tree"},
             {"label": "Tìm kiếm", "route": "/dashboard/tim-kiem", "icon": "search"},
+        ]})
+
+    if _can_read("Reader Registration"):
+        from document_manager.document_manager.services.registration import pending_count
+
+        nav.append({"group": GROUP_READERS, "items": [
+            {"label": "Đăng ký độc giả", "route": "/dashboard/doc-gia/dang-ky", "icon": "user-plus",
+             "badge": pending_count()},
         ]})
 
     masters = [m for m in MASTERS if _can_read(m["doctype"])]

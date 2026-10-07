@@ -1,0 +1,30 @@
+{#- Small building blocks shared by the reader pages.
+    Frappe's Jinja does not escape by default, so every macro body turns autoescape on itself (a
+    macro defined inside an {% autoescape %} block would not be importable). -#}
+{% macro icon(name, cls="") -%}
+{% autoescape true %}<svg class="icon {{ cls }}" aria-hidden="true" focusable="false"><use href="#i-{{ name }}"/></svg>{% endautoescape %}
+{%- endmacro %}
+
+{#- Status of a slip or a request as a coloured badge. -#}
+{% macro state_badge(state) -%}
+{% autoescape true %}
+{%- set tone = {"Nháp": "muted", "Chờ duyệt": "warning", "Đã duyệt": "success", "Từ chối": "danger", "Đã trả": "info",
+  "Đã hoàn thành": "info", "Đã hủy": "muted", "Mới": "warning", "Đã xem": "info", "Đã phản hồi": "success"}.get(state, "muted") -%}
+<span class="badge badge-{{ tone }}">{{ state or "—" }}</span>
+{%- endautoescape %}
+{%- endmacro %}
+
+{#- Page links of a server-side list: `base` is the URL up to and including "?" or "&". -#}
+{% macro pager(page, pages, base) -%}
+{% autoescape true %}
+{% if pages > 1 %}
+<nav class="pager" aria-label="Phân trang">
+  <span class="muted small">Trang {{ page }} / {{ pages }}</span>
+  <span class="cluster">
+    {% if page > 1 %}<a class="btn btn-sm" href="{{ base }}page={{ page - 1 }}">{{ icon("chevron-left") }} Trước</a>{% endif %}
+    {% if page < pages %}<a class="btn btn-sm" href="{{ base }}page={{ page + 1 }}">Sau {{ icon("chevron-right") }}</a>{% endif %}
+  </span>
+</nav>
+{% endif %}
+{% endautoescape %}
+{%- endmacro %}

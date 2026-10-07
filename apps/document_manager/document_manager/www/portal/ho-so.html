@@ -1,0 +1,56 @@
+{% extends "templates/reader/base.html" %}
+{% from "templates/reader/macros.html" import icon, pager %}
+
+{% block main %}{% autoescape true %}
+<ol class="breadcrumb"><li><a href="/portal">Tra cứu</a></li><li aria-current="page">Hồ sơ {{ file.name }}</li></ol>
+
+<div class="page-head">
+  <div>
+    <h1>{{ file.file_title or file.name }}</h1>
+    <p>{{ icon("folder") }} Hồ sơ {{ file.name }}</p>
+  </div>
+  <div class="cluster no-print" x-data>
+    {% if can_add.usage %}<button class="btn btn-primary" type="button" @click="$store.basket.add('file', {{ file.name | tojson | forceescape }}, 'usage')" :disabled="$store.basket.busy">{{ icon("plus") }} Thêm vào phiếu sử dụng</button>{% endif %}
+    {% if can_add.copy %}<button class="btn" type="button" @click="$store.basket.add('file', {{ file.name | tojson | forceescape }}, 'copy')" :disabled="$store.basket.busy">{{ icon("copy") }} Thêm vào phiếu sao chụp</button>{% endif %}
+  </div>
+</div>
+
+<div class="stack-lg">
+  <section class="card" aria-label="Thông tin hồ sơ">
+    <div class="card-body stack">
+      <dl class="kv">
+        {% for label, value in facts %}<div><dt>{{ label }}</dt><dd>{{ value }}</dd></div>{% endfor %}
+      </dl>
+      {% if description_html %}<div class="prose">{{ description_html | safe }}</div>{% endif %}
+    </div>
+  </section>
+
+  <section aria-labelledby="docs-title">
+    <div class="page-head"><h2 id="docs-title">Văn bản trong hồ sơ <span class="badge badge-muted">{{ total }}</span></h2></div>
+    {% if documents %}
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th scope="col">Văn bản</th><th scope="col">Số, ký hiệu</th><th scope="col">Ngày</th><th scope="col">Tác giả</th><th scope="col">Tệp</th><th scope="col"><span class="sr-only">Thao tác</span></th></tr></thead>
+        <tbody>
+        {% for d in documents %}
+          <tr>
+            <td><a href="/portal/van-ban/{{ d.name }}">{{ d.document_title or d.name }}</a></td>
+            <td class="nowrap">{{ d.document_number or "" }}</td>
+            <td class="nowrap">{{ d.document_date.strftime("%d/%m/%Y") if d.document_date else "" }}</td>
+            <td>{{ d.author or "" }}</td>
+            <td>{{ d.file_type or "" }}</td>
+            <td class="right nowrap no-print" x-data>
+              {% if can_add.usage %}<button class="btn btn-sm" type="button" @click="$store.basket.add('document', {{ d.name | tojson | forceescape }}, 'usage')" :disabled="$store.basket.busy" aria-label="Thêm {{ d.document_title or d.name }} vào phiếu sử dụng">{{ icon("plus") }} Phiếu</button>{% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {{ pager(page, pages, "/portal/ho-so/" ~ file.name ~ "?") }}
+    {% else %}
+    <div class="card empty">{{ icon("file-text") }}<h3>Chưa có văn bản nào</h3><p>Hồ sơ này chưa có văn bản trong phạm vi bạn được xem.</p></div>
+    {% endif %}
+  </section>
+</div>
+{% endautoescape %}{% endblock %}

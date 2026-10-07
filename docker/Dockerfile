@@ -18,6 +18,8 @@ WORKDIR /src/apps/document_manager/frontend
 COPY apps/document_manager/frontend/package.json apps/document_manager/frontend/package-lock.json ./
 RUN npm ci
 COPY apps/document_manager/frontend/ ./
+# The reader site's script is unit tested from here too (tests/reader.test.js loads it from the app).
+COPY apps/document_manager/document_manager/public/js/ /src/apps/document_manager/document_manager/public/js/
 RUN npm test && npm run build
 
 # -----------------------------------------------------------------------------
