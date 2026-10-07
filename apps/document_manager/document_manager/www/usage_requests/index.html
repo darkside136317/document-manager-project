@@ -1,11 +1,1 @@
-{% extends base_template or "templates/dm_portal_base.html" %}
-
-{% block page_actions %}
-{% if can_create %}
-<a href="{{ cfg.route }}/form" class="dm-btn primary"><i class="fa fa-plus"></i> {{ cfg.new_label }}</a>
-{% endif %}
-{% endblock %}
-
-{% block dm_content %}
-{% include "templates/includes/dm_request_list.html" %}
-{% endblock %}
+<!-- moved: see www/_legacy.py -->

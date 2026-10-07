@@ -44,8 +44,20 @@ class Client:
         except ValueError:
             return status, {}
 
-    def post_json(self, path, data, csrf=""):
+    def csrf(self):
+        """The CSRF token of this session (what the pages hand to their scripts); empty for a guest."""
+        if getattr(self, "_csrf", None) is None:
+            self._csrf = ""
+            for path in ("/portal", "/dashboard"):
+                found = re.search(r'"csrf(?:_token)?":\s*"([^"]+)"', self.request(path)[1])
+                if found:
+                    self._csrf = found.group(1)
+                    break
+        return self._csrf
+
+    def post_json(self, path, data, csrf=None):
         """POST a JSON body (what the reader site's script sends); returns (status, parsed JSON)."""
+        csrf = self.csrf() if csrf is None else csrf
         req = urllib.request.Request(BASE + path, data=json.dumps(data).encode(), method="POST",
                                      headers={"Content-Type": "application/json", "X-Frappe-CSRF-Token": csrf})
         try:
@@ -72,7 +84,8 @@ def check(name, ok, detail=""):
 def clients():
     out = {}
     for key, email in (("reader", "e2e.reader@example.com"), ("noprofile", "e2e.noprofile@example.com"),
-                       ("officer", "e2e.officer@example.com"), ("admin", "e2e.admin@example.com")):
+                       ("officer", "e2e.officer@example.com"), ("leader", "e2e.leader@example.com"),
+                       ("admin", "e2e.admin@example.com")):
         c = Client()
         check(f"login {key}", c.login(email))
         out[key] = c
@@ -90,7 +103,8 @@ def main():
     status, _, location = c["reader"].request("/dashboard")
     check("reader /dashboard redirected away", status in (301, 302, 303) and "dashboard" not in location, location)
     check("officer /dashboard 200", c["officer"].request("/dashboard")[0] == 200)
-    check("admin readers form 200", c["admin"].request("/readers/form")[0] == 200)
+    status, _, location = c["admin"].request("/readers/form")
+    check("admin's old readers form forwards to the staff app", status == 302 and location == "/dashboard/doc-gia/doc-gia", f"{status} {location}")
     check("admin settings page 200", c["admin"].request("/document_manager_settings")[0] == 200)
 
     # --- search
@@ -120,6 +134,7 @@ def main():
     check("admin reads service health", status == 200 and "meilisearch" in body.get("message", {}), str(status))
 
     reader_site(c, api)
+    reader_management(c, api)
 
     print(f"\n{failures} failure(s)")
     return failures
@@ -167,6 +182,85 @@ def reader_site(c, api):
     status, body = c["reader"].post_json(api + "basket.add_to_basket", {"kind": "file", "name": "AF-99999", "target": "usage"}, csrf.group(1) if csrf else "")
     check("a missing file cannot be added to the basket", status in (403, 404, 417), str(status))
     check("guest cannot use the basket", c["guest"].post_json(api + "basket.add_to_basket", {"kind": "file", "name": "x", "target": "usage"})[0] in (401, 403))
+
+
+def reader_management(c, api):
+    """The reading room's slip queues, the leader's limits, reader administration and the old staff pages."""
+    # the old staff pages forward to the staff app, readers to their own pages, guests sign in first
+    for old, reader_to, staff_to in (("/usage_requests", "/portal/phieu", "/dashboard/doc-gia/phieu-su-dung"),
+                                     ("/copy_requests", "/portal/sao-chep", "/dashboard/doc-gia/phieu-sao-chup"),
+                                     ("/reader_feedbacks", "/portal/gop-y", "/dashboard/doc-gia/gop-y"),
+                                     ("/readers", "/portal", "/dashboard/doc-gia/doc-gia"),
+                                     ("/reader_settings", "/portal", "/dashboard/doc-gia/thiet-lap-doc-gia")):
+        status, _, location = c["officer"].request(old)
+        check(f"officer {old} -> staff app", status == 302 and location == staff_to, f"{status} {location}")
+        status, _, location = c["reader"].request(old)
+        check(f"reader {old} -> reader site", status == 302 and location == reader_to, f"{status} {location}")
+        status, _, location = c["guest"].request(old)
+        check(f"guest {old} -> sign in", status == 302 and location.startswith("/dang-nhap"), f"{status} {location}")
+    status, _, location = c["leader"].request("/usage_requests?name=UR-00001")
+    check("an old slip address keeps the slip name", status == 302 and location == "/dashboard/doc-gia/phieu-su-dung/UR-00001", f"{status} {location}")
+    check("leader opens the staff app", c["leader"].request("/dashboard")[0] == 200)
+    check("leader's /portal is the reader site, not an error", c["leader"].request("/portal")[0] == 200)
+
+    # who may read the queues
+    read_endpoints = ("slips.queue_summary", "slips.queue_badges", "slips.list_slips?kind=usage", "slips.list_slips?kind=copy&view=tat_ca",
+                      "feedback.list_feedback")
+    for endpoint in read_endpoints:
+        for key in ("officer", "leader", "admin"):
+            status, body = c[key].json(api + endpoint)
+            check(f"{key} {endpoint}", status == 200 and "message" in body, str(status))
+        for key in ("reader", "noprofile", "guest"):
+            check(f"{key} cannot {endpoint}", c[key].json(api + endpoint)[0] in (401, 403))
+    status, body = c["leader"].json(api + "slips.queue_summary")
+    summary = body.get("message", {})
+    check("the leader's queue offers the leader tab", "cho_lanh_dao" in summary.get("usage", {}), str(summary)[:160])
+    check("the leader's default tab is the leader's", summary.get("default_view") == "cho_lanh_dao", str(summary)[:160])
+    status, body = c["officer"].json(api + "slips.list_slips?kind=copy&page_size=100000")
+    check("page size is capped", status == 200 and len(body.get("message", {}).get("rows", [])) <= 100, str(status))
+
+    # the decisions are POST only and the reader cannot reach them
+    for endpoint, data in (("slips.decide_items", {"kind": "usage", "name": "UR-00001", "decisions": "[]"}),
+                           ("slips.receive_return", {"name": "UR-00001"}), ("slips.renew", {"name": "UR-00001"}),
+                           ("slips.delete_draft", {"kind": "usage", "name": "UR-00001"})):
+        check(f"{endpoint} refuses GET", c["officer"].json(api + endpoint + "?" + urllib.parse.urlencode(data))[0] in (403, 405))
+        for key in ("reader", "noprofile", "guest"):
+            status, _ = c[key].post_json(api + endpoint, data)
+            check(f"{key} cannot {endpoint}", status in (401, 403), str(status))
+    check("the leader cannot hand documents back", c["leader"].post_json(api + "slips.receive_return", {"name": "UR-00001"})[0] == 403)
+    check("the leader cannot renew", c["leader"].post_json(api + "slips.renew", {"name": "UR-00001"})[0] == 403)
+    status, _ = c["officer"].json(api + "slips.get_slip?kind=usage&name=UR-NOPE")
+    check("an unknown slip is a clean error", status in (404, 417), str(status))
+    check("a reader's card and slips are staff only",
+          all(c[k].json(api + "slips.reader_slips?reader=RD-1")[0] in (401, 403) for k in ("reader", "noprofile", "guest")))
+
+    # reader administration: staff read, the leader cannot write, nobody outside the staff touches it
+    check("the leader reads the readers list", c["leader"].json(api + "crud.get_list?doctype=Reader")[0] == 200)
+    status, _ = c["leader"].post_json(api + "crud.save", {"doctype": "Reader", "values": {"full_name": "E2E-x", "email": "e2e.x@example.com"}})
+    check("the leader cannot create a reader", status in (403, 417), str(status))
+    for key in ("reader", "noprofile", "guest"):
+        check(f"{key} cannot read the readers list", c[key].json(api + "crud.get_list?doctype=Reader")[0] in (401, 403))
+        check(f"{key} cannot read the request templates", c[key].json(api + "crud.get_list?doctype=Request%20Template")[0] in (401, 403))
+        status, _ = c[key].post_json(api + "registration.issue_reader_access", {"reader": "RD-1"})
+        check(f"{key} cannot issue online access", status in (401, 403), str(status))
+    status, _ = c["leader"].post_json(api + "registration.issue_reader_access", {"reader": "RD-1"})
+    check("the leader cannot issue online access", status == 403, str(status))
+    check("issue_reader_access refuses GET", c["admin"].json(api + "registration.issue_reader_access?reader=RD-1")[0] in (403, 405))
+    status, body = c["admin"].json(api + "crud.get?doctype=Reader%20Settings&name=Reader%20Settings")
+    check("admin reads the reader settings as a form", status == 200 and "max_open_requests" in body.get("message", {}), str(status))
+    status, _ = c["leader"].post_json(api + "crud.save", {"doctype": "Reader Settings", "values": {"renewal_days": 3}, "name": "Reader Settings"})
+    check("the leader may read the reader settings but not change them", status in (403, 417), str(status))
+    status, body = c["admin"].json(api + "boot.get_staff_boot")
+    check("the staff boot lists the reader screens", status == 200 and body.get("message", {}).get("readers"), str(status))
+    status, body = c["leader"].json(api + "boot.get_staff_boot")
+    boot = body.get("message", {})
+    check("the leader's boot lists the reader settings read-only",
+          status == 200 and all(not e["permissions"]["write"] for e in boot.get("settings", [])), str(boot.get("settings"))[:160])
+
+    # printing a slip needs the right to read it
+    for key in ("guest", "reader", "noprofile"):
+        status, _, _ = c[key].request("/printview?doctype=Usage%20Request&name=UR-00001")
+        check(f"{key} cannot print someone else's slip", status in (302, 401, 403, 404), str(status))
 
 
 if __name__ == "__main__":

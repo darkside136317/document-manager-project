@@ -24,6 +24,7 @@ from document_manager.document_manager.doctype.reader_registration.reader_regist
     STATUS_NEW,
     STATUS_REJECTED,
 )
+from document_manager.document_manager.services import templates
 from document_manager.document_manager.services.audit import log_activity
 
 SET_PASSWORD_PATH = "/dat-mat-khau"
@@ -48,6 +49,16 @@ def _clean(data: dict) -> dict:
         out[field] = value
     out["email"] = out["email"].lower()
     return out
+
+
+def _apply_form(values: dict) -> None:
+    """The registration template decides which optional fields are shown (hidden ones are dropped) and which
+    are required."""
+    for field in templates.registration_form().fields:
+        if not field["visible"]:
+            values[field["fieldname"]] = ""
+        elif field["required"] and not values[field["fieldname"]]:
+            frappe.throw(_("Vui lòng nhập {0}").format(field["label"].lower()))
 
 
 def _check_new_registration(values: dict):
@@ -81,6 +92,7 @@ def submit_registration(data: dict, ip: str | None = None) -> dict:
         frappe.throw(_("Đơn vị hiện chưa mở đăng ký trực tuyến. Vui lòng liên hệ trực tiếp để được cấp tài khoản."))
     values = _clean(data)
     _check_new_registration(values)
+    _apply_form(values)
 
     email = values["email"]
     taken = frappe.db.exists("User", email) or frappe.db.exists("Reader", {"email": email})
@@ -137,6 +149,34 @@ def check_link(key: str | None) -> tuple[str | None, str | None]:
     if result.get("message"):
         return None, "expired" if "expired" in result["message"] else "invalid"
     return result["user"], None
+
+
+def issue_access(reader_name: str) -> dict:
+    """Online access for a reader profile an officer created: the login account (Website User, role Reader) when
+    the profile has none yet, then a one-time set-password link. Staff accounts are never touched."""
+    reader = frappe.get_doc("Reader", reader_name)
+    if not cint(reader.is_active):
+        frappe.throw(_("Hồ sơ độc giả đang bị khóa"))
+    created = False
+    if reader.user:
+        user = reader.user
+    else:
+        email = (reader.email or "").strip().lower()
+        if not validate_email_address(email):
+            frappe.throw(_("Vui lòng cập nhật email của độc giả trước khi cấp tài khoản"))
+        if frappe.db.exists("User", email):
+            frappe.throw(_("Email {0} đã có tài khoản").format(email))
+        account = frappe.get_doc({"doctype": "User", "email": email, "first_name": reader.full_name, "enabled": 1,
+                                  "send_welcome_email": 0, "user_type": "Website User", "roles": [{"role": "Reader"}]})
+        account.flags.no_welcome_mail = True
+        account.insert(ignore_permissions=True)
+        reader.user = account.name
+        reader.flags.ignore_permissions = True
+        reader.save()
+        user, created = account.name, True
+    path = issue_password_link(user)
+    log_activity(ACTIVITY, "Reader", reader.name, f"{'Tạo tài khoản và c' if created else 'C'}ấp liên kết đặt mật khẩu cho {user}")
+    return {"reader": reader.name, "user": user, "created": created, "set_password_path": path}
 
 
 def _approve(doc, actor: str, reader_group: str | None = None) -> dict:

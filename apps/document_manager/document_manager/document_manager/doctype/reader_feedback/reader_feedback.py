@@ -24,6 +24,8 @@ class ReaderFeedback(Document):
             self.reader = profile
 
     def validate(self):
+        if self.reader and not self.reader_name:
+            self.reader_name = frappe.db.get_value("Reader", self.reader, "full_name")
         if not self.is_new() and not is_staff():
             for fieldname in ("reader", "subject", "content", *STAFF_ONLY_FIELDS):
                 if self.has_value_changed(fieldname):

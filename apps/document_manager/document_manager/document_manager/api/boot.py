@@ -8,8 +8,11 @@ from document_manager.document_manager.constants import (
     GROUP_CATALOGUES,
     GROUP_CATALOGUING,
     GROUP_READERS,
+    GROUP_SLIPS,
     LEGACY_LINKS,
     MASTERS,
+    READER_SCREENS,
+    SETTINGS_SCREENS,
     UPLOAD_EXTENSIONS,
     UPLOAD_MAX_MB,
 )
@@ -28,6 +31,30 @@ def _with_permissions(entries) -> list:
                                   for p in ("create", "write", "delete")}} for e in entries]
 
 
+def _reader_nav() -> list:
+    """Sidebar groups of the slip queues and the reader management screens the user may open."""
+    from document_manager.document_manager.api import slips
+    from document_manager.document_manager.services.registration import pending_count
+
+    nav = []
+    if _can_read("Usage Request"):
+        badge = slips.waiting_counts()
+        nav.append({"group": GROUP_SLIPS, "items": [
+            {"label": "Phiếu yêu cầu sử dụng", "route": "/dashboard/doc-gia/phieu-su-dung", "icon": "clipboard-list", "badge": badge["usage"]},
+            {"label": "Phiếu sao chụp", "route": "/dashboard/doc-gia/phieu-sao-chup", "icon": "copy", "badge": badge["copy"]},
+            *([{"label": "Góp ý của độc giả", "route": "/dashboard/doc-gia/gop-y", "icon": "message-square", "badge": badge["feedback"]}]
+              if _can_read("Reader Feedback") else []),
+        ]})
+    items = []
+    if _can_read("Reader Registration"):
+        items.append({"label": "Đăng ký độc giả", "route": "/dashboard/doc-gia/dang-ky", "icon": "user-plus", "badge": pending_count()})
+    items += [{"label": e["label"], "route": f"/dashboard/doc-gia/{e['slug']}", "icon": e["icon"]}
+              for e in [*READER_SCREENS, *SETTINGS_SCREENS] if _can_read(e["doctype"])]
+    if items:
+        nav.append({"group": GROUP_READERS, "items": items})
+    return nav
+
+
 def build_boot() -> dict:
     """Sidebar sections filtered by the user's permissions (the server still enforces every call)."""
     nav = [{"group": "Tổng quan", "items": [
@@ -39,13 +66,7 @@ def build_boot() -> dict:
             {"label": "Tìm kiếm", "route": "/dashboard/tim-kiem", "icon": "search"},
         ]})
 
-    if _can_read("Reader Registration"):
-        from document_manager.document_manager.services.registration import pending_count
-
-        nav.append({"group": GROUP_READERS, "items": [
-            {"label": "Đăng ký độc giả", "route": "/dashboard/doc-gia/dang-ky", "icon": "user-plus",
-             "badge": pending_count()},
-        ]})
+    nav.extend(_reader_nav())
 
     masters = [m for m in MASTERS if _can_read(m["doctype"])]
     if masters:
@@ -63,6 +84,8 @@ def build_boot() -> dict:
         "nav": nav,
         "legacy": [{"group": g, "items": items} for g, items in legacy.items()],
         "masters": _with_permissions(masters),
+        "readers": _with_permissions([e for e in READER_SCREENS if _can_read(e["doctype"])]),
+        "settings": _with_permissions([e for e in SETTINGS_SCREENS if _can_read(e["doctype"])]),
         "archive": _with_permissions([e for e in ARCHIVE_SCREENS if _can_read(e["doctype"])]),
         "upload": {"extensions": UPLOAD_EXTENSIONS, "max_mb": UPLOAD_MAX_MB},
     }

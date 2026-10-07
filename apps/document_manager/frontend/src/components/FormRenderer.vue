@@ -1,4 +1,5 @@
 <script setup>
+import { isVisible } from "../lib/doctype.js";
 import FieldInput from "./FieldInput.vue";
 
 // Draws a form from the layout the server derived from the DocType (sections of columns).
@@ -16,12 +17,14 @@ const byName = (name) => props.meta.fields.find((f) => f.fieldname === name);
 // The name of a record built from one of its fields is fixed once the record exists.
 const locked = (field) => props.readOnly || (props.editing && field.fieldname === props.meta.name_field);
 // Stacked: every column of a section one under the other, which suits a narrow drawer.
-const stacked = (section) => section.columns.flat().map(byName).filter(Boolean);
+// Fields and sections whose `depends_on` is not met stay out of the form.
+const stacked = (section) => section.columns.flat().map(byName).filter((f) => f && isVisible(f.depends_on, props.record));
+const shown = (section) => isVisible(section.depends_on, props.record) && stacked(section).length > 0;
 </script>
 
 <template>
   <form class="space-y-6" novalidate @submit.prevent>
-    <section v-for="(section, index) in meta.layout" :key="index">
+    <section v-for="(section, index) in meta.layout.filter(shown)" :key="index">
       <h3 v-if="section.title" class="mb-3 border-b border-line pb-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">
         {{ section.title }}
       </h3>

@@ -12,18 +12,31 @@ from frappe.model import no_value_fields
 from frappe.utils import cint
 
 from document_manager.document_manager.constants import REGISTRY
+from document_manager.document_manager.permissions import is_staff
 
 BREAKS = ("Section Break", "Column Break", "Tab Break")
 # Field types the generic form can draw. Anything else (tables, attachments, ...) is left out
 # until a dedicated screen needs it.
 SUPPORTED = ("Data", "Int", "Float", "Check", "Select", "Date", "Datetime", "Small Text", "Text", "Long Text",
-             "Text Editor", "Link", "Read Only")
+             "Text Editor", "Link", "Read Only", "Table")
+# Column types of a child table the grid can edit.
+CELL_TYPES = ("Data", "Int", "Float", "Check", "Select", "Link", "Date", "Small Text")
+MAX_TABLE_ROWS = 200
+# Never offered by the generic link search, whatever a registered form links to.
+NEVER_SEARCHABLE = {"User", "Role", "DocType"}
 HIDDEN_FIELDS = ("lft", "rgt", "old_parent")
 MAX_LIST_COLUMNS = 6
 
 
+def assert_staff() -> None:
+    """The generic API belongs to the staff app: Frappe's own permissions would also let a reader read their record."""
+    if not is_staff():
+        frappe.throw(_("Chỉ cán bộ mới dùng được chức năng này"), frappe.PermissionError)
+
+
 def assert_master(doctype: str) -> None:
-    """Only registered DocTypes are reachable through the generic API."""
+    """Only registered DocTypes are reachable through the generic API, and only by the staff."""
+    assert_staff()
     if doctype not in REGISTRY:
         frappe.throw(_("Loại dữ liệu {0} không được quản lý ở màn hình này").format(doctype), frappe.PermissionError)
 
@@ -59,12 +72,26 @@ def link_targets() -> set:
         for df in frappe.get_meta(entry["doctype"]).fields:
             if df.fieldtype == "Link" and df.options:
                 targets.add(df.options)
-    return targets
+            elif df.fieldtype == "Table" and df.options:  # a Link inside a child table (the fonds of a reader group)
+                targets.update(c.options for c in frappe.get_meta(df.options).fields if c.fieldtype == "Link" and c.options)
+    return targets - NEVER_SEARCHABLE
+
+
+def table_columns(child_doctype: str) -> list[dict]:
+    """The editable columns of a child table, as the grid shows them."""
+    columns = []
+    for df in frappe.get_meta(child_doctype).fields:
+        if df.fieldtype not in CELL_TYPES or df.hidden:
+            continue
+        columns.append({"fieldname": df.fieldname, "label": df.label or df.fieldname, "fieldtype": df.fieldtype,
+                        "options": df.options or "", "reqd": bool(df.reqd), "read_only": bool(df.read_only) or bool(df.fetch_from),
+                        "default": df.default, "description": df.description or ""})
+    return columns
 
 
 def _layout(fields) -> list:
     """Sections of columns of field names, from the Section / Column Break structure of the DocType."""
-    sections, current = [], {"title": None, "collapsible": False, "columns": [[]]}
+    sections, current = [], {"title": None, "collapsible": False, "depends_on": "", "columns": [[]]}
 
     def flush():
         if any(current["columns"]):
@@ -73,7 +100,8 @@ def _layout(fields) -> list:
     for df in fields:
         if df.fieldtype in ("Section Break", "Tab Break"):
             flush()
-            current = {"title": df.label or None, "collapsible": bool(df.collapsible), "columns": [[]]}
+            current = {"title": df.label or None, "collapsible": bool(df.collapsible), "depends_on": df.depends_on or "",
+                       "columns": [[]]}
         elif df.fieldtype == "Column Break":
             current["columns"].append([])
         elif df.fieldname:
@@ -102,6 +130,7 @@ def describe(doctype: str) -> dict:
     read_levels = meta.get_permlevel_access("read") or [0]
     write_levels = meta.get_permlevel_access("write") or []
     hidden = set(entry.get("hide") or ())
+    readonly = set(entry.get("readonly") or ())  # fields the screen shows but never edits (managed by an action)
     suggest = _suggestions(entry)
     kept, fields = [], []
     for df in meta.fields:
@@ -119,7 +148,8 @@ def describe(doctype: str) -> dict:
             "fieldtype": df.fieldtype,
             "options": df.options or "",
             "reqd": bool(df.reqd),
-            "read_only": bool(df.read_only) or cint(df.permlevel) not in write_levels or bool(df.fetch_from),
+            "read_only": bool(df.read_only) or cint(df.permlevel) not in write_levels or bool(df.fetch_from)
+            or df.fieldname in readonly,
             "unique": bool(df.unique),
             "description": df.description or "",
             "default": df.default,
@@ -127,6 +157,7 @@ def describe(doctype: str) -> dict:
             "in_standard_filter": bool(df.in_standard_filter),
             "depends_on": df.depends_on or "",
             "suggest": suggest.get(df.fieldname, ""),
+            **({"table": {"doctype": df.options, "columns": table_columns(df.options)}} if df.fieldtype == "Table" else {}),
         })
 
     by_name = {f["fieldname"]: f for f in fields}
@@ -153,6 +184,7 @@ def describe(doctype: str) -> dict:
         "name_field": name_field_of(meta),
         "allow_rename": bool(meta.allow_rename),
         "is_tree": bool(meta.is_tree),
+        "is_single": bool(meta.issingle),
         "parent_field": parent_field_of(meta),
         "search_fields": search_fields,
         "list_fields": list_fields,

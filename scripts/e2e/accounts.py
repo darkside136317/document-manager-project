@@ -19,6 +19,7 @@ ACCOUNTS = {  # email: (roles, user type, reader profile?)
     "e2e.reader@example.com": (["Reader"], "Website User", True),
     "e2e.noprofile@example.com": (["Reader"], "Website User", False),
     "e2e.officer@example.com": (["Reading Room Officer"], "System User", False),
+    "e2e.leader@example.com": (["Archive Leader"], "System User", False),
     "e2e.admin@example.com": (["Document Admin"], "System User", False),
 }
 
@@ -46,6 +47,17 @@ def purge_reader(email):
         frappe.delete_doc("User", email, force=True, ignore_permissions=True)
 
 
+def purge_archive():
+    """Archive data and groups the browser flows create carry the prefix "E2E-" (children are removed first)."""
+    for doctype, field in (("Archive Document", "document_title"), ("Archival File", "file_title"), ("Catalog", "catalog_title"),
+                           ("Record Group", "group_title"), ("Fonds", "fonds_name"), ("Archival Agency", "agency_name"),
+                           ("Confidentiality Level", "level_name"), ("Reader Group", "group_name")):
+        for name in frappe.get_all(doctype, filters={field: ["like", "E2E-%"]}, pluck="name"):
+            frappe.delete_doc(doctype, name, force=True, ignore_permissions=True)
+    for name in frappe.get_all("Reader", filters={"full_name": ["like", "E2E-%"]}, pluck="name"):
+        frappe.delete_doc("Reader", name, force=True, ignore_permissions=True)
+
+
 # readers created by the browser flows (reader.mjs registers e2e.newreader.<n>@example.com)
 for email in frappe.get_all("User", filters={"name": ["like", "e2e.%@example.com"]}, pluck="name"):
     purge_reader(email)
@@ -68,6 +80,7 @@ for email, (roles, user_type, profile) in ACCOUNTS.items():
     if profile:
         frappe.get_doc({"doctype": "Reader", "full_name": "E2E Reader", "user": email, "email": email,
                         "is_active": 1}).insert(ignore_permissions=True)
+purge_archive()  # after the readers: their slips point at the files
 frappe.cache.delete_keys("rl:*")  # the sign-up and password endpoints are rate limited per IP: a rerun starts fresh
 frappe.db.commit()
 print(mode, "ok:", ", ".join(ACCOUNTS))

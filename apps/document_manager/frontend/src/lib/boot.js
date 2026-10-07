@@ -6,6 +6,8 @@ const empty = {
   nav: [],
   legacy: [],
   masters: [],
+  readers: [],
+  settings: [],
   archive: [],
   upload: { extensions: [], max_mb: 0 },
 };
@@ -14,8 +16,8 @@ export const boot = { ...empty, ...(typeof window !== "undefined" ? window.__DM_
 
 export const csrfToken = () => boot.csrf_token;
 
-export function masterBySlug(slug) {
-  return boot.masters.find((m) => m.slug === slug) || null;
+export function masterBySlug(slug, source = "masters") {
+  return (boot[source] || []).find((m) => m.slug === slug) || null;
 }
 
 export function initials(name) {

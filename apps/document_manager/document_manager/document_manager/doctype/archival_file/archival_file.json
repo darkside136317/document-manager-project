@@ -249,7 +249,8 @@
     {
       "role": "Reader",
       "read": 1
-    }
+    },
+    {"role": "Archive Leader", "read": 1}
   ],
   "sort_field": "modified",
   "sort_order": "DESC",

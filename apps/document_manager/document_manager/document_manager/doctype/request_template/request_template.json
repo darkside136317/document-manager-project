@@ -1,0 +1,39 @@
+{
+  "name": "Request Template",
+  "module": "Document Manager",
+  "doctype": "DocType",
+  "document_type": "Setup",
+  "engine": "InnoDB",
+  "naming_rule": "By fieldname",
+  "autoname": "field:template_name",
+  "allow_rename": 1,
+  "quick_entry": 0,
+  "track_changes": 1,
+  "title_field": "template_name",
+  "search_fields": "template_name,title,kind",
+  "fields": [
+    {"fieldname": "template_name", "fieldtype": "Data", "label": "Tên mẫu", "reqd": 1, "unique": 1, "in_list_view": 1},
+    {"fieldname": "kind", "fieldtype": "Select", "label": "Dùng cho", "options": "Phiếu yêu cầu sử dụng\nPhiếu sao chụp\nĐăng ký độc giả", "reqd": 1, "in_list_view": 1, "in_standard_filter": 1},
+    {"fieldname": "is_active", "fieldtype": "Check", "label": "Đang dùng", "default": "1", "in_list_view": 1, "description": "Mỗi loại chỉ có một mẫu đang dùng: bật mẫu này sẽ tắt mẫu đang dùng khác cùng loại"},
+    {"fieldname": "column_break_1", "fieldtype": "Column Break"},
+    {"fieldname": "title", "fieldtype": "Data", "label": "Tiêu đề trên biểu mẫu", "description": "Hiển thị ở đầu biểu mẫu và bản in"},
+    {"fieldname": "section_instructions", "fieldtype": "Section Break", "label": "Hướng dẫn"},
+    {"fieldname": "instructions", "fieldtype": "Text Editor", "label": "Hướng dẫn điền", "description": "Hiển thị cho độc giả ở đầu biểu mẫu"},
+    {"fieldname": "section_slip", "fieldtype": "Section Break", "label": "Phiếu", "depends_on": "eval:doc.kind != 'Đăng ký độc giả'"},
+    {"fieldname": "require_purpose", "fieldtype": "Check", "label": "Bắt buộc nhập mục đích", "default": "1"},
+    {"fieldname": "show_notes", "fieldtype": "Check", "label": "Cho nhập ghi chú", "default": "1"},
+    {"fieldname": "purposes", "fieldtype": "Table", "label": "Mục đích gợi ý", "options": "Request Template Purpose", "description": "Độc giả chọn nhanh từ danh sách này hoặc tự nhập"},
+    {"fieldname": "section_registration", "fieldtype": "Section Break", "label": "Đăng ký độc giả", "depends_on": "eval:doc.kind == 'Đăng ký độc giả'", "description": "Họ tên và email luôn bắt buộc. Trường không có trong danh sách giữ cách hiển thị mặc định (hiện, không bắt buộc)."},
+    {"fieldname": "form_fields", "fieldtype": "Table", "label": "Các trường của mẫu đăng ký", "options": "Request Template Field"},
+    {"fieldname": "section_print", "fieldtype": "Section Break", "label": "Bản in", "collapsible": 1},
+    {"fieldname": "print_header", "fieldtype": "Small Text", "label": "Đầu trang bản in"},
+    {"fieldname": "print_footer", "fieldtype": "Small Text", "label": "Chân trang bản in"}
+  ],
+  "permissions": [
+    {"role": "Document Admin", "read": 1, "write": 1, "create": 1, "delete": 1, "print": 1, "export": 1, "report": 1},
+    {"role": "Reading Room Officer", "read": 1},
+    {"role": "Archive Leader", "read": 1}
+  ],
+  "sort_field": "modified",
+  "sort_order": "DESC"
+}

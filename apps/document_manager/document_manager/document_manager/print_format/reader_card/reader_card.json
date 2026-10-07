@@ -1,0 +1,10 @@
+{
+  "name": "Reader Card",
+  "module": "Document Manager",
+  "doctype": "Print Format",
+  "print_format_type": "Jinja",
+  "standard": "Yes",
+  "doc_type": "Reader",
+  "disabled": 0,
+  "html": "<style>\n  .print-format { font-family: 'Times New Roman', serif; font-size: 13px; }\n  .card { width: 8.6cm; border: 2px solid #0a1f35; border-radius: 8px; padding: 10px 14px; }\n  .card .org { font-size: 11px; }\n  .card h3 { text-align: center; margin: 6px 0 10px; letter-spacing: 1px; color: #0a1f35; }\n  .card td { padding: 2px 4px; vertical-align: top; }\n  .card td:first-child { color: #555; width: 70px; }\n  .code { text-align: center; font-size: 16px; font-weight: bold; letter-spacing: 2px; margin-top: 8px; }\n</style>\n<div class=\"print-format\"><div class=\"card\">\n  <p class=\"org\" style=\"text-align:center;font-weight:bold;text-transform:uppercase;margin:0\">{{ frappe.db.get_single_value('Organization Info', 'org_name') or '' }}</p>\n  <h3>THẺ ĐỘC GIẢ</h3>\n  <table>\n    <tr><td>Họ tên</td><td><b>{{ doc.full_name }}</b></td></tr>\n    {% if doc.organization %}<tr><td>Đơn vị</td><td>{{ doc.organization }}</td></tr>{% endif %}\n    {% if doc.reader_group %}<tr><td>Nhóm</td><td>{{ doc.reader_group }}</td></tr>{% endif %}\n    {% if doc.id_number %}<tr><td>CMND/CCCD</td><td>{{ doc.id_number }}</td></tr>{% endif %}\n    <tr><td>Từ ngày</td><td>{{ frappe.utils.formatdate(doc.registration_date) if doc.registration_date else '' }}</td></tr>\n  </table>\n  <p class=\"code\">{{ doc.name }}</p>\n</div></div>"
+}

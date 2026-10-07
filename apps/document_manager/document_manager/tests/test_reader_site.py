@@ -422,8 +422,9 @@ class TestReaderSite(IntegrationTestCase):
         self.assertIn("đã được duyệt", logs[0].subject)
         self.assertEqual((logs[0].link, logs[0].type, logs[0].read), (f"/portal/phieu/{name}", "Alert", 0))
         self.assertEqual(frappe.db.count("Email Queue"), emails_before)  # in-app only, no mail attempted
-        request_api.apply_action("Usage Request", name, "Trả tài liệu")
-        self.assertEqual(notify.unread_count(READER_A), 2)
+        request_api.apply_action("Usage Request", name, "Giao tài liệu")
+        request_api.apply_action("Usage Request", name, "Nhận trả")
+        self.assertEqual(notify.unread_count(READER_A), 3)  # duyệt, giao, trả
 
     def test_rejection_reason_reaches_the_reader(self):
         name = self._sent_slip()

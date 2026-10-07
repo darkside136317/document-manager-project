@@ -38,6 +38,12 @@
       "in_list_view": 1
     },
     {
+      "fieldname": "requires_leader_approval",
+      "fieldtype": "Check",
+      "label": "Phiếu cần lãnh đạo duyệt",
+      "description": "Phiếu có hồ sơ, văn bản thuộc mức này được chuyển lãnh đạo duyệt (nhóm độc giả đặt cách duyệt \"Theo mức mật\")"
+    },
+    {
       "fieldname": "description",
       "fieldtype": "Small Text",
       "label": "Mô tả"
@@ -46,7 +52,15 @@
   "permissions": [
     {
       "role": "Document Admin",
-      "read": 1, "write": 1, "create": 1, "delete": 1, "print": 1, "export": 1, "import": 1, "share": 1, "report": 1
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "delete": 1,
+      "print": 1,
+      "export": 1,
+      "import": 1,
+      "share": 1,
+      "report": 1
     },
     {
       "role": "Cataloger",
@@ -54,6 +68,10 @@
     },
     {
       "role": "Reading Room Officer",
+      "read": 1
+    },
+    {
+      "role": "Archive Leader",
       "read": 1
     }
   ],

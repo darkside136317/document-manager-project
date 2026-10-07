@@ -28,12 +28,23 @@
     {"fieldname": "column_break_features", "fieldtype": "Column Break"},
     {"fieldname": "can_request_usage", "fieldtype": "Check", "label": "Lập phiếu yêu cầu sử dụng", "default": "1"},
     {"fieldname": "can_request_copy", "fieldtype": "Check", "label": "Lập phiếu sao chụp", "default": "1"},
-    {"fieldname": "can_feedback", "fieldtype": "Check", "label": "Gửi góp ý", "default": "1"}
+    {"fieldname": "can_feedback", "fieldtype": "Check", "label": "Gửi góp ý", "default": "1"},
+    {"fieldname": "section_approval", "fieldtype": "Section Break", "label": "Duyệt phiếu"},
+    {"fieldname": "approval_mode", "fieldtype": "Select", "label": "Cách duyệt phiếu", "options": "Theo mức mật\nLuôn qua lãnh đạo\nChỉ phòng đọc duyệt", "default": "Theo mức mật", "description": "Theo mức mật: phiếu có hồ sơ, văn bản thuộc mức độ mật yêu cầu lãnh đạo duyệt thì chuyển lãnh đạo"},
+    {"fieldname": "section_limits", "fieldtype": "Section Break", "label": "Hạn mức riêng của nhóm", "collapsible": 1, "description": "0 = theo Thiết lập độc giả chung"},
+    {"fieldname": "max_requests_per_day", "fieldtype": "Int", "label": "Phiếu yêu cầu sử dụng tối đa/ngày", "default": "0"},
+    {"fieldname": "max_copy_requests_per_day", "fieldtype": "Int", "label": "Phiếu sao chụp tối đa/ngày", "default": "0"},
+    {"fieldname": "max_items_per_request", "fieldtype": "Int", "label": "Hồ sơ/văn bản tối đa mỗi phiếu", "default": "0"},
+    {"fieldname": "column_break_limits", "fieldtype": "Column Break"},
+    {"fieldname": "max_open_requests", "fieldtype": "Int", "label": "Phiếu đang xử lý tối đa", "default": "0"},
+    {"fieldname": "hold_days", "fieldtype": "Int", "label": "Thời gian giữ tài liệu (ngày)", "default": "0"},
+    {"fieldname": "max_renewals", "fieldtype": "Int", "label": "Số lần gia hạn tối đa", "default": "0"}
   ],
   "permissions": [
     {"role": "Document Admin", "read": 1, "write": 1, "create": 1, "delete": 1, "print": 1, "export": 1, "report": 1, "share": 1},
     {"role": "Reading Room Officer", "read": 1},
-    {"role": "System Manager", "read": 1, "write": 1, "create": 1, "delete": 1}
+    {"role": "System Manager", "read": 1, "write": 1, "create": 1, "delete": 1},
+    {"role": "Archive Leader", "read": 1}
   ],
   "sort_field": "group_name",
   "sort_order": "ASC"

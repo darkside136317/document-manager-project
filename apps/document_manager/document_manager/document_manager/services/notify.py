@@ -8,23 +8,26 @@ Notifying is best effort: a failure is logged and never blocks the workflow tran
 """
 
 import frappe
-from frappe.utils import cint
+from frappe.utils import cint, format_date
 
 from document_manager.document_manager.services.errors import log_exception
 
-# state -> (verb phrase, includes the rejection reason)
+# state -> what the reader is told ("Phiếu ... <text>")
 SLIP_STATES = {
+    "Chờ lãnh đạo duyệt": "đã chuyển lãnh đạo duyệt",
     "Đã duyệt": "đã được duyệt",
     "Từ chối": "bị từ chối",
+    "Đang sử dụng": "đã được giao",
     "Đã trả": "đã được ghi nhận trả",
     "Đã hoàn thành": "đã hoàn thành",
     "Đã hủy": "đã bị hủy",
 }
 SLIP_KINDS = {
-    "Usage Request": ("Phiếu yêu cầu sử dụng", "/portal/phieu"),
-    "Copy Request": ("Phiếu sao chụp", "/portal/sao-chep"),
+    "Usage Request": ("Phiếu yêu cầu sử dụng", "/portal/phieu", "/dashboard/doc-gia/phieu-su-dung"),
+    "Copy Request": ("Phiếu sao chụp", "/portal/sao-chep", "/dashboard/doc-gia/phieu-sao-chup"),
 }
 FEEDBACK_ROUTE = "/portal/gop-y"
+LEADER_ROLE, OFFICER_ROLE = "Archive Leader", "Reading Room Officer"
 
 
 def notify_user(user: str, subject: str, link: str, doctype: str = "", name: str = "") -> str | None:
@@ -48,18 +51,40 @@ def _reader_user(reader: str | None) -> str | None:
     return frappe.db.get_value("Reader", reader, "user") if reader else None
 
 
+def users_with_role(role: str) -> list[str]:
+    """Enabled users holding `role` (a role's users, never Guest/Administrator)."""
+    users = frappe.get_all("Has Role", filters={"role": role, "parenttype": "User"}, pluck="parent")
+    return frappe.get_all("User", filters={"name": ["in", users or [""]], "enabled": 1}, pluck="name") if users else []
+
+
+def notify_role(role: str, subject: str, link: str, doctype: str = "", name: str = "") -> int:
+    sent = 0
+    for user in users_with_role(role):
+        if user != frappe.session.user and notify_user(user, subject, link, doctype, name):
+            sent += 1
+    return sent
+
+
 def on_slip_change(doc, method=None):
-    """doc_events hook of Usage Request / Copy Request."""
+    """doc_events hook of Usage Request / Copy Request: tell the reader about the decision and the staff
+    who must act next (the leader when a slip waits for them, the reading room once the leader decided)."""
     if not doc.has_value_changed("workflow_state") or doc.workflow_state not in SLIP_STATES:
         return
+    label, reader_route, staff_route = SLIP_KINDS[doc.doctype]
+    state = doc.workflow_state
     user = _reader_user(doc.reader)
-    if not user or user == frappe.session.user:
-        return
-    label, route = SLIP_KINDS[doc.doctype]
-    subject = f"{label} {doc.name} {SLIP_STATES[doc.workflow_state]}"
-    if doc.workflow_state == "Từ chối" and doc.rejection_reason:
-        subject += f". Lý do: {doc.rejection_reason}"
-    notify_user(user, subject, f"{route}/{doc.name}", doc.doctype, doc.name)
+    if user and user != frappe.session.user:
+        subject = f"{label} {doc.name} {SLIP_STATES[state]}"
+        if state == "Từ chối" and doc.rejection_reason:
+            subject += f". Lý do: {doc.rejection_reason}"
+        if state == "Đang sử dụng" and doc.get("due_date"):
+            subject += f". Hạn trả: {format_date(doc.due_date, 'dd/MM/yyyy')}"
+        notify_user(user, subject, f"{reader_route}/{doc.name}", doc.doctype, doc.name)
+    link = f"{staff_route}/{doc.name}"
+    if state == "Chờ lãnh đạo duyệt":
+        notify_role(LEADER_ROLE, f"{label} {doc.name} của {doc.reader_name or doc.reader} chờ lãnh đạo duyệt", link, doc.doctype, doc.name)
+    elif state in ("Đã duyệt", "Từ chối") and doc.get("leader"):
+        notify_role(OFFICER_ROLE, f"Lãnh đạo đã xử lý {label.lower()} {doc.name}: {SLIP_STATES[state]}", link, doc.doctype, doc.name)
 
 
 def on_feedback_change(doc, method=None):
@@ -70,6 +95,12 @@ def on_feedback_change(doc, method=None):
     if user and user != frappe.session.user:
         notify_user(user, f"Góp ý \"{doc.subject}\" đã được phản hồi", f"{FEEDBACK_ROUTE}/{doc.name}",
                     doc.doctype, doc.name)
+
+
+def sent_today(user: str, subject: str) -> bool:
+    """Has this exact notification already been created today? (the daily job must not repeat itself)"""
+    return bool(frappe.db.exists("Notification Log", {
+        "for_user": user, "subject": subject, "creation": [">=", frappe.utils.get_datetime(f"{frappe.utils.nowdate()} 00:00:00")]}))
 
 
 # --- what the reader site shows ----------------------------------------------------------------

@@ -67,7 +67,7 @@ class TestStaffApi(IntegrationTestCase):
                 self.assertNotIn(hidden, [f["fieldname"] for f in info["fields"]])
 
     def test_unregistered_doctypes_are_out_of_reach(self):
-        for doctype in ("User", "Role", "Usage Request", "Reader", "Backup Batch"):
+        for doctype in ("User", "Role", "Usage Request", "Reader Registration", "Backup Batch"):
             with self.assertRaises(frappe.PermissionError, msg=doctype):
                 meta.get_doctype_ui(doctype)
             with self.assertRaises(frappe.PermissionError, msg=doctype):
@@ -78,6 +78,19 @@ class TestStaffApi(IntegrationTestCase):
                 crud.delete(doctype, "x")
         with self.assertRaises(frappe.PermissionError):
             crud.link_search("User", "adm")
+
+    def test_the_generic_api_is_for_the_staff_even_where_frappe_would_allow_the_read(self):
+        # a reader may read their own Reader record through Frappe's permissions; the staff app's API still refuses them
+        frappe.set_user("Administrator")
+        reader = frappe.get_doc({"doctype": "Reader", "full_name": f"{TAG} Độc giả", "email": READER, "user": READER, "is_active": 1}).insert()
+        frappe.set_user(READER)
+        self.assertTrue(frappe.has_permission("Reader", "read", doc=reader.name))
+        for call in (lambda: crud.get_list("Reader"), lambda: crud.get("Reader", reader.name),
+                     lambda: crud.save("Reader", {"phone": "0900000000"}, name=reader.name),
+                     lambda: crud.delete("Reader", reader.name), lambda: crud.link_search("Fonds", "a"),
+                     lambda: crud.tree_children("Fonds"), lambda: meta.get_doctype_ui("Reader")):
+            with self.assertRaises(frappe.PermissionError):
+                call()
 
     def test_boot_is_for_staff_and_lists_what_the_user_may_read(self):
         data = boot.get_staff_boot()

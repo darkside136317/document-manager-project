@@ -40,6 +40,14 @@
       "in_list_view": 1
     },
     {
+      "fieldname": "submitted_on",
+      "fieldtype": "Datetime",
+      "label": "Gửi lúc",
+      "read_only": 1,
+      "allow_on_submit": 1,
+      "search_index": 1
+    },
+    {
       "fieldname": "purpose",
       "fieldtype": "Small Text",
       "label": "Mục đích sử dụng"
@@ -65,7 +73,8 @@
       "fieldtype": "Table",
       "label": "Hồ sơ/Văn bản",
       "options": "Usage Request Item",
-      "reqd": 1
+      "reqd": 1,
+      "allow_on_submit": 1
     },
     {
       "fieldname": "section_approval",
@@ -102,6 +111,78 @@
       "fieldname": "returned_date",
       "fieldtype": "Datetime",
       "label": "Ngày trả tài liệu",
+      "read_only": 1,
+      "allow_on_submit": 1
+    },
+    {
+      "fieldname": "section_issue",
+      "fieldtype": "Section Break",
+      "label": "Giao, trả tài liệu",
+      "collapsible": 1
+    },
+    {
+      "fieldname": "requires_leader",
+      "fieldtype": "Check",
+      "label": "Cần lãnh đạo duyệt",
+      "read_only": 1,
+      "allow_on_submit": 1
+    },
+    {
+      "fieldname": "leader",
+      "fieldtype": "Link",
+      "label": "Lãnh đạo duyệt",
+      "options": "User",
+      "read_only": 1,
+      "allow_on_submit": 1
+    },
+    {
+      "fieldname": "issued_on",
+      "fieldtype": "Datetime",
+      "label": "Ngày giao",
+      "read_only": 1,
+      "allow_on_submit": 1
+    },
+    {
+      "fieldname": "issued_by",
+      "fieldtype": "Link",
+      "label": "Người giao",
+      "options": "User",
+      "read_only": 1,
+      "allow_on_submit": 1
+    },
+    {
+      "fieldname": "column_break_issue",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "due_date",
+      "fieldtype": "Date",
+      "label": "Hạn trả",
+      "search_index": 1,
+      "read_only": 1,
+      "allow_on_submit": 1
+    },
+    {
+      "fieldname": "renewal_count",
+      "fieldtype": "Int",
+      "label": "Số lần gia hạn",
+      "default": "0",
+      "read_only": 1,
+      "allow_on_submit": 1
+    },
+    {
+      "fieldname": "is_overdue",
+      "fieldtype": "Check",
+      "label": "Quá hạn",
+      "search_index": 1,
+      "read_only": 1,
+      "allow_on_submit": 1
+    },
+    {
+      "fieldname": "received_by",
+      "fieldtype": "Link",
+      "label": "Người nhận trả",
+      "options": "User",
       "read_only": 1,
       "allow_on_submit": 1
     },
@@ -162,6 +243,14 @@
       "if_owner": 0,
       "cancel": 0,
       "delete": 0
+    },
+    {
+      "role": "Archive Leader",
+      "read": 1,
+      "write": 1,
+      "print": 1,
+      "report": 1,
+      "submit": 1
     }
   ],
   "sort_field": "modified",

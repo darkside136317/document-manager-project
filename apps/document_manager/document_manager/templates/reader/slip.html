@@ -79,8 +79,14 @@
       <div class="alert alert-danger" style="margin-top: 16px">{{ icon("circle-x") }}<div><strong>Lý do từ chối:</strong> {{ doc.rejection_reason }}</div></div>
       {% elif state == "Chờ duyệt" %}
       <div class="alert alert-info" style="margin-top: 16px">{{ icon("clock") }}<div>Phiếu đã gửi và đang chờ cán bộ phòng đọc xem xét. Bạn sẽ nhận thông báo khi có kết quả.</div></div>
+      {% elif state == "Chờ lãnh đạo duyệt" %}
+      <div class="alert alert-info" style="margin-top: 16px">{{ icon("clock") }}<div>Phiếu có hồ sơ, văn bản cần lãnh đạo duyệt và đang chờ lãnh đạo xem xét.</div></div>
       {% elif state == "Đã duyệt" %}
-      <div class="alert alert-success" style="margin-top: 16px">{{ icon("circle-check") }}<div>Phiếu đã được duyệt. Vui lòng đến phòng đọc{% if org.hours %} ({{ org.hours | join("; ") }}){% endif %} để nhận tài liệu.</div></div>
+      <div class="alert alert-success" style="margin-top: 16px">{{ icon("circle-check") }}<div>Phiếu đã được duyệt. Vui lòng đến phòng đọc{% if org.hours %} ({{ org.hours | join("; ") }}){% endif %} để nhận {{ "tài liệu" if key == "usage" else "bản sao chụp" }}.</div></div>
+      {% elif state == "Đang sử dụng" %}
+      <div class="alert {{ 'alert-danger' if overdue else 'alert-success' }}" style="margin-top: 16px">{{ icon("triangle-alert" if overdue else "clock") }}<div>
+        {% if overdue %}Tài liệu đã <strong>quá hạn trả</strong> (hạn trả {{ due_date }}). Vui lòng trả cho phòng đọc sớm nhất.
+        {% else %}Tài liệu đã được giao. Hạn trả: <strong>{{ due_date }}</strong>{% if renewals %} (đã gia hạn {{ renewals }} lần){% endif %}. Cần thêm thời gian? Liên hệ phòng đọc để gia hạn.{% endif %}</div></div>
       {% endif %}
     </div>
   </section>
@@ -92,9 +98,11 @@
       <div class="card-head"><h2>Thông tin phiếu</h2></div>
       <div class="card-body stack">
         <div class="alert alert-danger" x-show="error" x-cloak role="alert">{{ icon("triangle-alert") }}<span x-text="error"></span></div>
-        <div class="field"><label for="purpose">{{ cfg.purpose_label }} <span class="req">*</span></label>
-          <textarea id="purpose" x-model="purpose" maxlength="500" required @input="error = ''" placeholder="Ví dụ: nghiên cứu, viết bài, phục vụ công tác chuyên môn"></textarea></div>
-        <div class="field"><label for="notes">Ghi chú</label><textarea id="notes" x-model="notes" style="min-height: 64px"></textarea></div>
+        {% if options.instructions %}<div class="prose small">{{ options.instructions | safe }}</div>{% endif %}
+        <div class="field"><label for="purpose">{{ cfg.purpose_label }}{% if options.require_purpose %} <span class="req">*</span>{% endif %}</label>
+          {% if options.purposes %}<div class="cluster">{% for purpose in options.purposes %}<button class="btn btn-sm" type="button" @click="purpose = {{ purpose | tojson | forceescape }}">{{ purpose }}</button>{% endfor %}</div>{% endif %}
+          <textarea id="purpose" x-model="purpose" maxlength="500" {% if options.require_purpose %}required{% endif %} @input="error = ''" placeholder="Chọn một mục đích gợi ý ở trên hoặc tự nhập"></textarea></div>
+        {% if options.show_notes %}<div class="field"><label for="notes">Ghi chú</label><textarea id="notes" x-model="notes" style="min-height: 64px"></textarea></div>{% endif %}
       </div>
     </section>
 
@@ -136,6 +144,7 @@
     <div class="card-body stack">
       <dl class="kv">
         {% for label, text in dates %}<div><dt>{{ label }}</dt><dd>{{ text }}</dd></div>{% endfor %}
+        {% if due_date %}<div><dt>Hạn trả</dt><dd>{{ due_date }}</dd></div>{% endif %}
         <div style="grid-column: 1 / -1"><dt>{{ cfg.purpose_label }}</dt><dd style="font-weight: 400">{{ doc.purpose or "—" }}</dd></div>
         {% if doc.notes %}<div style="grid-column: 1 / -1"><dt>Ghi chú</dt><dd style="font-weight: 400">{{ doc.notes }}</dd></div>{% endif %}
       </dl>
@@ -145,13 +154,14 @@
     <div class="card-head"><h2>Hồ sơ, văn bản trong phiếu <span class="badge badge-muted">{{ items | length }}</span></h2></div>
     <div class="table-wrap" style="border: 0; border-radius: 0">
       <table class="table">
-        <thead><tr><th scope="col">Loại</th><th scope="col">Tài liệu</th>{% if cfg.copies %}<th scope="col">Số bản</th>{% endif %}</tr></thead>
+        <thead><tr><th scope="col">Loại</th><th scope="col">Tài liệu</th>{% if cfg.copies %}<th scope="col">Số bản</th>{% endif %}<th scope="col">Kết quả</th></tr></thead>
         <tbody>
         {% for item in items %}
           <tr>
             <td class="nowrap">{{ item.kind }}</td>
             <td><a href="{{ item.href }}">{{ item.title }}</a>{% if item.parent_title %}<div class="muted small">Thuộc hồ sơ: {{ item.parent_title }}</div>{% endif %}</td>
             {% if cfg.copies %}<td>{{ item.copy_count }}</td>{% endif %}
+            <td>{{ state_badge(item.item_status) }}{% if item.decision_note %}<div class="muted small">{{ item.decision_note }}</div>{% endif %}</td>
           </tr>
         {% endfor %}
         </tbody>

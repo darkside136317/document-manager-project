@@ -46,6 +46,7 @@ fixtures = [
                 "Document Admin",
                 "Cataloger",
                 "Reading Room Officer",
+                "Archive Leader",
                 "Preservation Officer",
                 "Reader",
             ]]
@@ -142,6 +143,7 @@ scheduler_events = {
         "document_manager.document_manager.services.search_index.reconcile_index",
         "document_manager.document_manager.doctype.business_activity_log.business_activity_log.cleanup_old_logs",
         "document_manager.document_manager.doctype.archival_file.archival_file.check_retention_periods",
+        "document_manager.document_manager.services.overdue.mark_overdue_and_remind",
     ],
     "cron": {
         # Integrity check every Sunday at 2 AM
@@ -185,6 +187,7 @@ jinja = {
     "methods": [
         "document_manager.document_manager.permissions.dm_is_staff",
         "document_manager.document_manager.permissions.dm_display_name",
+        "document_manager.document_manager.services.templates.dm_print_options",
     ],
 }
 
@@ -206,6 +209,7 @@ role_home_page = {
     "Document Admin": "dashboard",
     "Cataloger": "dashboard",
     "Reading Room Officer": "dashboard",
+    "Archive Leader": "dashboard",
     "Preservation Officer": "dashboard",
     "Reader": "portal",
     "System Manager": "dashboard"

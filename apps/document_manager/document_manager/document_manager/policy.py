@@ -21,7 +21,7 @@ from frappe import _
 from frappe.utils import cint
 
 STAFF_ROLES = frozenset({
-    "Document Admin", "Cataloger", "Reading Room Officer",
+    "Document Admin", "Cataloger", "Reading Room Officer", "Archive Leader",
     "Preservation Officer", "System Manager", "Administrator",
 })
 
@@ -121,3 +121,40 @@ def scope_fonds_sql(scope: frappe._dict, column: str) -> str:
     if not scope.fonds:
         return "1=0"
     return f"{column} IN ({', '.join(frappe.db.escape(f) for f in scope.fonds)})"
+
+
+# --- limits of slips -------------------------------------------------------------------------------
+
+def get_limits(profile: str | None = None) -> frappe._dict:
+    """The rules a reader's slips follow: the group's own value when it sets one (> 0), else the
+    site-wide Reader Settings. 0 means "no limit" for the counts. `approval_mode` is the group's
+    way of deciding whether a leader must approve ("Theo mức mật" by default)."""
+    settings = frappe.get_cached_doc("Reader Settings")
+    group = None
+    if profile:
+        name = frappe.db.get_value("Reader", profile, "reader_group") or _default_group_name()
+        if name:
+            group = frappe.db.get_value("Reader Group", name, [
+                "approval_mode", "max_requests_per_day", "max_copy_requests_per_day", "max_items_per_request",
+                "max_open_requests", "hold_days", "max_renewals"], as_dict=True)
+
+    def pick(group_field, setting_field):
+        own = cint(group.get(group_field)) if group else 0
+        return own or cint(settings.get(setting_field))
+
+    return frappe._dict(
+        max_requests_per_day=pick("max_requests_per_day", "max_requests_per_day"),
+        max_copy_requests_per_day=pick("max_copy_requests_per_day", "max_copy_requests_per_day"),
+        max_items_per_request=pick("max_items_per_request", "max_items_per_request"),
+        max_open_requests=pick("max_open_requests", "max_open_requests"),
+        hold_days=pick("hold_days", "document_hold_days") or DEFAULT_HOLD_DAYS,
+        max_renewals=pick("max_renewals", "max_renewals"),
+        renewal_days=cint(settings.renewal_days) or DEFAULT_HOLD_DAYS,
+        reminder_days_before=cint(settings.reminder_days_before),
+        remind_overdue=bool(cint(settings.auto_return_overdue)),
+        block_when_overdue=bool(cint(settings.block_when_overdue)),
+        approval_mode=(group.approval_mode if group and group.approval_mode else "Theo mức mật"),
+    )
+
+
+DEFAULT_HOLD_DAYS = 7

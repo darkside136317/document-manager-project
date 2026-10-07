@@ -4,6 +4,7 @@ import { selectOptions } from "../lib/doctype.js";
 import LinkSelect from "./LinkSelect.vue";
 import RichText from "./RichText.vue";
 import SuggestInput from "./SuggestInput.vue";
+import TableInput from "./TableInput.vue";
 
 const props = defineProps({
   field: { type: Object, required: true },
@@ -37,7 +38,12 @@ const datetimeValue = computed(() => String(props.modelValue || "").replace(" ",
 </script>
 
 <template>
-  <div>
+  <TableInput
+    v-if="field.fieldtype === 'Table'"
+    :field="field" :model-value="modelValue || []" :disabled="disabled" :error="error"
+    @update:model-value="emit('update:modelValue', $event)"
+  />
+  <div v-else>
     <label v-if="field.fieldtype !== 'Check'" :for="id" class="label">
       {{ field.label }}<span v-if="field.reqd" class="text-danger"> *</span>
     </label>

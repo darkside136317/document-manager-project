@@ -19,6 +19,7 @@ STAFF_HOME = "/dashboard"
 GROUP_CATALOGUES = "Danh mục"
 GROUP_CATALOGUING = "Biên mục"
 GROUP_READERS = "Độc giả"
+GROUP_SLIPS = "Khai thác tài liệu"
 
 # `slug` is the URL segment: /dashboard/danh-muc/<slug>
 MASTERS = [
@@ -54,7 +55,22 @@ ARCHIVE_SCREENS = [
      "suggest": {"author": DICTIONARY_AUTHOR}},
 ]
 
-REGISTRY = {entry["doctype"]: entry for entry in [*MASTERS, *ARCHIVE_SCREENS]}
+# Reader management screens: /dashboard/doc-gia/<slug>. `readonly` fields are shown but changed only by an action.
+READER_SCREENS = [
+    {"doctype": "Reader", "slug": "doc-gia", "label": "Danh sách độc giả", "icon": "users",
+     "list_fields": ["full_name", "email", "phone", "organization", "reader_group", "is_active"],
+     "readonly": ["user"]},
+    {"doctype": "Reader Group", "slug": "nhom-doc-gia", "label": "Nhóm độc giả", "icon": "shield-check",
+     "list_fields": ["group_name", "max_confidentiality_priority", "approval_mode", "is_default", "is_active"]},
+    {"doctype": "Request Template", "slug": "mau-phieu", "label": "Mẫu phiếu, mẫu đăng ký", "icon": "file-type",
+     "list_fields": ["template_name", "kind", "is_active", "title"]},
+]
+# Single DocTypes edited as one form (no list): /dashboard/doc-gia/<slug>
+SETTINGS_SCREENS = [
+    {"doctype": "Reader Settings", "slug": "thiet-lap-doc-gia", "label": "Thiết lập độc giả", "icon": "settings"},
+]
+
+REGISTRY = {entry["doctype"]: entry for entry in [*MASTERS, *ARCHIVE_SCREENS, *READER_SCREENS, *SETTINGS_SCREENS]}
 MASTER_BY_DOCTYPE = REGISTRY  # kept for older imports
 
 # Files accepted for upload (documents). Legacy Office formats are stored but not text-extracted.
@@ -64,12 +80,6 @@ UPLOAD_MAX_MB = 100
 # Screens still served by the previous server-rendered pages while they are rebuilt in the SPA.
 # (label, href, DocType used to decide whether the user sees it, sidebar section)
 LEGACY_LINKS = [
-    ("Hồ sơ độc giả", "/readers", "Reader", "Độc giả & khai thác"),
-    ("Nhóm độc giả", "/app/reader-group", "Reader Group", "Độc giả & khai thác"),
-    ("Phiếu yêu cầu sử dụng", "/usage_requests", "Usage Request", "Độc giả & khai thác"),
-    ("Phiếu sao chụp", "/copy_requests", "Copy Request", "Độc giả & khai thác"),
-    ("Phản hồi độc giả", "/reader_feedbacks", "Reader Feedback", "Độc giả & khai thác"),
-    ("Thiết lập độc giả", "/reader_settings", "Reader Settings", "Độc giả & khai thác"),
     ("Thống kê tài liệu", "/reports/thong_ke_tai_lieu", "Archive Document", "Báo cáo"),
     ("Thống kê khai thác", "/reports/thong_ke_khai_thac", "Usage Request", "Báo cáo"),
     ("Đợt sao lưu", "/backup_batches", "Backup Batch", "Bảo quản"),

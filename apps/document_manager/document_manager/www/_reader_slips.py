@@ -7,10 +7,11 @@ What a reader may see is decided by the Usage/Copy Request permission hooks; edi
 """
 
 import frappe
-from frappe.utils import cint, format_datetime
+from frappe.utils import cint, format_date, format_datetime, getdate, nowdate
 
 from document_manager.document_manager.api.requests import get_actions
 from document_manager.document_manager.policy import get_reader_scope
+from document_manager.document_manager.services import templates
 from document_manager.document_manager.services.web import inline_json
 from document_manager.www._reader_ui import page_context, require_reader
 
@@ -21,24 +22,33 @@ CONFIG = {
         "doctype": "Usage Request", "item_doctype": "Usage Request Item", "base": "/portal/phieu", "active": "phieu",
         "title": "Phiếu yêu cầu sử dụng", "noun": "phiếu yêu cầu sử dụng", "icon": "file-text",
         "intro": "Yêu cầu đọc hồ sơ, văn bản tại phòng đọc.", "purpose_label": "Mục đích sử dụng",
-        "states": ["Nháp", "Chờ duyệt", "Đã duyệt", "Đã trả", "Từ chối", "Đã hủy"], "final": "Đã trả",
+        "states": ["Nháp", "Chờ duyệt", "Chờ lãnh đạo duyệt", "Đã duyệt", "Đang sử dụng", "Đã trả", "Từ chối", "Đã hủy"],
+        "final": "Đã trả", "in_use": True,
         "date_field": "returned_date", "date_label": "Ngày trả tài liệu", "copies": False,
     },
     "copy": {
         "doctype": "Copy Request", "item_doctype": "Copy Request Item", "base": "/portal/sao-chep", "active": "sao-chep",
         "title": "Phiếu sao chụp", "noun": "phiếu sao chụp", "icon": "copy",
         "intro": "Yêu cầu sao chụp hồ sơ, văn bản.", "purpose_label": "Mục đích sao chụp",
-        "states": ["Nháp", "Chờ duyệt", "Đã duyệt", "Đã hoàn thành", "Từ chối", "Đã hủy"], "final": "Đã hoàn thành",
+        "states": ["Nháp", "Chờ duyệt", "Chờ lãnh đạo duyệt", "Đã duyệt", "Đã hoàn thành", "Từ chối", "Đã hủy"],
+        "final": "Đã hoàn thành", "in_use": False,
         "date_field": "completed_date", "date_label": "Ngày hoàn thành", "copies": True,
     },
 }
 
 
-def _steps(cfg: dict, state: str) -> list[dict]:
-    """The progress line of a slip: done / current / todo steps, or a red end when it was refused or withdrawn."""
-    path = ["Nháp", "Chờ duyệt", "Đã duyệt", cfg["final"]]
+def _steps(cfg: dict, state: str, requires_leader: bool) -> list[dict]:
+    """The progress line of a slip: done / current / todo steps, or a red end when it was refused or withdrawn.
+    The leader's step is drawn only for a slip that needs one."""
+    path = ["Nháp", "Chờ duyệt"]
+    if requires_leader or state == "Chờ lãnh đạo duyệt":
+        path.append("Chờ lãnh đạo duyệt")
+    path.append("Đã duyệt")
+    if cfg["in_use"]:
+        path.append("Đang sử dụng")
+    path.append(cfg["final"])
     if state in ("Từ chối", "Đã hủy"):
-        reached = ["Nháp", "Chờ duyệt"]
+        reached = path[:path.index("Chờ duyệt") + 1]
         return [{"label": s, "status": "done"} for s in reached] + [{"label": state, "status": "bad"}]
     at = path.index(state) if state in path else 0
     return [{"label": s, "status": "done" if i < at or (state == cfg["final"] and i == at) else "current" if i == at else "todo"}
@@ -59,7 +69,8 @@ def _item_rows(doc) -> list[dict]:
         is_doc = bool(row.archive_document)
         rows.append({
             "row": row.name, "archival_file": row.archival_file, "archive_document": row.archive_document,
-            "kind": "Văn bản" if is_doc else "Hồ sơ",
+            "kind": "Văn bản" if is_doc else "Hồ sơ", "item_status": row.get("item_status") or "",
+            "decision_note": row.get("decision_note") or "",
             "title": _title("Archive Document", row.archive_document, "document_title") if is_doc
             else _title("Archival File", row.archival_file, "file_title"),
             "parent_title": _title("Archival File", row.archival_file, "file_title") if is_doc else "",
@@ -85,19 +96,24 @@ def slip_context(context, key: str):
         state = doc.workflow_state or "Nháp"
         editable = doc.docstatus == 0 and doc.has_permission("write")
         actions = {a["action"] for a in get_actions(cfg["doctype"], name)}
+        options = templates.slip_options_for(cfg["doctype"])
         items = _item_rows(doc)
         context.update({
-            "doc": doc, "state": state, "steps": _steps(cfg, state), "editable": editable, "items": items,
+            "doc": doc, "state": state, "steps": _steps(cfg, state, bool(cint(doc.requires_leader))), "editable": editable, "items": items,
             "reader_name": doc.reader_name or frappe.db.get_value("Reader", doc.reader, "full_name") or doc.reader,
+            "due_date": format_date(doc.get("due_date"), "dd/MM/yyyy") if doc.get("due_date") else "",
+            "overdue": bool(doc.get("due_date") and state == "Đang sử dụng" and getdate(doc.due_date) < getdate(nowdate())),
+            "renewals": cint(doc.get("renewal_count")),
             "can_cancel": "Hủy phiếu" in actions,
             "dates": [(label, text) for label, text in (
                 ("Ngày lập phiếu", format_datetime(doc.request_date, "dd/MM/yyyy") if doc.request_date else ""),
                 ("Ngày duyệt", format_datetime(doc.approved_date, "dd/MM/yyyy HH:mm") if doc.approved_date else ""),
                 (cfg["date_label"], format_datetime(doc.get(cfg["date_field"]), "dd/MM/yyyy HH:mm") if doc.get(cfg["date_field"]) else ""),
             ) if text],
+            "options": options,
             "editor_config": inline_json({
                 "doctype": cfg["doctype"], "name": doc.name, "purpose": doc.purpose or "", "notes": doc.notes or "",
-                "items": items, "listUrl": cfg["base"], "target": key,
+                "items": items, "listUrl": cfg["base"], "target": key, "requirePurpose": options.require_purpose,
             }),
             "title": f"{cfg['title']} {doc.name}",
         })

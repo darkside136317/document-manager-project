@@ -31,10 +31,12 @@
   ],
   "permissions": [
     {"role": "Document Admin", "read": 1, "write": 1, "create": 1, "delete": 1, "print": 1, "export": 1, "import": 1, "share": 1, "report": 1},
-    {"role": "Reading Room Officer", "read": 1, "write": 1, "create": 1, "delete": 0},
+    {"role": "Reading Room Officer", "read": 1, "write": 1, "create": 1, "delete": 0, "print": 1},
     {"role": "Reader", "read": 1, "create": 0, "write": 0, "if_owner": 0},
     {"role": "Document Admin", "permlevel": 1, "read": 1, "write": 1},
-    {"role": "Reading Room Officer", "permlevel": 1, "read": 1}
+    {"role": "Reading Room Officer", "permlevel": 1, "read": 1},
+    {"role": "Archive Leader", "read": 1},
+    {"role": "Archive Leader", "permlevel": 1, "read": 1}
   ],
   "sort_field": "modified", "sort_order": "DESC",
   "title_field": "full_name",

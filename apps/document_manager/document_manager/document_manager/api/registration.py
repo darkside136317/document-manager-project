@@ -88,3 +88,12 @@ def reissue_link(name):
     path = registration.issue_password_link(doc.user)
     log_activity(registration.ACTIVITY, "Reader Registration", doc.name, f"Cấp lại liên kết đặt mật khẩu cho {doc.user}")
     return {"name": doc.name, "user": doc.user, "set_password_path": path}
+
+
+@frappe.whitelist(methods=["POST"])
+def issue_reader_access(reader):
+    """Create the login account of a reader profile that has none (needs the e-mail) and/or hand over a new
+    one-time set-password link. The link is returned once and not stored."""
+    assert_roles(*OFFICERS)
+    frappe.get_doc("Reader", reader).check_permission("read")
+    return registration.issue_access(reader)

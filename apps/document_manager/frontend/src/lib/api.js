@@ -146,6 +146,27 @@ export const api = {
     reject: (name, reason) => call(`${BASE}.registration.reject_registration`, { name, reason }, { post: true }),
     reissue: (name) => call(`${BASE}.registration.reissue_link`, { name }, { post: true }),
   },
+  slips: {
+    summary: () => call(`${BASE}.slips.queue_summary`),
+    badges: () => call(`${BASE}.slips.queue_badges`),
+    list: (kind, params = {}) => call(`${BASE}.slips.list_slips`, { kind, ...params }),
+    get: (kind, name) => call(`${BASE}.slips.get_slip`, { kind, name }),
+    decideItems: (kind, name, decisions) => call(`${BASE}.slips.decide_items`, { kind, name, decisions }, { post: true }),
+    receiveReturn: (name, conditions) => call(`${BASE}.slips.receive_return`, { name, conditions }, { post: true }),
+    renew: (name) => call(`${BASE}.slips.renew`, { name }, { post: true }),
+    deleteDraft: (kind, name) => call(`${BASE}.slips.delete_draft`, { kind, name }, { post: true }),
+    readerSlips: (reader) => call(`${BASE}.slips.reader_slips`, { reader }),
+  },
+  requests: {
+    action: (doctype, name, action, text) => call(`${BASE}.requests.apply_action`, { doctype, name, action, text }, { post: true }),
+    save: (doctype, payload, name = null, submit = false) =>
+      call(`${BASE}.requests.save_request`, { doctype, payload, name, submit: submit ? 1 : 0 }, { post: true }),
+  },
+  feedback: {
+    list: (params = {}) => call(`${BASE}.feedback.list_feedback`, params),
+    get: (name) => call(`${BASE}.feedback.get_feedback`, { name }),
+  },
+  readerAccess: (reader) => call(`${BASE}.registration.issue_reader_access`, { reader }, { post: true }),
   preview: (docName) => call(`${BASE}.file_access.get_preview`, { doc_name: docName }),
   // Own endpoint: a wrong current password must not end the session (Frappe's update_password would).
   changePassword: (oldPassword, newPassword) =>

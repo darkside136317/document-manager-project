@@ -13,7 +13,9 @@ from frappe.utils import cint
 
 from document_manager.document_manager.services.errors import retry_on_deadlock
 from document_manager.document_manager.services.ui import (
+    MAX_TABLE_ROWS,
     assert_master,
+    assert_staff,
     describe,
     link_targets,
     title_field_of,
@@ -91,7 +93,20 @@ def get_list(doctype, search=None, filters=None, order_by=None, page=1, page_siz
 def _record(doc, info) -> dict:
     doc.apply_fieldlevel_read_permissions()
     keys = [*RECORD_KEYS, *(f["fieldname"] for f in info["fields"])]
-    return {k: doc.get(k) for k in dict.fromkeys(keys)}
+    record = {k: doc.get(k) for k in dict.fromkeys(keys)}
+    for field in info["fields"]:
+        if field["fieldtype"] == "Table":  # the rows the grid edits: only its columns, as plain dicts
+            columns = [c["fieldname"] for c in field["table"]["columns"]]
+            record[field["fieldname"]] = [{c: row.get(c) for c in columns} for row in doc.get(field["fieldname"]) or []]
+    return record
+
+
+def _table_rows(field, rows) -> list:
+    """Rows sent for a table field, reduced to the editable columns (anything else is ignored)."""
+    if not isinstance(rows, list) or len(rows) > MAX_TABLE_ROWS:
+        frappe.throw(_("Bảng {0} không hợp lệ").format(field["label"]))
+    writable = {c["fieldname"] for c in field["table"]["columns"] if not c["read_only"]}
+    return [{k: v for k, v in (row or {}).items() if k in writable} for row in rows]
 
 
 @frappe.whitelist()
@@ -127,9 +142,14 @@ def _save(doctype, values, name):
     else:
         doc = frappe.new_doc(doctype)
         doc.check_permission("create")
+    info_by_name = {f["fieldname"]: f for f in info["fields"]}
+    tables = {name: f for name, f in info_by_name.items() if f["fieldtype"] == "Table"}
     for field in writable:
         if field in values:
-            doc.set(field, values[field])
+            # "Today" / "Now" are DocType defaults, not values: the document applies them itself
+            if values[field] in ("Today", "Now") and info_by_name[field]["fieldtype"] in ("Date", "Datetime"):
+                continue
+            doc.set(field, _table_rows(tables[field], values[field]) if field in tables else values[field])
     doc.save() if name else doc.insert()
     return _record(frappe.get_doc(doctype, doc.name), info)
 
@@ -145,6 +165,7 @@ def delete(doctype, name):
 @frappe.whitelist()
 def link_search(doctype, txt="", filters=None, limit=10):
     """Options of a Link field: [{value, label, description}]."""
+    assert_staff()
     if doctype not in link_targets():
         frappe.throw(_("Không tìm kiếm được trong {0}").format(doctype), frappe.PermissionError)
     meta = frappe.get_meta(doctype)

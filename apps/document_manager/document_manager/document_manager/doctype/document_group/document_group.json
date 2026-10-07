@@ -54,7 +54,8 @@
     {
       "role": "Reading Room Officer",
       "read": 1
-    }
+    },
+    {"role": "Archive Leader", "read": 1}
   ],
   "sort_field": "group_name",
   "sort_order": "ASC"

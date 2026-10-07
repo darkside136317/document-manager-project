@@ -2,17 +2,27 @@
   "name": "Reader Settings", "module": "Document Manager", "doctype": "DocType",
   "issingle": 1, "engine": "InnoDB", "track_changes": 1,
   "fields": [
-    {"fieldname": "max_requests_per_day", "fieldtype": "Int", "label": "Số phiếu yêu cầu tối đa/ngày", "default": "5"},
+    {"fieldname": "section_limits", "fieldtype": "Section Break", "label": "Hạn mức lập phiếu"},
+    {"fieldname": "max_requests_per_day", "fieldtype": "Int", "label": "Số phiếu yêu cầu sử dụng tối đa/ngày", "default": "5", "description": "0 = không giới hạn. Nhóm độc giả có thể đặt hạn mức riêng."},
     {"fieldname": "max_copy_requests_per_day", "fieldtype": "Int", "label": "Số phiếu sao chụp tối đa/ngày", "default": "3"},
     {"fieldname": "column_break_1", "fieldtype": "Column Break"},
-    {"fieldname": "document_hold_days", "fieldtype": "Int", "label": "Thời gian giữ tài liệu (ngày)", "default": "7"},
-    {"fieldname": "auto_return_overdue", "fieldtype": "Check", "label": "Tự động nhắc trả quá hạn", "default": "1"},
+    {"fieldname": "max_items_per_request", "fieldtype": "Int", "label": "Số hồ sơ/văn bản tối đa mỗi phiếu", "default": "20"},
+    {"fieldname": "max_open_requests", "fieldtype": "Int", "label": "Số phiếu đang xử lý tối đa của một độc giả", "default": "5", "description": "Phiếu đã gửi nhưng chưa trả hoặc hoàn thành"},
+    {"fieldname": "section_return", "fieldtype": "Section Break", "label": "Giữ, trả và nhắc hạn tài liệu"},
+    {"fieldname": "document_hold_days", "fieldtype": "Int", "label": "Thời gian giữ tài liệu (ngày)", "default": "7", "description": "Hạn trả tính từ ngày giao tài liệu"},
+    {"fieldname": "max_renewals", "fieldtype": "Int", "label": "Số lần gia hạn tối đa", "default": "2"},
+    {"fieldname": "renewal_days", "fieldtype": "Int", "label": "Mỗi lần gia hạn thêm (ngày)", "default": "7"},
+    {"fieldname": "column_break_2", "fieldtype": "Column Break"},
+    {"fieldname": "auto_return_overdue", "fieldtype": "Check", "label": "Tự động nhắc trả quá hạn", "default": "1", "description": "Mỗi ngày hệ thống đánh dấu phiếu quá hạn và nhắc độc giả qua thông báo"},
+    {"fieldname": "reminder_days_before", "fieldtype": "Int", "label": "Nhắc trước hạn trả (ngày)", "default": "1", "depends_on": "auto_return_overdue", "description": "0 = không nhắc trước hạn"},
+    {"fieldname": "block_when_overdue", "fieldtype": "Check", "label": "Không cho lập phiếu sử dụng mới khi còn tài liệu quá hạn", "default": "1"},
     {"fieldname": "section_registration", "fieldtype": "Section Break", "label": "Đăng ký"},
     {"fieldname": "allow_self_registration", "fieldtype": "Check", "label": "Cho phép tự đăng ký", "default": "1"},
     {"fieldname": "require_approval", "fieldtype": "Check", "label": "Yêu cầu duyệt đăng ký", "default": "1"}
   ],
   "permissions": [
     {"role": "Document Admin", "read": 1, "write": 1, "create": 1},
-    {"role": "Reading Room Officer", "read": 1, "write": 1}
+    {"role": "Reading Room Officer", "read": 1, "write": 1},
+    {"role": "Archive Leader", "read": 1}
   ]
 }

@@ -31,7 +31,8 @@
   "permissions": [
     {"role": "Document Admin", "read": 1, "write": 1, "create": 1, "delete": 1, "print": 1, "export": 1, "import": 1, "share": 1, "report": 1},
     {"role": "Cataloger", "read": 1, "write": 1, "create": 1, "delete": 1},
-    {"role": "Reading Room Officer", "read": 1}
+    {"role": "Reading Room Officer", "read": 1},
+    {"role": "Archive Leader", "read": 1}
   ],
   "sort_field": "sort_order",
   "sort_order": "ASC"

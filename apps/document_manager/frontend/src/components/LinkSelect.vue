@@ -23,6 +23,8 @@ const open = ref(false);
 const loading = ref(false);
 const active = ref(-1);
 let ticket = 0;
+// The server never searches these (it would leak accounts and schema): show the stored value as it is.
+const OPAQUE = new Set(["User", "Role", "DocType"]);
 
 const shown = computed(() => (open.value ? query.value : label.value || props.modelValue));
 
@@ -49,6 +51,7 @@ async function resolveLabel(value) {
     return;
   }
   label.value = value;
+  if (OPAQUE.has(props.doctype)) return;
   try {
     const rows = await api.linkSearch(props.doctype, value, props.filters);
     const hit = rows.find((r) => r.value === value);

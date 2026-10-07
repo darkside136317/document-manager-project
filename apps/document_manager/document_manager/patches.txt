@@ -12,3 +12,5 @@ document_manager.patches.upgrade_quick_entry_dictionary
 document_manager.patches.use_vietnamese_language
 document_manager.patches.set_upload_limit
 document_manager.patches.set_password_link_expiry
+document_manager.patches.enable_leader_approval
+document_manager.patches.backfill_reader_names

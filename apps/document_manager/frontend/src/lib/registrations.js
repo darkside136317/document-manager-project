@@ -38,6 +38,19 @@ export function describeRequest(row) {
   return isResetRequest(row) ? `Cấp lại mật khẩu cho ${who}` : `Tạo tài khoản độc giả cho ${who}`;
 }
 
+/** Replace the sidebar counters with the server's current values (after an action changed a queue). */
+export async function refreshBadges(fetcher) {
+  try {
+    const counts = await fetcher();
+    for (const [route, count] of Object.entries(counts || {})) {
+      if (count > 0) badges[route] = count;
+      else delete badges[route];
+    }
+  } catch {
+    /* the counters are a convenience: the screens work without them */
+  }
+}
+
 export function setPendingBadge(count) {
   if (count > 0) badges[REGISTRATIONS_ROUTE] = count;
   else delete badges[REGISTRATIONS_ROUTE];

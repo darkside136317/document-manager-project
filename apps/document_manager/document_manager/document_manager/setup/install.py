@@ -14,6 +14,7 @@ ROLES = (
     ("Document Admin", 1),
     ("Cataloger", 1),
     ("Reading Room Officer", 1),
+    ("Archive Leader", 1),
     ("Preservation Officer", 1),
     ("Reader", 0),
 )
@@ -41,6 +42,9 @@ def after_migrate():
 def seed_all():
     ensure_roles()
     ensure_confidentiality_levels()
+    ensure_reader_settings_defaults()
+    from document_manager.document_manager.services.templates import ensure_default_templates
+    ensure_default_templates()
     ensure_default_reader_group()
     setup_all()  # workflows + in-app notifications of the reader requests
 
@@ -57,7 +61,8 @@ def ensure_confidentiality_levels():
     for name, code, priority, description in CONFIDENTIALITY_LEVELS:
         if not frappe.db.exists("Confidentiality Level", name):
             frappe.get_doc({"doctype": "Confidentiality Level", "level_name": name, "level_code": code,
-                            "priority": priority, "description": description}
+                            "priority": priority, "description": description,
+                            "requires_leader_approval": 1 if priority >= 2 else 0}
                            ).insert(ignore_permissions=True)
 
 
@@ -125,3 +130,32 @@ def set_password_link_expiry() -> bool:
     frappe.db.set_single_value("System Settings", "reset_password_link_expiry_duration", PASSWORD_LINK_EXPIRY_SECONDS)
     frappe.clear_cache()
     return True
+
+
+# Values a site that predates a Reader Settings field gets, once. A single DocType stores nothing for a
+# field nobody saved, which reads as 0 ("no limit"): without this a new limit would silently be off.
+READER_SETTINGS_DEFAULTS = {
+    "max_items_per_request": 20, "max_open_requests": 5, "max_renewals": 2, "renewal_days": 7,
+    "reminder_days_before": 1, "block_when_overdue": 1,
+}
+
+
+def ensure_reader_settings_defaults() -> int:
+    """Store the default of every Reader Settings field that has no stored value. Returns how many."""
+    stored = {row[0] for row in frappe.db.sql(
+        "select field from tabSingles where doctype = %s", "Reader Settings")}
+    missing = {field: value for field, value in READER_SETTINGS_DEFAULTS.items() if field not in stored}
+    for field, value in missing.items():
+        frappe.db.set_single_value("Reader Settings", field, value)
+    if missing:
+        frappe.clear_document_cache("Reader Settings", "Reader Settings")
+    return len(missing)
+
+
+def flag_levels_needing_leader() -> int:
+    """Existing sites: the levels above "Thường" need a leader's approval (the new flag starts at 0)."""
+    names = frappe.get_all("Confidentiality Level", filters={"priority": [">=", 2], "requires_leader_approval": 0},
+                           pluck="name")
+    for name in names:
+        frappe.db.set_value("Confidentiality Level", name, "requires_leader_approval", 1)
+    return len(names)

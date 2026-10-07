@@ -5,7 +5,7 @@ import {
   CircleCheck, ClipboardList, Database, ExternalLink, Eye, FileText, FileType, Folder, FolderOpen, FolderTree,
   Gauge, HardDrive, Inbox, Info, KeyRound, Layers, LayoutDashboard, Library, Loader2, LogOut, Menu, Moon,
   Network, Pencil, Plus, RefreshCw, Save, ScrollText, Search, Settings, ShieldCheck, Sun, Trash2, Users,
-  Warehouse, X, Upload, UserPlus, Copy, Link2, Printer, Download, SlidersHorizontal, Bookmark, Command, FileImage, FileSpreadsheet, File, CornerDownLeft,
+  Warehouse, X, Upload, UserPlus, Copy, Link2, MessageSquare, Undo2, CalendarPlus, PackageCheck, Send, Clock, Printer, Download, SlidersHorizontal, Bookmark, Command, FileImage, FileSpreadsheet, File, CornerDownLeft,
 } from "lucide-vue-next";
 
 export const icons = {
@@ -67,6 +67,12 @@ export const icons = {
   "user-plus": UserPlus,
   copy: Copy,
   link: Link2,
+  "message-square": MessageSquare,
+  undo: Undo2,
+  "calendar-plus": CalendarPlus,
+  "package-check": PackageCheck,
+  send: Send,
+  clock: Clock,
 };
 
 export const iconFor = (name) => icons[name] || FileText;

@@ -1,15 +1,16 @@
 <script setup>
 import { onBeforeUnmount, onMounted, reactive, ref } from "vue";
-import ConfirmDialog from "../components/ConfirmDialog.vue";
 import Drawer from "../components/Drawer.vue";
 import EmptyState from "../components/EmptyState.vue";
 import Icon from "../components/Icon.vue";
+import OneTimeLinkDialog from "../components/OneTimeLinkDialog.vue";
 import PageHeader from "../components/PageHeader.vue";
 import PaginationBar from "../components/PaginationBar.vue";
+import ReasonDialog from "../components/ReasonDialog.vue";
 import { api } from "../lib/api.js";
 import { debounce, formatDateTime } from "../lib/format.js";
 import { absoluteLink, describeRequest, isResetRequest, registrationTone, setPendingBadge, STATUS_FILTERS, TYPE_FILTERS } from "../lib/registrations.js";
-import { toast, toastError } from "../lib/toast.js";
+import { toast } from "../lib/toast.js";
 
 // Queue of sign-up and forgotten-password requests from the reader site. Approving creates the
 // account (or picks a new password) and shows the one-time link once, for the officer to pass on.
@@ -17,8 +18,8 @@ const PAGE_SIZE = 20;
 const state = reactive({ rows: [], total: 0, page: 1, status: "Mới", type: "", search: "", loading: true, error: "" });
 const groups = ref([]);
 const drawer = reactive({ open: false, row: null, group: "", busy: false, error: "" });
-const rejecting = reactive({ open: false, reason: "", busy: false, error: "" });
-const link = reactive({ open: false, url: "", user: "", copied: false });
+const rejecting = reactive({ open: false, busy: false, error: "" });
+const link = reactive({ open: false, url: "", user: "" });
 let ticket = 0;
 
 async function load() {
@@ -84,13 +85,12 @@ async function approve() {
   }
 }
 
-function askReject() { Object.assign(rejecting, { open: true, reason: "", busy: false, error: "" }); }
-async function reject() {
-  if (!rejecting.reason.trim()) { rejecting.error = "Phải nhập lý do từ chối."; return; }
+function askReject() { Object.assign(rejecting, { open: true, busy: false, error: "" }); }
+async function reject(reason) {
   rejecting.busy = true;
   rejecting.error = "";
   try {
-    await api.registrations.reject(drawer.row.name, rejecting.reason.trim());
+    await api.registrations.reject(drawer.row.name, reason);
     rejecting.open = false;
     closeDrawer();
     toast("Đã từ chối yêu cầu.");
@@ -116,15 +116,7 @@ async function reissue() {
 }
 
 function showLink(result) {
-  Object.assign(link, { open: true, url: absoluteLink(result.set_password_path), user: result.user, copied: false });
-}
-async function copyLink() {
-  try {
-    await navigator.clipboard.writeText(link.url);
-    link.copied = true;
-  } catch {
-    toastError("Không sao chép tự động được. Hãy chọn và sao chép liên kết thủ công.");
-  }
+  Object.assign(link, { open: true, url: absoluteLink(result.set_password_path), user: result.user });
 }
 </script>
 
@@ -229,33 +221,11 @@ async function copyLink() {
     </template>
   </Drawer>
 
-  <ConfirmDialog
-    :open="rejecting.open" title="Từ chối yêu cầu" confirm-text="Từ chối" danger :busy="rejecting.busy" :error="rejecting.error"
-    :message="drawer.row ? `${describeRequest(drawer.row)}\nNhập lý do để người dùng được biết khi liên hệ lại.` : ''"
+  <ReasonDialog
+    :open="rejecting.open" title="Từ chối yêu cầu" label="Lý do từ chối" confirm-text="Từ chối" danger :busy="rejecting.busy" :error="rejecting.error"
+    :message="drawer.row ? `${describeRequest(drawer.row)}
+Nhập lý do để người dùng được biết khi liên hệ lại.` : ''"
     @confirm="reject" @cancel="rejecting.open = false"
   />
-  <Teleport to="body">
-    <div v-if="rejecting.open" class="fixed inset-x-0 bottom-6 z-[70] mx-auto w-full max-w-md px-4">
-      <label class="sr-only" for="reject-reason">Lý do từ chối</label>
-      <textarea id="reject-reason" v-model="rejecting.reason" class="input shadow-pop" placeholder="Lý do từ chối (bắt buộc)" rows="3"></textarea>
-    </div>
-  </Teleport>
-
-  <Teleport to="body">
-    <div v-if="link.open" class="fixed inset-0 z-[60] grid place-items-center p-4" role="dialog" aria-modal="true" aria-label="Liên kết đặt mật khẩu">
-      <div class="absolute inset-0 bg-black/45" @click="link.open = false"></div>
-      <section class="card relative w-full max-w-lg p-5 shadow-pop">
-        <h2 class="m-0 flex items-center gap-2 text-base font-semibold"><Icon name="key-round" class="text-accent" /> Liên kết đặt mật khẩu</h2>
-        <p class="mt-3 text-sm text-ink-soft">
-          Gửi liên kết này cho <strong>{{ link.user }}</strong>. Liên kết chỉ dùng được một lần, hết hạn sau một thời gian
-          và <strong>không được lưu lại</strong>: đóng cửa sổ này rồi vẫn có thể cấp liên kết mới ở yêu cầu đã duyệt.
-        </p>
-        <div class="mt-3 flex gap-2">
-          <input class="input font-mono text-xs" :value="link.url" readonly aria-label="Liên kết đặt mật khẩu" @focus="$event.target.select()" />
-          <button class="btn whitespace-nowrap" type="button" @click="copyLink"><Icon :name="link.copied ? 'check' : 'copy'" :size="16" /> {{ link.copied ? "Đã chép" : "Sao chép" }}</button>
-        </div>
-        <div class="mt-5 flex justify-end"><button class="btn btn-primary" type="button" @click="link.open = false">Đã chuyển cho người dùng</button></div>
-      </section>
-    </div>
-  </Teleport>
+  <OneTimeLinkDialog :open="link.open" :url="link.url" :user="link.user" @close="link.open = false" />
 </template>

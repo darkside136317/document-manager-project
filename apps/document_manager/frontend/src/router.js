@@ -6,7 +6,10 @@ import DocumentPage from "./pages/DocumentPage.vue";
 import FilePage from "./pages/FilePage.vue";
 import MasterPage from "./pages/MasterPage.vue";
 import NotFound from "./pages/NotFound.vue";
+import FeedbackPage from "./pages/FeedbackPage.vue";
 import RegistrationsPage from "./pages/RegistrationsPage.vue";
+import SlipPage from "./pages/SlipPage.vue";
+import SlipsPage from "./pages/SlipsPage.vue";
 import SearchPage from "./pages/SearchPage.vue";
 
 // Frappe serves this app for /dashboard and every /dashboard/... path (hooks.website_route_rules).
@@ -17,7 +20,13 @@ export const routes = [
   { path: "/van-ban/:name", name: "document", component: DocumentPage, meta: { title: "Văn bản" } },
   { path: "/tim-kiem", name: "search", component: SearchPage, meta: { title: "Tìm kiếm" } },
   { path: "/doc-gia/dang-ky", name: "registrations", component: RegistrationsPage, meta: { title: "Đăng ký độc giả" } },
-  { path: "/danh-muc/:slug", name: "master", component: MasterPage, meta: { title: "Danh mục" } },
+  { path: "/doc-gia/phieu-su-dung", name: "slips-usage", component: SlipsPage, props: { kind: "usage" }, meta: { title: "Phiếu yêu cầu sử dụng" } },
+  { path: "/doc-gia/phieu-su-dung/:name", name: "slip-usage", component: SlipPage, props: (route) => ({ kind: "usage", name: route.params.name }), meta: { title: "Phiếu yêu cầu sử dụng" } },
+  { path: "/doc-gia/phieu-sao-chup", name: "slips-copy", component: SlipsPage, props: { kind: "copy" }, meta: { title: "Phiếu sao chụp" } },
+  { path: "/doc-gia/phieu-sao-chup/:name", name: "slip-copy", component: SlipPage, props: (route) => ({ kind: "copy", name: route.params.name }), meta: { title: "Phiếu sao chụp" } },
+  { path: "/doc-gia/gop-y", name: "feedback", component: FeedbackPage, meta: { title: "Góp ý của độc giả" } },
+  { path: "/doc-gia/:slug", name: "reader-screen", component: MasterPage, meta: { title: "Độc giả", sources: ["readers", "settings"] } },
+  { path: "/danh-muc/:slug", name: "master", component: MasterPage, meta: { title: "Danh mục", sources: ["masters"] } },
   { path: "/:pathMatch(.*)*", name: "not-found", component: NotFound, meta: { title: "Không tìm thấy" } },
 ];
 

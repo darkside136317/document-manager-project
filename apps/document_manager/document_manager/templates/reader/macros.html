@@ -8,7 +8,7 @@
 {#- Status of a slip or a request as a coloured badge. -#}
 {% macro state_badge(state) -%}
 {% autoescape true %}
-{%- set tone = {"Nháp": "muted", "Chờ duyệt": "warning", "Đã duyệt": "success", "Từ chối": "danger", "Đã trả": "info",
+{%- set tone = {"Nháp": "muted", "Chờ duyệt": "warning", "Chờ lãnh đạo duyệt": "warning", "Đã duyệt": "success", "Đang sử dụng": "info", "Từ chối": "danger", "Đã trả": "info",
   "Đã hoàn thành": "info", "Đã hủy": "muted", "Mới": "warning", "Đã xem": "info", "Đã phản hồi": "success"}.get(state, "muted") -%}
 <span class="badge badge-{{ tone }}">{{ state or "—" }}</span>
 {%- endautoescape %}

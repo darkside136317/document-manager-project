@@ -73,7 +73,7 @@ class TestReaderUiLogic(IntegrationTestCase):
 
     # ---- reader auto-binding
     def _payload(self, **extra):
-        return json.dumps({"items": [{"archival_file": self.file}], **extra})
+        return json.dumps({"purpose": "Nghiên cứu", "items": [{"archival_file": self.file}], **extra})
 
     def _save(self, user, doctype="Usage Request", **extra):
         frappe.set_user(user)
@@ -213,31 +213,3 @@ class TestReaderUiLogic(IntegrationTestCase):
             frappe.delete_doc("Reader", doc.name, force=True, ignore_permissions=True)
         finally:
             frappe.delete_doc("User", "ui.late@example.com", force=True, ignore_permissions=True)
-
-    # ---- request page context
-    def test_request_form_context_for_each_kind_of_user(self):
-        from document_manager.www._request_ui import form_context
-        frappe.local.form_dict = frappe._dict()
-        expect = {
-            READER: dict(needs_profile=False, reader_name="UI Reader", select=False),
-            READER_NOPROFILE: dict(needs_profile=True, reader_name=None, select=False),
-            STAFF_WITH_PROFILE: dict(needs_profile=False, reader_name="UI Staff Reader", select=True),
-            STAFF_NO_PROFILE: dict(needs_profile=False, reader_name=None, select=True),
-        }
-        for user, want in expect.items():
-            frappe.set_user(user)
-            ctx = frappe._dict()
-            form_context(ctx, "usage_requests")
-            self.assertEqual(ctx.needs_profile, want["needs_profile"], user)
-            self.assertEqual(ctx.reader_name, want["reader_name"], user)
-            self.assertEqual(bool(ctx.readers), want["select"], user)
-            self.assertEqual(ctx.can_edit, not want["needs_profile"], user)
-
-    def test_form_context_hides_whether_a_request_exists(self):
-        from document_manager.www._request_ui import form_context
-        mine = self._save(READER)["name"]
-        frappe.set_user(READER_NOPROFILE)
-        for name in (mine, "UR-9999-99999"):
-            frappe.local.form_dict = frappe._dict(name=name)
-            with self.assertRaises(frappe.PermissionError, msg=name):
-                form_context(frappe._dict(), "usage_requests")

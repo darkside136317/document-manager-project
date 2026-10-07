@@ -18,6 +18,26 @@ ADMIN = "rw.admin@example.com"
 SECRET_LEVEL = "RW Secret"
 
 
+LIMIT_FIELDS = ("max_requests_per_day", "max_copy_requests_per_day", "max_items_per_request", "max_open_requests",
+                "block_when_overdue")
+
+
+def relax_limits():
+    """Switch the slip limits of Reader Settings off (0 = no limit); returns the function that restores them.
+
+    Tests that file many slips for the same reader without cleaning up would otherwise meet the quota."""
+    old = {f: frappe.db.get_single_value("Reader Settings", f) for f in LIMIT_FIELDS}
+    for field in LIMIT_FIELDS:
+        frappe.db.set_single_value("Reader Settings", field, 0)
+    frappe.clear_document_cache("Reader Settings", "Reader Settings")
+
+    def restore():
+        for field, value in old.items():
+            frappe.db.set_single_value("Reader Settings", field, value or 0)
+        frappe.clear_document_cache("Reader Settings", "Reader Settings")
+    return restore
+
+
 def _user(email, roles, user_type):
     if frappe.db.exists("User", email):
         frappe.delete_doc("User", email, force=True, ignore_permissions=True)
@@ -101,10 +121,12 @@ class TestRequestWorkflow(IntegrationTestCase):
         cls.doc_other = frappe.get_all("Archive Document", filters={"archival_file": cls.file_secret},
                                        pluck="name")
         cls.created = []
+        cls._restore_limits = relax_limits()
 
     @classmethod
     def tearDownClass(cls):
         frappe.set_user("Administrator")
+        cls._restore_limits()
         for dt, name in cls.created:
             if frappe.db.exists(dt, name):
                 doc = frappe.get_doc(dt, name)
@@ -155,7 +177,7 @@ class TestRequestWorkflow(IntegrationTestCase):
 
     def test_reader_cannot_run_staff_actions(self):
         name = self._submit()["name"]
-        for action in ("Duyệt", "Từ chối", "Trả tài liệu"):
+        for action in ("Duyệt", "Từ chối", "Chuyển lãnh đạo", "Giao tài liệu", "Nhận trả"):
             with self.assertRaises(Exception, msg=action):
                 self._act(READER_A, "Usage Request", name, action, text="x")
 
@@ -186,9 +208,12 @@ class TestRequestWorkflow(IntegrationTestCase):
     def test_actions_must_follow_order(self):
         name = self._submit()["name"]
         with self.assertRaises(Exception):
-            self._act(OFFICER, "Usage Request", name, "Trả tài liệu")  # not yet approved
+            self._act(OFFICER, "Usage Request", name, "Giao tài liệu")  # not yet approved
         self._act(OFFICER, "Usage Request", name, "Duyệt")
-        self._act(OFFICER, "Usage Request", name, "Trả tài liệu")
+        with self.assertRaises(Exception):
+            self._act(OFFICER, "Usage Request", name, "Nhận trả")  # not handed over yet
+        self._act(OFFICER, "Usage Request", name, "Giao tài liệu")
+        self._act(OFFICER, "Usage Request", name, "Nhận trả")
         doc = frappe.get_doc("Usage Request", name)
         self.assertEqual(doc.workflow_state, "Đã trả")
         self.assertTrue(doc.returned_date)
@@ -209,7 +234,7 @@ class TestRequestWorkflow(IntegrationTestCase):
         frappe.set_user(READER_A)
         self.assertEqual({a["action"] for a in api.get_actions("Usage Request", name)}, {"Hủy phiếu"})
         frappe.set_user(OFFICER)
-        self.assertEqual({a["action"] for a in api.get_actions("Usage Request", name)}, {"Duyệt", "Từ chối"})
+        self.assertEqual({a["action"] for a in api.get_actions("Usage Request", name)}, {"Duyệt", "Từ chối", "Chuyển lãnh đạo"})
 
     def test_copy_request_lifecycle(self):
         frappe.set_user(READER_A)

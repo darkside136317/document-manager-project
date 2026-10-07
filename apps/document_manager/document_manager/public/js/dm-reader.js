@@ -360,12 +360,20 @@
     }, extra);
   }
 
-  components.registerForm = function () {
+  components.registerForm = function (config) {
+    config = config || {};
     return guestForm({
       v: { full_name: "", email: "", phone: "", id_number: "", organization: "", position: "", address: "", purpose: "" },
+      required: config.required || {}, // field -> label, from the registration template
       submit: function () {
         if (!this.v.full_name.trim() || !this.v.email.trim()) {
           this.error = "Vui lòng nhập họ tên và email.";
+          return Promise.resolve();
+        }
+        var self = this;
+        var missing = Object.keys(this.required).filter(function (field) { return !String(self.v[field] || "").trim(); });
+        if (missing.length) {
+          this.error = "Vui lòng nhập " + this.required[missing[0]].toLowerCase() + ".";
           return Promise.resolve();
         }
         return this.run(api.register(Object.assign({ website: this.website }, this.v)));
@@ -442,7 +450,7 @@
         });
       },
       send: function () {
-        if (!this.purpose.trim()) { this.error = "Vui lòng nhập mục đích trước khi gửi."; return Promise.resolve(); }
+        if (config.requirePurpose !== false && !this.purpose.trim()) { this.error = "Vui lòng nhập mục đích trước khi gửi."; return Promise.resolve(); }
         if (!this.items.length) { this.error = "Phiếu chưa có hồ sơ, văn bản nào."; return Promise.resolve(); }
         return this.work(api.saveRequest(this.doctype, this.payload(), this.name, true), function () { nav.reload(); });
       },

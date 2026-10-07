@@ -12,7 +12,9 @@ STAFF = ("Reading Room Officer", "Document Admin")
 STATE_STYLE = {
     "Nháp": "Inverse",
     "Chờ duyệt": "Warning",
+    "Chờ lãnh đạo duyệt": "Warning",
     "Đã duyệt": "Success",
+    "Đang sử dụng": "Info",
     "Từ chối": "Danger",
     "Đã trả": "Primary",
     "Đã hoàn thành": "Primary",
@@ -23,30 +25,49 @@ STATE_STYLE = {
 }
 
 
-def _request_workflow(final_state: str, final_action: str) -> dict:
-    return {
-        "states": [
-            ("Nháp", 0, "Reader"),
-            ("Chờ duyệt", 1, "Reading Room Officer"),
-            ("Đã duyệt", 1, "Reading Room Officer"),
-            ("Từ chối", 1, "Reading Room Officer"),
-            (final_state, 1, "Reading Room Officer"),
-            ("Đã hủy", 1, "Document Admin"),
-        ],
-        # (from, action, to, roles, allow_self_approval)
-        "transitions": [
-            ("Nháp", "Gửi duyệt", "Chờ duyệt", ("Reader", *STAFF), 1),
-            ("Chờ duyệt", "Duyệt", "Đã duyệt", STAFF, 0),
-            ("Chờ duyệt", "Từ chối", "Từ chối", STAFF, 0),
-            ("Chờ duyệt", "Hủy phiếu", "Đã hủy", ("Reader",), 1),
-            ("Đã duyệt", final_action, final_state, STAFF, 1),
-        ],
-    }
+LEADER = ("Archive Leader", "Document Admin")
+
+
+def _request_workflow(final_state: str, in_use: bool) -> dict:
+    """Nháp → Chờ duyệt (phòng đọc) → [Chờ lãnh đạo duyệt] → Đã duyệt → [Đang sử dụng →] final state.
+
+    The reading room approves by itself only a slip that needs no leader (`doc.requires_leader`);
+    Document Admin can always decide. The reader withdraws a slip nobody decided on yet.
+    """
+    states = [
+        ("Nháp", 0, "Reader"),
+        ("Chờ duyệt", 1, "Reading Room Officer"),
+        ("Chờ lãnh đạo duyệt", 1, "Archive Leader"),
+        ("Đã duyệt", 1, "Reading Room Officer"),
+        ("Từ chối", 1, "Reading Room Officer"),
+    ]
+    # (from, action, to, roles, allow_self_approval, condition)
+    transitions = [
+        ("Nháp", "Gửi duyệt", "Chờ duyệt", ("Reader", *STAFF), 1, None),
+        ("Chờ duyệt", "Chuyển lãnh đạo", "Chờ lãnh đạo duyệt", STAFF, 0, None),
+        ("Chờ duyệt", "Duyệt", "Đã duyệt", ("Reading Room Officer",), 0, "doc.requires_leader == 0"),
+        ("Chờ duyệt", "Duyệt", "Đã duyệt", ("Document Admin",), 0, None),
+        ("Chờ duyệt", "Từ chối", "Từ chối", STAFF, 0, None),
+        ("Chờ duyệt", "Hủy phiếu", "Đã hủy", ("Reader",), 1, None),
+        ("Chờ lãnh đạo duyệt", "Duyệt", "Đã duyệt", LEADER, 0, None),
+        ("Chờ lãnh đạo duyệt", "Từ chối", "Từ chối", LEADER, 0, None),
+        ("Chờ lãnh đạo duyệt", "Trả lại phòng đọc", "Chờ duyệt", LEADER, 1, None),
+        ("Chờ lãnh đạo duyệt", "Hủy phiếu", "Đã hủy", ("Reader",), 1, None),
+        ("Đã duyệt", "Hủy phiếu", "Đã hủy", ("Document Admin",), 1, None),
+    ]
+    if in_use:
+        states.append(("Đang sử dụng", 1, "Reading Room Officer"))
+        transitions += [("Đã duyệt", "Giao tài liệu", "Đang sử dụng", STAFF, 1, None),
+                        ("Đang sử dụng", "Nhận trả", final_state, STAFF, 1, None)]
+    else:
+        transitions.append(("Đã duyệt", "Hoàn thành", final_state, STAFF, 1, None))
+    states += [(final_state, 1, "Reading Room Officer"), ("Đã hủy", 1, "Document Admin")]
+    return {"states": states, "transitions": transitions}
 
 
 WORKFLOWS = {
-    "Usage Request": {"field": "workflow_state", **_request_workflow("Đã trả", "Trả tài liệu")},
-    "Copy Request": {"field": "workflow_state", **_request_workflow("Đã hoàn thành", "Hoàn thành")},
+    "Usage Request": {"field": "workflow_state", **_request_workflow("Đã trả", in_use=True)},
+    "Copy Request": {"field": "workflow_state", **_request_workflow("Đã hoàn thành", in_use=False)},
     "Reader Feedback": {
         "field": "status",
         "states": [
@@ -55,9 +76,9 @@ WORKFLOWS = {
             ("Đã phản hồi", 0, "Reading Room Officer"),
         ],
         "transitions": [
-            ("Mới", "Đánh dấu đã xem", "Đã xem", STAFF, 1),
-            ("Mới", "Phản hồi", "Đã phản hồi", STAFF, 1),
-            ("Đã xem", "Phản hồi", "Đã phản hồi", STAFF, 1),
+            ("Mới", "Đánh dấu đã xem", "Đã xem", STAFF, 1, None),
+            ("Mới", "Phản hồi", "Đã phản hồi", STAFF, 1, None),
+            ("Đã xem", "Phản hồi", "Đã phản hồi", STAFF, 1, None),
         ],
     },
 }
@@ -115,11 +136,11 @@ def _ensure_workflow(doctype: str, spec: dict):
     wf.override_status = 0
     for state, doc_status, role in spec["states"]:
         wf.append("states", {"state": state, "doc_status": str(doc_status), "allow_edit": role})
-    for state, action, next_state, roles, self_approval in spec["transitions"]:
+    for state, action, next_state, roles, self_approval, condition in spec["transitions"]:
         for role in roles:
             wf.append("transitions", {
                 "state": state, "action": action, "next_state": next_state,
-                "allowed": role, "allow_self_approval": self_approval,
+                "allowed": role, "allow_self_approval": self_approval, "condition": condition,
             })
     wf.flags.ignore_permissions = True
     wf.save()

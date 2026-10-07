@@ -22,6 +22,9 @@ PRINT_FORMATS = {
     "Archival File": {"standard": "Archival File Standard", "contents": "Archival File Contents"},
     "Archive Document": {"standard": "Archive Document Standard"},
     "Catalog": {"standard": "Catalog Standard"},
+    "Usage Request": {"standard": "Usage Request Standard", "pickup": "Usage Request Pickup"},
+    "Copy Request": {"standard": "Copy Request Standard"},
+    "Reader": {"card": "Reader Card"},
 }
 TREE_LEVELS = {
     None: ("Fonds", "fonds_name", "fonds_code", None),

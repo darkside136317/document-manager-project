@@ -17,7 +17,7 @@ const OUT = process.env.OUT_DIR || "out";
 fs.mkdirSync(OUT, { recursive: true });
 const BASE = process.env.BASE_URL || "http://localhost:8888";
 const RUN = Date.now() % 1000000;
-const TAG = `R${RUN}`;
+const TAG = `E2E-R${RUN}`;
 const EMAIL = `e2e.newreader.${RUN}@example.com`;
 const NEW_PW = `Kh!${RUN}-Doc-gia-Moi`;
 const created = [];

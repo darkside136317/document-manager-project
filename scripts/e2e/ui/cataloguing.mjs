@@ -126,6 +126,12 @@ try {
   });
 
   await run("search finds the document by its CONTENT, with a highlight, and by an advanced filter", async () => {
+    // saving the description sends the document through processing again: its content reaches the index a few seconds later
+    for (let i = 0; i < 24; i++) {
+      const found = await (await context.request.get(`${API}.search.search_documents`, { params: { query: "zebra" } })).json();
+      if (found.message?.total === 1) break;
+      await page.waitForTimeout(2500);
+    }
     await page.goto(`${BASE}/dashboard/tim-kiem?tab=van-ban&q=zebra`, { waitUntil: "networkidle" });
     await page.getByText("1 kết quả").waitFor({ timeout: 20000 });
     await page.locator("mark").first().waitFor();

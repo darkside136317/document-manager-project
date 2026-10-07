@@ -112,7 +112,8 @@
       "read": 1,
       "if_owner": 0,
       "write": 0
-    }
+    },
+    {"role": "Archive Leader", "read": 1}
   ],
   "sort_field": "modified",
   "sort_order": "DESC",

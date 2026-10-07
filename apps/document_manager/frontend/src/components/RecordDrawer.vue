@@ -4,6 +4,7 @@ import { api } from "../lib/api.js";
 import { blankRecord, missingRequired } from "../lib/doctype.js";
 import { toast } from "../lib/toast.js";
 import ConfirmDialog from "./ConfirmDialog.vue";
+import { extrasFor } from "./extras.js";
 import Drawer from "./Drawer.vue";
 import FormRenderer from "./FormRenderer.vue";
 import Icon from "./Icon.vue";
@@ -27,6 +28,7 @@ const fieldErrors = reactive({});
 const confirmDelete = reactive({ open: false, busy: false, error: "" });
 
 const editing = computed(() => Boolean(props.name));
+const extra = computed(() => extrasFor[props.meta.doctype] || null);
 const canWrite = computed(() => (editing.value ? props.meta.permissions.write : props.meta.permissions.create));
 const canDelete = computed(() => editing.value && props.meta.permissions.delete);
 const title = computed(() => {
@@ -45,13 +47,15 @@ function resetMessages() {
   for (const key of Object.keys(fieldErrors)) delete fieldErrors[key];
 }
 
-async function load() {
+// `quiet` re-reads the record without swapping the form for the spinner, so an extras panel that asked for
+// the refresh (and may have a dialog open) is not torn down underneath itself.
+async function load({ quiet = false } = {}) {
   resetMessages();
   if (!editing.value) {
     assign(blankRecord(props.meta, props.defaults));
     return;
   }
-  loading.value = true;
+  if (!quiet) loading.value = true;
   try {
     assign({ ...(await api.get(props.meta.doctype, props.name)) });
   } catch (e) {
@@ -119,6 +123,7 @@ async function remove() {
         :read-only="!canWrite"
         :link-filters="(field) => linkFilters(field, record)"
       />
+      <component :is="extra" v-if="extra && editing && Object.keys(record).length" :record="record" :meta="meta" @changed="load({ quiet: true })" />
     </template>
     <template #footer>
       <button v-if="canDelete" class="btn mr-auto text-danger" type="button" :disabled="saving" @click="confirmDelete.open = true">

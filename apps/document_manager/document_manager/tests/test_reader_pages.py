@@ -210,12 +210,12 @@ class TestReaderPages(IntegrationTestCase):
     def test_sign_up_page_follows_the_site_setting(self):
         with patch.object(registration, "registration_settings", return_value=frappe._dict(allow_self_registration=1, require_approval=1)):
             body = render("/dang-ky")[1]
-        self.assertIn("registerForm()", body)
+        self.assertIn("registerForm(", body)
         self.assertIn("Cán bộ sẽ xem xét yêu cầu", body)
         with patch("document_manager.www.dang_ky.registration_settings",
                    return_value=frappe._dict(allow_self_registration=0, require_approval=1)):
             body = render("/dang-ky")[1]
-        self.assertNotIn("registerForm()", body)
+        self.assertNotIn("registerForm(", body)
         self.assertIn("chưa mở đăng ký trực tuyến", body)
         with patch("document_manager.www.dang_ky.registration_settings",
                    return_value=frappe._dict(allow_self_registration=1, require_approval=0)):
@@ -422,6 +422,15 @@ class TestReaderPages(IntegrationTestCase):
         status, location = render("/usage_requests", "Guest")
         self.assertTrue(location.startswith("/dang-nhap"), location)
 
-    def test_staff_still_use_the_old_queue_pages(self):
-        for path in ("/usage_requests", "/copy_requests", "/reader_feedbacks"):
-            self.assertEqual(render(path, OFFICER)[0], 200, path)
+    def test_staff_are_sent_to_the_staff_app_from_the_old_pages(self):
+        for old, new in (("/usage_requests", "/dashboard/doc-gia/phieu-su-dung"), ("/copy_requests", "/dashboard/doc-gia/phieu-sao-chup"),
+                         ("/reader_feedbacks", "/dashboard/doc-gia/gop-y"), ("/usage_requests/form?name=UR-1", "/dashboard/doc-gia/phieu-su-dung/UR-1"),
+                         ("/readers", "/dashboard/doc-gia/doc-gia"), ("/readers/form?name=RDR-1", "/dashboard/doc-gia/doc-gia"),
+                         ("/reader_settings", "/dashboard/doc-gia/thiet-lap-doc-gia")):
+            status, location = render(old, OFFICER)
+            self.assertEqual((status, location), (302, new), old)
+
+    def test_the_staff_only_old_pages_send_readers_to_the_portal(self):
+        for old in ("/readers", "/reader_settings"):
+            self.assertEqual(render(old, READER), (302, "/portal"), old)
+            self.assertTrue(render(old, "Guest")[1].startswith("/dang-nhap"), old)
