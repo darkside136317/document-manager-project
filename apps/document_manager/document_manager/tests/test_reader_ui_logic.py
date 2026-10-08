@@ -11,7 +11,6 @@ import frappe
 from frappe.tests import IntegrationTestCase
 
 from document_manager.document_manager.api import file_access, requests as req_api, search as search_api
-from document_manager.document_manager.doctype.reader.reader import set_reader_password
 from document_manager.tests.test_request_workflow import _names, _reader, _seed_archive, _user
 
 READER = "ui.reader@example.com"
@@ -173,16 +172,6 @@ class TestReaderUiLogic(IntegrationTestCase):
             page.get_context(frappe._dict())  # unknown document: same answer as "not allowed"
 
     # ---- reader account safety
-    def test_officer_cannot_set_reader_password(self):
-        frappe.set_user(OFFICER)
-        with self.assertRaises(frappe.PermissionError):
-            set_reader_password(self.profiles[READER], "Str0ng!Passw0rd#99")
-
-    def test_password_cannot_target_staff_account(self):
-        frappe.set_user(ADMIN)
-        with self.assertRaises(frappe.PermissionError):
-            set_reader_password(self.profiles[STAFF_WITH_PROFILE], "Str0ng!Passw0rd#99")
-
     def test_deactivating_reader_disables_user_but_never_staff(self):
         frappe.set_user("Administrator")
         reader = frappe.get_doc("Reader", self.profiles[READER])

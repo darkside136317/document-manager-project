@@ -15,12 +15,14 @@ from frappe.utils import add_days, cint, getdate, nowdate
 
 from document_manager.document_manager.permissions import assert_roles
 from document_manager.document_manager.services import audit
+from document_manager.document_manager.services.queries import bounded_scan, capped_count, total_of_short_page
 
 DOCTYPE = audit.LOG_DOCTYPE
 ADMIN_ROLES = ("Document Admin", "System Manager")
 MAX_PAGE = 200
 MAX_EXPORT = 50_000
 MIN_KEEP_DAYS = 7
+SEARCH_WINDOW_DAYS = 30  # a text search with no dates looks at this many recent days: a substring scan of the whole log is slow
 LIST_FIELDS = ["name", "activity_type", "reference_doctype", "reference_name", "user", "ip_address", "timestamp", "description"]
 
 
@@ -67,11 +69,22 @@ def list_logs(activity_type=None, user=None, reference_doctype=None, reference_n
     _require()
     params = _params(activity_type=activity_type, user=user, reference_doctype=reference_doctype, reference_name=reference_name,
                      search=search, date_from=date_from, date_to=date_to)
+    window = None
+    if params.get("search") and not params.get("date_from"):
+        window = params["date_from"] = str(add_days(nowdate(), -SEARCH_WINDOW_DAYS))
     filters, or_filters = _conditions(params)
     page, size = max(1, cint(page) or 1), min(MAX_PAGE, max(1, cint(page_size) or 50))
-    rows = frappe.get_all(DOCTYPE, filters=filters, or_filters=or_filters, fields=LIST_FIELDS, order_by="timestamp desc, name desc",
+    if or_filters:
+        with bounded_scan():
+            rows = frappe.get_all(DOCTYPE, filters=filters, or_filters=or_filters, fields=LIST_FIELDS,
+                                  order_by="timestamp desc, name desc", start=(page - 1) * size, page_length=size)
+            total, capped = total_of_short_page(rows, page, size), False
+            if total is None:
+                total, capped = capped_count(DOCTYPE, filters, or_filters)
+        return {"data": rows, "total": total, "total_capped": capped, "searched_from": window, "page": page, "page_size": size}
+    rows = frappe.get_all(DOCTYPE, filters=filters, fields=LIST_FIELDS, order_by="timestamp desc, name desc",
                           start=(page - 1) * size, page_length=size)
-    count = frappe.get_all(DOCTYPE, filters=filters, or_filters=or_filters, fields=[{"COUNT": "name", "as": "c"}])
+    count = frappe.get_all(DOCTYPE, filters=filters, fields=[{"COUNT": "name", "as": "c"}])
     return {"data": rows, "total": cint(count[0].c) if count else 0, "page": page, "page_size": size}
 
 

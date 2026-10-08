@@ -12,6 +12,7 @@ from frappe import _
 from frappe.utils import cint
 
 from document_manager.document_manager.services.errors import retry_on_deadlock
+from document_manager.document_manager.services.queries import bounded_scan, capped_count, total_of_short_page
 from document_manager.document_manager.services.ui import (
     MAX_TABLE_ROWS,
     assert_master,
@@ -83,11 +84,21 @@ def get_list(doctype, search=None, filters=None, order_by=None, page=1, page_siz
         columns = ["name", *info["search_fields"]]
         or_conditions = [[doctype, c, "like", f"%{search}%"] for c in dict.fromkeys(columns)]
 
+    if or_conditions:  # a text search scans the table: count to a ceiling, not to the end, and do not run for ever
+        with bounded_scan():
+            data = frappe.get_list(
+                doctype, fields=fields, filters=conditions, or_filters=or_conditions,
+                order_by=_order_by(meta, order_by), start=(page - 1) * page_size, page_length=page_size,
+            )
+            total, capped = total_of_short_page(data, page, page_size), False
+            if total is None:
+                total, capped = capped_count(doctype, conditions, or_conditions)
+        return {"data": data, "total": total, "total_capped": capped, "page": page, "page_size": page_size}
     data = frappe.get_list(
-        doctype, fields=fields, filters=conditions, or_filters=or_conditions,
-        order_by=_order_by(meta, order_by), start=(page - 1) * page_size, page_length=page_size,
+        doctype, fields=fields, filters=conditions, order_by=_order_by(meta, order_by),
+        start=(page - 1) * page_size, page_length=page_size,
     )
-    return {"data": data, "total": _count(doctype, conditions, or_conditions), "page": page, "page_size": page_size}
+    return {"data": data, "total": _count(doctype, conditions), "page": page, "page_size": page_size}
 
 
 def _record(doc, info) -> dict:

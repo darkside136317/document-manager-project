@@ -22,6 +22,7 @@ from frappe.utils import cint, getdate
 
 from document_manager.document_manager.services import search_index
 from document_manager.document_manager.services.errors import log_exception
+from document_manager.document_manager.services.queries import bounded_scan, capped_count, total_of_short_page
 
 MAX_PAGE_SIZE = 100
 
@@ -60,6 +61,17 @@ def _count(doctype: str, filters, or_filters=None) -> int:
     return rows[0].c if rows else 0
 
 
+def _totals(doctype: str, filters, or_filters, scanning: bool, rows=(), page: int = 1, page_size: int = 20) -> dict:
+    """{"total": n} and, for a substring search, {"total_capped": bool}: counting every match would scan the whole table."""
+    if scanning:
+        known = total_of_short_page(rows, page, page_size)
+        if known is not None:  # the page was not full: that is the whole answer, no second scan
+            return {"total": known, "total_capped": False}
+        total, capped = capped_count(doctype, filters, or_filters)
+        return {"total": total, "total_capped": capped}
+    return {"total": _count(doctype, filters, or_filters)}
+
+
 # ---------------------------------------------------------------------------
 # Archival files
 # ---------------------------------------------------------------------------
@@ -90,13 +102,15 @@ def search_files(params: dict, page=1, page_size=20) -> dict:
     page, page_size = _paging(page, page_size)
     filters, or_filters = file_conditions(params)
 
-    data = frappe.get_list(
-        "Archival File", filters=filters, or_filters=or_filters, fields=FILE_FIELDS,
-        order_by=FILE_SORTS.get(params.get("sort_by"), FILE_SORTS["modified"]),
-        start=(page - 1) * page_size, page_length=page_size,
-    )
-    return {"data": data, "total": _count("Archival File", filters, or_filters), "page": page,
-            "page_size": page_size, "engine": "database"}
+    scanning = bool(or_filters) or "file_title" in params or "file_number" in params
+    with bounded_scan():
+        data = frappe.get_list(
+            "Archival File", filters=filters, or_filters=or_filters, fields=FILE_FIELDS,
+            order_by=FILE_SORTS.get(params.get("sort_by"), FILE_SORTS["modified"]),
+            start=(page - 1) * page_size, page_length=page_size,
+        )
+        totals = _totals("Archival File", filters, or_filters, scanning, data, page, page_size)
+    return {"data": data, **totals, "page": page, "page_size": page_size, "engine": "database"}
 
 
 # ---------------------------------------------------------------------------
@@ -141,14 +155,16 @@ def document_conditions(params: dict) -> tuple[list, list | None]:
 
 def _search_documents_db(params: dict, page: int, page_size: int) -> dict:
     filters, or_filters = document_conditions(params)
-    rows = frappe.get_list(
-        "Archive Document", filters=filters, or_filters=or_filters, fields=DOCUMENT_FIELDS,
-        order_by=DOCUMENT_SORTS.get(params.get("sort_by"), DOCUMENT_SORTS["modified"]),
-        start=(page - 1) * page_size, page_length=page_size,
-    )
+    scanning = bool(or_filters) or any(f in params for f in DOCUMENT_LIKES)
+    with bounded_scan():
+        rows = frappe.get_list(
+            "Archive Document", filters=filters, or_filters=or_filters, fields=DOCUMENT_FIELDS,
+            order_by=DOCUMENT_SORTS.get(params.get("sort_by"), DOCUMENT_SORTS["modified"]),
+            start=(page - 1) * page_size, page_length=page_size,
+        )
+        totals = _totals("Archive Document", filters, or_filters, scanning, rows, page, page_size)
     data = [{**row, "id": row.name, "_formatted": {}} for row in rows]
-    return {"data": data, "total": _count("Archive Document", filters, or_filters), "page": page,
-            "page_size": page_size, "query": params.get("query", ""), "engine": "database"}
+    return {"data": data, **totals, "page": page, "page_size": page_size, "query": params.get("query", ""), "engine": "database"}
 
 
 def _to_timestamp(value, end_of_day=False) -> int:

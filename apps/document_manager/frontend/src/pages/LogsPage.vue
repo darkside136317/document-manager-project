@@ -7,7 +7,7 @@ import PageHeader from "../components/PageHeader.vue";
 import PaginationBar from "../components/PaginationBar.vue";
 import { api } from "../lib/api.js";
 import { cleanLogFilters, latestPurgeDate, logDownloadUrl, prettyJson, purgeConfirmed } from "../lib/admin.js";
-import { debounce, formatDateTime, formatNumber } from "../lib/format.js";
+import { debounce, formatDate, formatDateTime, formatNumber } from "../lib/format.js";
 import { toast } from "../lib/toast.js";
 
 // The system log: search and filter, read an entry, download the result, and the guarded clean-up of old entries.
@@ -133,7 +133,8 @@ const toggleType = (type) => {
         </tbody>
       </table>
     </div>
-    <PaginationBar v-if="list.total" :page="list.page" :page-size="list.page_size" :total="list.total" @change="load" />
+    <p v-if="list.searched_from" class="m-0 border-t border-line px-4 py-2 text-sm text-ink-muted" role="status">Tìm trong nhật ký từ {{ formatDate(list.searched_from) }} trở lại đây. Chọn "Từ ngày" để tìm xa hơn.</p>
+    <PaginationBar v-if="list.total" :page="list.page" :page-size="list.page_size" :total="list.total" :capped="Boolean(list.total_capped)" @change="load" />
   </section>
 
   <Drawer :open="Boolean(entry)" :title="entry ? `Nhật ký ${entry.name}` : ''" width="560px" @close="entry = null">

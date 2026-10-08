@@ -42,7 +42,7 @@ def _count(doctype, filters, group_by=None, key=None) -> dict | int:
     """COUNT(*) per `key` (with group_by) or in total, through the permission-aware get_list."""
     fields = [{"COUNT": "name", "as": "c"}]
     if group_by:
-        rows = frappe.get_list(doctype, filters=filters, fields=[group_by, *fields], group_by=group_by)
+        rows = frappe.get_list(doctype, filters=filters, fields=[group_by, *fields], group_by=group_by, order_by=f"{group_by} asc")
         return {r.get(group_by): r.c for r in rows}
     rows = frappe.get_list(doctype, filters=filters, fields=fields)
     return rows[0].c if rows else 0

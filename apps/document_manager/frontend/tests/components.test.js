@@ -220,4 +220,10 @@ describe("dialogs and paging", () => {
     expect(last.findAll("button")[1].attributes("disabled")).toBeDefined();
     expect(mount(PaginationBar, { props: { total: 0 } }).text()).toContain("0–0 / 0");
   });
+
+  it("PaginationBar says '+' when the total stopped at its ceiling", () => {
+    const capped = mount(PaginationBar, { props: { page: 1, pageSize: 20, total: 10000, capped: true } });
+    expect(capped.text()).toContain("1–20 / 10.000+");
+    expect(mount(PaginationBar, { props: { page: 1, pageSize: 20, total: 10000 } }).text()).not.toContain("+");
+  });
 });

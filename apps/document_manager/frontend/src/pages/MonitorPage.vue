@@ -70,7 +70,7 @@ const toneText = { success: "text-success", warning: "text-warning", danger: "te
         <p class="m-0 text-2xl font-semibold" :class="toneText[diskTone(data.storage.disk)]">{{ data.storage.disk.used_percent }}% đã dùng</p>
         <p class="m-0 text-sm text-ink-soft">Còn {{ data.storage.disk.free_gb }} GB trên {{ data.storage.disk.total_gb }} GB</p>
       </template>
-      <p class="m-0 mt-1 text-sm text-ink-soft">Tệp tài liệu: {{ formatNumber(Math.round(data.storage.private_files_mb)) }} MB · kho sao lưu tệp: {{ formatBytes(data.storage.backup_store.bytes) }}</p>
+      <p class="m-0 mt-1 text-sm text-ink-soft">Tệp tài liệu: {{ data.storage.private_files_mb === null ? "đang tính…" : `${formatNumber(Math.round(data.storage.private_files_mb))} MB` }} · kho sao lưu tệp: {{ formatBytes(data.storage.backup_store.bytes) }}</p>
     </section>
 
     <section class="card px-4 py-4" aria-label="Sao lưu và kiểm tra">

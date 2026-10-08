@@ -19,20 +19,8 @@ app_license = "MIT"
 app_icon = "octicon octicon-archive"
 app_color = "#2b5797"
 
-# UI design system. Brand changes belong in theme-tokens.css; components remain stable.
-app_include_css = [
-    "/assets/document_manager/css/theme-tokens.css",
-    "/assets/document_manager/css/document-manager-ui.css",
-]
-
-web_include_css = [
-    "/assets/document_manager/css/theme-tokens.css",
-    "/assets/document_manager/css/document-manager-ui.css",
-]
-
-web_include_js = [
-    "/assets/document_manager/js/dm-portal.js",
-]
+# The staff app (/dashboard) and the reader site (/portal and the public pages) bring their own styles and scripts; nothing is
+# injected into Frappe's own pages (/login, the Desk), so the app has no *_include_css / *_include_js hooks.
 
 # =============================================================================
 # Fixtures — exported to JSON, imported on app install

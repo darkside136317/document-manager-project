@@ -179,6 +179,7 @@
       pageSize: 20,
       rows: [],
       total: 0,
+      capped: false,
       loading: false,
       error: "",
       searched: false,
@@ -244,6 +245,7 @@
         return request.then(function (result) {
           self.rows = result.data || [];
           self.total = result.total || 0;
+          self.capped = Boolean(result.total_capped);
           self.engine = result.engine || "";
           self.searched = true;
           self.pushUrl();

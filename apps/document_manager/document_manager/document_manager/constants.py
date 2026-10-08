@@ -50,10 +50,12 @@ ARCHIVE_SCREENS = [
     {"doctype": "Catalog", "slug": "muc-luc", "label": "Mục lục tài liệu", "icon": "book-open-text",
      "list_fields": ["catalog_title", "catalog_number", "record_group", "fonds"]},
     {"doctype": "Archival File", "slug": "ho-so", "label": "Hồ sơ lưu trữ", "icon": "folder",
-     "list_fields": ["file_number", "file_title", "catalog", "status", "confidentiality_level", "total_documents"]},
+     "list_fields": ["file_number", "file_title", "catalog", "status", "confidentiality_level", "total_documents"],
+     "search_fields": ["file_title", "file_number"]},
     {"doctype": "Archive Document", "slug": "van-ban", "label": "Văn bản, tài liệu", "icon": "file-text",
      "list_fields": ["document_number", "document_title", "document_date", "author", "file_type",
                      "file_size_kb", "search_index_status"],
+     "search_fields": ["document_title", "document_number", "author"],  # not the link columns: they only slow the scan
      # system-managed or shown by the file panel instead of the form
      "hide": ["file_attachment", "file_type", "file_size_kb", "checksum", "version", "preview_url", "storage_tier",
               "gridfs_file_id", "gridfs_preview_id", "last_accessed", "search_index_status", "content_text"],

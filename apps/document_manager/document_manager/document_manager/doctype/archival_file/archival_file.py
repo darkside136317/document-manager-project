@@ -9,6 +9,11 @@ from document_manager.document_manager.services.archive.counters import (
 )
 
 
+def on_doctype_update():
+    # the integrity check "same number twice in one catalogue" groups on these two columns
+    frappe.db.add_index("Archival File", ["catalog", "file_number"], "catalog_file_number")
+
+
 class ArchivalFile(Document):
     """Hồ sơ lưu trữ — Tầng 4, đơn vị nghiệp vụ chính."""
 

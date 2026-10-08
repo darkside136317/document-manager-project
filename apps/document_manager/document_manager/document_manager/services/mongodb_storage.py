@@ -18,6 +18,8 @@ from frappe.utils import cint
 
 # pymongo imports (deferred to avoid import errors during bench setup)
 _mongo_clients = {}  # one client per connection URI (a bench serves several sites)
+DOWN_KEY = "dm_mongo_down"
+DOWN_SECONDS = 30
 
 
 def _get_mongo_client():
@@ -36,8 +38,16 @@ def _get_mongo_client():
         )
 
     if uri not in _mongo_clients:
+        down = frappe.cache.get_value(DOWN_KEY)
+        if down:  # it just failed: do not wait for the same timeout again on every call
+            frappe.throw(f"MongoDB tạm thời không kết nối được ({down}); hệ thống sẽ thử lại sau ít phút.")
         client = pymongo.MongoClient(uri, serverSelectionTimeoutMS=5000)
-        client.admin.command("ping")  # fail now, not on the first read
+        try:
+            client.admin.command("ping")  # fail now, not on the first read
+        except Exception as error:
+            frappe.cache.set_value(DOWN_KEY, " ".join(str(error).split())[:120].split("mongodb")[0] or type(error).__name__,
+                                   expires_in_sec=DOWN_SECONDS)
+            raise
         _mongo_clients[uri] = client
     return _mongo_clients[uri]
 
@@ -156,31 +166,6 @@ class MongoGridFSStorage:
 
         return self.fs.exists(ObjectId(file_id))
 
-    def list_files(self, query: dict | None = None, limit: int = 100) -> list[dict]:
-        """List files in GridFS matching a query.
-
-        Args:
-            query: MongoDB query dict (applied to metadata)
-            limit: Maximum number of results
-
-        Returns:
-            list[dict]: File info dicts
-        """
-        cursor = self.db[f"{self.collection_name}.files"].find(
-            query or {}, limit=limit
-        )
-        return [
-            {
-                "file_id": str(doc["_id"]),
-                "filename": doc.get("filename"),
-                "content_type": doc.get("contentType"),
-                "length": doc.get("length"),
-                "upload_date": doc.get("uploadDate"),
-                "metadata": doc.get("metadata", {}),
-            }
-            for doc in cursor
-        ]
-
 
 # --- Convenience functions for use in hooks and workers ---
 
@@ -236,60 +221,6 @@ def upload_document_file(doc_name: str, file_content: bytes, filename: str) -> s
     }, update_modified=False)
 
     return file_id
-
-
-def upload_preview_file(doc_name: str, preview_content: bytes, filename: str) -> str:
-    """Upload a preview file (PDF/thumbnail) for an Archive Document.
-
-    Args:
-        doc_name: Archive Document name
-        preview_content: Preview file bytes
-        filename: Preview filename
-
-    Returns:
-        str: GridFS preview file ID
-    """
-    storage = MongoGridFSStorage(collection_name="previews")
-
-    file_id = storage.upload_file(
-        preview_content,
-        filename,
-        content_type="application/pdf",
-        metadata={"doc_name": doc_name},
-    )
-
-    frappe.db.set_value(
-        "Archive Document", doc_name, "gridfs_preview_id", file_id,
-        update_modified=False,
-    )
-
-    return file_id
-
-
-def download_document_file(doc_name: str) -> tuple[bytes, str]:
-    """Download the original file for an Archive Document.
-
-    Args:
-        doc_name: Archive Document name
-
-    Returns:
-        tuple: (file_content, filename)
-    """
-    doc = frappe.get_doc("Archive Document", doc_name)
-    if not doc.gridfs_file_id:
-        frappe.throw(f"Văn bản {doc_name} chưa có file trong GridFS")
-
-    storage = MongoGridFSStorage(collection_name="documents")
-    info = storage.get_file_info(doc.gridfs_file_id)
-    content = storage.download_file(doc.gridfs_file_id)
-
-    # Update last_accessed
-    frappe.db.set_value(
-        "Archive Document", doc_name, "last_accessed", frappe.utils.now(),
-        update_modified=False,
-    )
-
-    return content, info["filename"]
 
 
 # --- Cleanup (a deleted/replaced document must not leave its bytes behind) ---

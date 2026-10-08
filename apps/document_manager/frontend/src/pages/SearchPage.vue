@@ -25,7 +25,7 @@ const PAGE_SIZE = 20;
 const FILE_TYPES = ["PDF", "DOCX", "XLSX", "JPG", "PNG", "TIFF", "Khác"];
 
 const state = reactive(fromQuery(route.query));
-const result = reactive({ rows: [], total: 0, engine: "", loading: false, error: "", done: false });
+const result = reactive({ rows: [], total: 0, capped: false, engine: "", loading: false, error: "", done: false });
 const fileMeta = ref(null);
 const statuses = ref([]);
 const saved = ref(loadSaved());
@@ -45,7 +45,7 @@ async function run() {
     const call = state.tab === "ho-so" ? api.search.files : api.search.documents;
     const data = await call(toApiParams(state, PAGE_SIZE));
     if (mine !== ticket) return;
-    Object.assign(result, { rows: data.data, total: data.total, engine: data.engine || "", done: true });
+    Object.assign(result, { rows: data.data, total: data.total, capped: Boolean(data.total_capped), engine: data.engine || "", done: true });
   } catch (e) {
     if (mine === ticket) Object.assign(result, { error: e.message, rows: [], total: 0, done: true });
   } finally {
@@ -168,7 +168,7 @@ const activeCount = computed(() => Object.keys(state.filters).length);
     <div class="flex flex-wrap items-center gap-3 border-b border-line px-4 py-3">
       <h2 class="m-0 flex-1 text-sm font-semibold">
         <template v-if="result.loading">Đang tìm...</template>
-        <template v-else-if="result.done">{{ formatNumber(result.total) }} kết quả</template>
+        <template v-else-if="result.done">{{ formatNumber(result.total) }}{{ result.capped ? "+" : "" }} kết quả</template>
       </h2>
       <span v-if="result.engine && !result.loading" class="badge" :class="result.engine === 'meilisearch' ? 'badge-success' : 'badge-muted'">{{ engineLabel }}</span>
       <label class="sr-only" for="s-sort">Sắp xếp</label>
@@ -197,6 +197,6 @@ const activeCount = computed(() => Object.keys(state.filters).length);
         <p v-if="row._formatted?.content_text" class="m-0 mt-2 text-sm text-ink-soft" v-html="safeHighlight(row._formatted.content_text)"></p>
       </li>
     </ul>
-    <PaginationBar v-if="result.rows.length" :page="state.page" :page-size="PAGE_SIZE" :total="result.total" @change="(p) => go({ page: p })" />
+    <PaginationBar v-if="result.rows.length" :page="state.page" :page-size="PAGE_SIZE" :total="result.total" :capped="result.capped" @change="(p) => go({ page: p })" />
   </section>
 </template>

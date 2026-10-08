@@ -1,9 +1,22 @@
 # -*- coding: utf-8 -*-
 """Live status of the external services (never raises, never leaks credentials)."""
 
+import frappe
 
-def check_services() -> dict:
-    return {"mongodb": _check_mongodb(), "meilisearch": _check_meilisearch()}
+CACHE_KEY = "dm_service_health"
+CACHE_OK_SECONDS = 20
+CACHE_DOWN_SECONDS = 60  # a probe of a service that is down waits for its timeout: do not repeat it on every refresh
+
+
+def check_services(fresh: bool = False) -> dict:
+    """Both probes; the answer is kept for a few seconds so that a monitor screen refreshing itself does not hammer them."""
+    if not fresh:
+        cached = frappe.cache.get_value(CACHE_KEY)
+        if cached:
+            return cached
+    result = {"mongodb": _check_mongodb(), "meilisearch": _check_meilisearch()}
+    frappe.cache.set_value(CACHE_KEY, result, expires_in_sec=CACHE_OK_SECONDS if all(s["ok"] for s in result.values()) else CACHE_DOWN_SECONDS)
+    return result
 
 
 def _check_mongodb() -> dict:

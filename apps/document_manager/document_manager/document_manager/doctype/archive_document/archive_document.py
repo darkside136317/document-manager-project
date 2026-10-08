@@ -1,11 +1,15 @@
 # -*- coding: utf-8 -*-
-import hashlib
 
 import frappe
 from frappe.model.document import Document
 
 from document_manager.document_manager.services.archive.counters import refresh_file_document_count
 from document_manager.document_manager.services.mongodb_storage import enqueue_delete_gridfs_files
+
+
+def on_doctype_update():
+    # the integrity check "same number twice in one file" groups on these two columns
+    frappe.db.add_index("Archive Document", ["archival_file", "document_number"], "archival_file_document_number")
 
 
 class ArchiveDocument(Document):
@@ -48,8 +52,3 @@ class ArchiveDocument(Document):
             }
             self.file_type = type_map.get(ext, "Khác")
 
-    def compute_checksum(self, file_content: bytes) -> str:
-        """Tính SHA-256 checksum cho nội dung file."""
-        sha = hashlib.sha256(file_content)
-        self.checksum = sha.hexdigest()
-        return self.checksum

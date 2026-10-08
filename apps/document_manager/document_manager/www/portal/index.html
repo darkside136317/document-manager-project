@@ -89,7 +89,7 @@
 
   <section id="results" aria-live="polite" aria-label="Kết quả tìm kiếm">
     <p class="muted small" x-show="searched && total" x-cloak>
-      Hiển thị <strong x-text="from + '–' + to"></strong> trong <strong x-text="total"></strong> kết quả
+      Hiển thị <strong x-text="from + '–' + to"></strong> trong <strong x-text="total + (capped ? '+' : '')"></strong> kết quả
       <span x-show="engine === 'meilisearch'" x-cloak>· tìm theo cả nội dung văn bản</span>
     </p>
 

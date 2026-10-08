@@ -19,7 +19,7 @@ def get_service_health():
     assert_roles(*ADMIN_ROLES)
     from document_manager.document_manager.services.health import check_services
 
-    return check_services()
+    return check_services(fresh=True)
 
 
 def _queues() -> list[dict]:
@@ -42,6 +42,32 @@ def _workers() -> int | None:
         return None
 
 
+FILES_SIZE_KEY = "dm_private_files_bytes"
+
+
+def measure_private_files() -> int:
+    """Total size of the uploaded files. Walking a folder of a million files takes a while: this runs as a background job."""
+    total = 0
+    private = frappe.get_site_path("private", "files")
+    if os.path.isdir(private):
+        for entry in os.scandir(private):
+            try:
+                total += entry.stat().st_size if entry.is_file() else 0
+            except OSError:
+                pass
+    frappe.cache.set_value(FILES_SIZE_KEY, total, expires_in_sec=6 * 3600)
+    return total
+
+
+def private_files_bytes() -> int | None:
+    """The last measured size of the uploaded files; None while the first measurement is still running."""
+    size = frappe.cache.get_value(FILES_SIZE_KEY)
+    if size is None:
+        frappe.enqueue("document_manager.document_manager.api.admin.measure_private_files", queue="short", timeout=600,
+                       job_id="dm_measure_private_files", deduplicate=True, enqueue_after_commit=False)
+    return size
+
+
 @frappe.whitelist()
 def monitor():
     """Everything the monitoring screen shows in one call: services, search index, jobs, storage, users, log, backups."""
@@ -60,14 +86,7 @@ def monitor():
                 "used_percent": round((usage.total - usage.free) * 100 / usage.total)}
     except OSError:
         disk = None
-    files_size = 0
-    private = frappe.get_site_path("private", "files")
-    if os.path.isdir(private):
-        for entry in os.scandir(private):
-            try:
-                files_size += entry.stat().st_size if entry.is_file() else 0
-            except OSError:
-                pass
+    files_size = private_files_bytes()
     last_check = frappe.db.get_value("Integrity Check", {"status": ["in", ["Hoàn thành", "Phát hiện lỗi"]]},
                                      ["name", "status", "completed_at", "errors_found", "warnings_found"], order_by="completed_at desc",
                                      as_dict=True)
@@ -78,7 +97,7 @@ def monitor():
         "jobs": {"queues": _queues(), "workers": _workers(),
                  "errors_24h": frappe.db.count("Error Log", {"creation": [">", day_ago]}),
                  "failed_7d": frappe.db.count("Scheduled Job Log", {"status": "Failed", "creation": [">", week_ago]})},
-        "storage": {"disk": disk, "private_files_mb": round(files_size / (1024 * 1024), 1), "backup_store": filestore.usage()},
+        "storage": {"disk": disk, "private_files_mb": None if files_size is None else round(files_size / (1024 * 1024), 1), "backup_store": filestore.usage()},
         "users": {"staff": frappe.db.count("User", {"user_type": "System User", "enabled": 1, "name": ["not in", ["Administrator", "Guest"]]}),
                   "readers": frappe.db.count("Reader", {"is_active": 1})},
         "log": {"rows": frappe.db.count("Business Activity Log"),

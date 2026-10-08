@@ -13,7 +13,7 @@ import { debounce } from "../lib/format.js";
 const props = defineProps({ meta: { type: Object, required: true } });
 
 const PAGE_SIZE = 20;
-const state = reactive({ rows: [], total: 0, page: 1, search: "", sort: "modified desc", loading: true, error: "" });
+const state = reactive({ rows: [], total: 0, capped: false, page: 1, search: "", sort: "modified desc", loading: true, error: "" });
 const drawer = reactive({ open: false, name: null });
 let ticket = 0;
 
@@ -28,6 +28,7 @@ async function load() {
     if (mine !== ticket) return;
     state.rows = result.data;
     state.total = result.total;
+    state.capped = Boolean(result.total_capped);
   } catch (e) {
     if (mine === ticket) state.error = e.message;
   } finally {
@@ -75,7 +76,7 @@ async function afterChange() {
     </EmptyState>
     <template v-else>
       <DataTable :meta="meta" :rows="state.rows" :loading="state.loading" :sort="state.sort" @open="openRecord" @sort="onSort" />
-      <PaginationBar :page="state.page" :page-size="PAGE_SIZE" :total="state.total" @change="(p) => { state.page = p; load(); }" />
+      <PaginationBar :page="state.page" :page-size="PAGE_SIZE" :total="state.total" :capped="state.capped" @change="(p) => { state.page = p; load(); }" />
     </template>
   </section>
 

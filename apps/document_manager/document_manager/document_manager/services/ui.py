@@ -173,7 +173,7 @@ def describe(doctype: str) -> dict:
         columns.append({"fieldname": name, "label": (df.label if df else None) or name,
                         "fieldtype": df.fieldtype if df else "Data"})
     title_field = title_field_of(meta)
-    search_fields = [f.strip() for f in (meta.search_fields or "").split(",") if f.strip() in valid_columns(meta)]
+    search_fields = [f.strip() for f in (entry.get("search_fields") or (meta.search_fields or "").split(",")) if f.strip() in valid_columns(meta)]
     if not search_fields and title_field in valid_columns(meta):
         search_fields = [title_field]
 

@@ -7,6 +7,7 @@ const props = defineProps({
   page: { type: Number, default: 1 },
   pageSize: { type: Number, default: 20 },
   total: { type: Number, default: 0 },
+  capped: { type: Boolean, default: false }, // the count stopped at its ceiling: there are more
 });
 const emit = defineEmits(["change"]);
 
@@ -17,7 +18,7 @@ const to = computed(() => Math.min(props.total, props.page * props.pageSize));
 
 <template>
   <div class="flex flex-wrap items-center justify-between gap-3 border-t border-line px-4 py-3 text-sm text-ink-muted">
-    <span>Hiển thị {{ formatNumber(from) }}–{{ formatNumber(to) }} / {{ formatNumber(total) }}</span>
+    <span>Hiển thị {{ formatNumber(from) }}–{{ formatNumber(to) }} / {{ formatNumber(total) }}{{ capped ? "+" : "" }}</span>
     <div class="flex items-center gap-2">
       <button class="btn btn-icon" type="button" :disabled="page <= 1" aria-label="Trang trước" @click="emit('change', page - 1)">
         <Icon name="chevron-left" :size="16" />
