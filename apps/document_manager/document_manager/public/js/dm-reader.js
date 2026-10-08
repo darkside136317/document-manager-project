@@ -404,7 +404,8 @@
         this.busy = true;
         this.error = "";
         return api.setPassword(config.key, this.pwd).then(function (target) {
-          nav.go(safeRedirect(target) || "/portal");
+          // Frappe sends a staff account to its own desk: staff work in the staff app
+          nav.go(/^\/(desk|app)(\/|$|\?)/.test(target) ? "/dashboard" : safeRedirect(target) || "/portal");
         }).catch(function (error) {
           self.error = error.status === 410
             ? "Liên kết đã hết hạn hoặc đã được dùng. Hãy gửi yêu cầu cấp lại mật khẩu hoặc liên hệ cán bộ."

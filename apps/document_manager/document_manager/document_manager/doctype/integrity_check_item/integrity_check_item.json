@@ -1,0 +1,87 @@
+{
+  "module": "Document Manager",
+  "doctype": "DocType",
+  "document_type": "Document",
+  "engine": "InnoDB",
+  "naming_rule": "Random",
+  "autoname": "hash",
+  "quick_entry": 0,
+  "sort_field": "creation",
+  "sort_order": "ASC",
+  "name": "Integrity Check Item",
+  "title_field": "message",
+  "fields": [
+    {
+      "fieldname": "check",
+      "fieldtype": "Link",
+      "label": "Đợt kiểm tra",
+      "options": "Integrity Check",
+      "reqd": 1,
+      "search_index": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "document",
+      "fieldtype": "Link",
+      "label": "Văn bản",
+      "options": "Archive Document",
+      "search_index": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "code",
+      "fieldtype": "Data",
+      "label": "Mã lỗi",
+      "in_list_view": 1,
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "severity",
+      "fieldtype": "Select",
+      "label": "Mức độ",
+      "options": "Lỗi\nCảnh báo",
+      "default": "Lỗi",
+      "in_list_view": 1,
+      "in_standard_filter": 1
+    },
+    {
+      "fieldname": "message",
+      "fieldtype": "Small Text",
+      "label": "Nội dung"
+    },
+    {
+      "fieldname": "restorable",
+      "fieldtype": "Check",
+      "label": "Khôi phục được từ bản sao lưu"
+    },
+    {
+      "fieldname": "status",
+      "fieldtype": "Select",
+      "label": "Xử lý",
+      "options": "Chưa xử lý\nĐã khôi phục\nĐã bỏ qua",
+      "default": "Chưa xử lý",
+      "search_index": 1,
+      "in_list_view": 1,
+      "in_standard_filter": 1
+    }
+  ],
+  "permissions": [
+    {
+      "role": "Document Admin",
+      "read": 1,
+      "write": 1,
+      "delete": 1,
+      "report": 1
+    },
+    {
+      "role": "Preservation Officer",
+      "read": 1,
+      "write": 1,
+      "report": 1
+    },
+    {
+      "role": "Archive Leader",
+      "read": 1
+    }
+  ]
+}

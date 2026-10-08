@@ -114,7 +114,9 @@ jobs:
             bench --site $SITE run-tests --app document_manager --module document_manager.tests.test_slip_queue &&
             bench --site $SITE run-tests --app document_manager --module document_manager.tests.test_reader_admin &&
             bench --site $SITE run-tests --app document_manager --module document_manager.tests.test_reports &&
-            bench --site $SITE run-tests --app document_manager --module document_manager.tests.test_exchange"
+            bench --site $SITE run-tests --app document_manager --module document_manager.tests.test_exchange &&
+            bench --site $SITE run-tests --app document_manager --module document_manager.tests.test_preservation &&
+            bench --site $SITE run-tests --app document_manager --module document_manager.tests.test_administration"
       - name: Logs on failure
         if: failure()
         run: docker compose logs --no-color --tail=200

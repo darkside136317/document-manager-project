@@ -1,0 +1,19 @@
+{
+  "name": "Staff Group Role",
+  "module": "Document Manager",
+  "doctype": "DocType",
+  "document_type": "Setup",
+  "istable": 1,
+  "engine": "InnoDB",
+  "fields": [
+    {
+      "fieldname": "role",
+      "fieldtype": "Link",
+      "label": "Vai trò",
+      "options": "Role",
+      "reqd": 1,
+      "in_list_view": 1
+    }
+  ],
+  "permissions": []
+}

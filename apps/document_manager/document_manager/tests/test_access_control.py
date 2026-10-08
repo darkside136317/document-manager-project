@@ -162,7 +162,7 @@ class TestAccessControl(IntegrationTestCase):
 
     def test_staff_only_pages_exist_and_are_gated(self):
         mods = self._staff_only_modules()
-        self.assertGreater(len(mods), 8)  # guards the discovery itself; the catalogue pages now live in the SPA
+        self.assertGreater(len(mods), 1)  # guards the discovery itself; almost every staff screen now lives in the SPA
         for mod in mods:
             module = importlib.import_module(mod)
             frappe.set_user("Guest")
@@ -176,12 +176,12 @@ class TestAccessControl(IntegrationTestCase):
         for role in STAFF_TEST_ROLES + ["System Manager", "Administrator"]:
             self.assertIn(role, STAFF_ROLES)
 
-    # ---- staff pages must also respect DocType permissions (raw SQL / get_all bypass them)
+    # ---- the staff app's APIs also respect DocType permissions (raw SQL / get_all bypass them)
     def test_staff_without_doctype_permission_is_denied(self):
-        cases = {
-            "document_manager.www.backup_batches.index": "Cataloger",
-        }
-        for mod, role in cases.items():
-            frappe.set_user(_staff_email(role))
-            with self.assertRaises(frappe.PermissionError, msg=mod):
-                importlib.import_module(mod).get_context(frappe._dict())
+        from document_manager.document_manager.api import preservation, reports
+
+        frappe.set_user(_staff_email("Cataloger"))
+        with self.assertRaises(frappe.PermissionError):
+            reports.run_report("doc-gia")  # reader data: not the cataloguer's
+        with self.assertRaises(frappe.PermissionError):
+            preservation.overview()

@@ -4,7 +4,7 @@
 Run: bench --site <site> run-tests --app document_manager --module document_manager.tests.test_p0_hardening
 """
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import frappe
 from frappe.tests import IntegrationTestCase
@@ -15,7 +15,6 @@ from document_manager.document_manager.permissions import (
     has_archival_file_permission,
     has_archive_document_permission,
 )
-from document_manager.document_manager.services import backup_service
 from document_manager.document_manager.setup import install
 from document_manager.tests.test_request_workflow import _names, _reader, _seed_archive, _user
 
@@ -190,38 +189,7 @@ class TestP0Hardening(IntegrationTestCase):
         enqueue.assert_any_call(["abc123"], "documents")
         enqueue.assert_any_call(["def456"], "previews")
 
-    # ---- backup / restore tell the truth
-    def _batch(self, doctype, **values):
-        doc = frappe.get_doc({"doctype": doctype, **values}).insert(ignore_permissions=True)
-        self.addCleanup(frappe.delete_doc, doctype, doc.name, force=True, ignore_permissions=True)
-        return doc
-
-    def test_file_backup_is_never_reported_as_success(self):
-        fake = MagicMock(backup_path_db="/nonexistent/db.sql.gz")
-        with patch("frappe.utils.backups.new_backup", return_value=fake):
-            both = self._batch("Backup Batch", backup_type="Cả hai")
-            backup_service.run_backup(both.name, "Cả hai")
-            only_files = self._batch("Backup Batch", backup_type="Tệp tài liệu")
-            backup_service.run_backup(only_files.name, "Tệp tài liệu")
-            only_db = self._batch("Backup Batch", backup_type="Cơ sở dữ liệu")
-            backup_service.run_backup(only_db.name, "Cơ sở dữ liệu")
-        self.assertEqual(frappe.db.get_value("Backup Batch", both.name, "status"), "Một phần")
-        self.assertEqual(frappe.db.get_value("Backup Batch", only_files.name, "status"), "Chưa hỗ trợ")
-        self.assertEqual(frappe.db.get_value("Backup Batch", only_db.name, "status"), "Thành công")
-        self.assertIn("chưa được hỗ trợ", frappe.db.get_value("Backup Batch", both.name, "error_log"))
-
-    def test_restore_never_claims_success_and_explains_the_manual_step(self):
-        backup = self._batch("Backup Batch", backup_type="Cơ sở dữ liệu", backup_path="/tmp/db.sql.gz")
-        restore = self._batch("Restore Batch", restore_type="Cơ sở dữ liệu", source_backup=backup.name)
-        backup_service.run_restore(restore.name)
-        restore.reload()
-        self.assertEqual(restore.status, "Cần thao tác thủ công")
-        self.assertIn("bench --site", restore.error_log)
-        self.assertEqual(restore.records_restored, 0)
-
-        no_source = self._batch("Restore Batch", restore_type="Cơ sở dữ liệu")
-        backup_service.run_restore(no_source.name)
-        self.assertEqual(frappe.db.get_value("Restore Batch", no_source.name, "status"), "Lỗi")
+    # (backups and restores that tell the truth are tested in test_preservation)
 
     # ---- fresh-site seed
     def test_seed_is_idempotent_and_provides_the_default_level(self):

@@ -23,6 +23,8 @@ GROUP_READERS = "Độc giả"
 GROUP_SLIPS = "Khai thác tài liệu"
 GROUP_REPORTS = "Thống kê, báo cáo"
 GROUP_EXCHANGE = "Trao đổi dữ liệu"
+GROUP_PRESERVATION = "Bảo quản"
+GROUP_ADMIN = "Quản trị"
 
 # `slug` is the URL segment: /dashboard/danh-muc/<slug>
 MASTERS = [
@@ -80,8 +82,17 @@ INVENTORY_SCREENS = [
      "hide": ["completed_on"], "drawer_width": "1080px"},
 ]
 
+# Administration screens on the generic forms: /dashboard/quan-tri/<slug> (users, roles, log and monitor have their own pages)
+ADMIN_SCREENS = [
+    {"doctype": "Organization Info", "slug": "thong-tin-don-vi", "label": "Thông tin đơn vị", "icon": "building-2"},
+    {"doctype": "Organization Unit", "slug": "co-cau-to-chuc", "label": "Cơ cấu tổ chức", "icon": "network"},
+    {"doctype": "Staff Group", "slug": "nhom-can-bo", "label": "Nhóm cán bộ", "icon": "users",
+     "list_fields": ["group_name", "description"]},
+    {"doctype": "Document Manager Settings", "slug": "thiet-lap-he-thong", "label": "Thiết lập hệ thống", "icon": "settings"},
+]
+
 REGISTRY = {entry["doctype"]: entry for entry in [*MASTERS, *ARCHIVE_SCREENS, *READER_SCREENS, *SETTINGS_SCREENS,
-                                                   *INVENTORY_SCREENS]}
+                                                   *INVENTORY_SCREENS, *ADMIN_SCREENS]}
 MASTER_BY_DOCTYPE = REGISTRY  # kept for older imports
 
 # Files accepted for upload (documents). Legacy Office formats are stored but not text-extracted.
@@ -90,12 +101,31 @@ UPLOAD_MAX_MB = 100
 
 # Screens still served by the previous server-rendered pages while they are rebuilt in the SPA.
 # (label, href, DocType used to decide whether the user sees it, sidebar section)
-LEGACY_LINKS = [
-    ("Đợt sao lưu", "/backup_batches", "Backup Batch", "Bảo quản"),
-    ("Kiểm tra toàn vẹn", "/integrity_checks", "Integrity Check", "Bảo quản"),
-    ("Khôi phục dữ liệu", "/restore_batches", "Restore Batch", "Bảo quản"),
-    ("Nhật ký hệ thống", "/business_activity_log", "Business Activity Log", "Quản trị"),
-    ("Thiết lập hệ thống", "/document_manager_settings", "Document Manager Settings", "Quản trị"),
-    ("Thông tin đơn vị", "/app/organization-info", "Organization Info", "Quản trị"),
-    ("Cơ cấu tổ chức", "/app/organization-unit", "Organization Unit", "Quản trị"),
-]
+LEGACY_LINKS = []  # every screen is in the staff app now (kept so that older imports keep working)
+
+
+# Roles the staff app may give to a user (never System Manager / Administrator) and how they are described.
+STAFF_ASSIGNABLE_ROLES = ("Document Admin", "Cataloger", "Reading Room Officer", "Archive Leader", "Preservation Officer")
+ROLE_INFO = {
+    "Document Admin": {"label": "Quản trị tài liệu", "group": "Quản trị",
+                       "description": "Quản trị toàn bộ hệ thống: người dùng, thiết lập, sao lưu, trao đổi dữ liệu, nhật ký; có mọi quyền nghiệp vụ."},
+    "Archive Leader": {"label": "Lãnh đạo", "group": "Quản trị",
+                       "description": "Xem toàn bộ dữ liệu và báo cáo; duyệt các phiếu yêu cầu cần lãnh đạo duyệt."},
+    "Cataloger": {"label": "Biên mục viên", "group": "Tác nghiệp",
+                  "description": "Biên mục phông, mục lục, hồ sơ, văn bản và danh mục; tải tệp; kiểm kê phông."},
+    "Reading Room Officer": {"label": "Cán bộ phòng đọc", "group": "Tác nghiệp",
+                             "description": "Quản lý độc giả, tiếp nhận, duyệt, giao và nhận trả phiếu; xử lý góp ý."},
+    "Preservation Officer": {"label": "Cán bộ bảo quản", "group": "Tác nghiệp",
+                             "description": "Sao lưu, kiểm tra toàn vẹn và phục hồi tài liệu; xem kho lưu trữ."},
+}
+# DocTypes shown in the permission matrix, by section
+ROLE_MATRIX = (
+    ("Biên mục", ("Fonds", "Record Group", "Catalog", "Archival File", "Archive Document", "Inventory Check")),
+    ("Danh mục", ("Archival Agency", "Document Type Category", "Document Group", "Storage Warehouse", "Confidentiality Level",
+                  "Classification Scheme", "Quick Entry Dictionary")),
+    ("Độc giả và khai thác", ("Reader", "Reader Group", "Request Template", "Usage Request", "Copy Request", "Reader Feedback",
+                              "Reader Registration")),
+    ("Bảo quản", ("Backup Batch", "Integrity Check", "Restore Batch")),
+    ("Quản trị", ("Document Manager Settings", "Reader Settings", "Organization Info", "Organization Unit", "Staff Group",
+                  "Business Activity Log", "Data Exchange Job")),
+)

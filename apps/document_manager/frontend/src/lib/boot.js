@@ -10,6 +10,7 @@ const empty = {
   settings: [],
   archive: [],
   inventory: [],
+  admin: [],
   upload: { extensions: [], max_mb: 0 },
 };
 

@@ -1,19 +1,126 @@
 {
-  "name": "Document Manager Settings", "module": "Document Manager", "doctype": "DocType",
-  "issingle": 1, "engine": "InnoDB", "track_changes": 1,
+  "name": "Document Manager Settings",
+  "module": "Document Manager",
+  "doctype": "DocType",
+  "issingle": 1,
+  "engine": "InnoDB",
+  "track_changes": 1,
   "fields": [
-    {"fieldname": "section_backup", "fieldtype": "Section Break", "label": "Sao lưu tự động"},
-    {"fieldname": "auto_backup_enabled", "fieldtype": "Check", "label": "Bật sao lưu tự động", "default": "1"},
-    {"fieldname": "backup_frequency", "fieldtype": "Select", "label": "Tần suất", "options": "Hàng ngày\nHàng tuần\nHàng tháng", "default": "Hàng tuần"},
-    {"fieldname": "column_break_backup", "fieldtype": "Column Break"},
-    {"fieldname": "backup_retention_days", "fieldtype": "Int", "label": "Giữ backup (ngày)", "default": "30"},
-    {"fieldname": "auto_integrity_check", "fieldtype": "Check", "label": "Bật kiểm tra tự động", "default": "1"},
-    {"fieldname": "section_log", "fieldtype": "Section Break", "label": "Log"},
-    {"fieldname": "log_retention_days", "fieldtype": "Int", "label": "Giữ log (ngày)", "default": "90"},
-    {"fieldname": "enable_activity_log", "fieldtype": "Check", "label": "Bật Business Activity Log", "default": "1"}
+    {
+      "fieldname": "section_backup",
+      "fieldtype": "Section Break",
+      "label": "Sao lưu tự động"
+    },
+    {
+      "fieldname": "auto_backup_enabled",
+      "fieldtype": "Check",
+      "label": "Bật sao lưu tự động",
+      "default": "1"
+    },
+    {
+      "fieldname": "backup_frequency",
+      "fieldtype": "Select",
+      "label": "Tần suất",
+      "options": "Hàng ngày\nHàng tuần\nHàng tháng",
+      "default": "Hàng tuần"
+    },
+    {
+      "fieldname": "backup_include_files",
+      "fieldtype": "Check",
+      "label": "Sao lưu cả tệp tài liệu",
+      "default": "1",
+      "description": "Sao lưu theo lịch gồm cả cơ sở dữ liệu và tệp tài liệu"
+    },
+    {
+      "fieldname": "column_break_backup",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "backup_retention_days",
+      "fieldtype": "Int",
+      "label": "Giữ backup (ngày)",
+      "default": "30"
+    },
+    {
+      "fieldname": "backup_keep_min",
+      "fieldtype": "Int",
+      "label": "Luôn giữ tối thiểu (đợt thành công)",
+      "default": "3",
+      "description": "Dọn bản sao lưu cũ không bao giờ xóa các đợt thành công mới nhất này"
+    },
+    {
+      "fieldname": "auto_integrity_check",
+      "fieldtype": "Check",
+      "label": "Bật kiểm tra tự động",
+      "default": "1"
+    },
+    {
+      "fieldname": "section_log",
+      "fieldtype": "Section Break",
+      "label": "Log"
+    },
+    {
+      "fieldname": "log_retention_days",
+      "fieldtype": "Int",
+      "label": "Giữ log (ngày)",
+      "default": "90"
+    },
+    {
+      "fieldname": "enable_activity_log",
+      "fieldtype": "Check",
+      "label": "Bật Business Activity Log",
+      "default": "1"
+    },
+    {
+      "fieldname": "section_security",
+      "fieldtype": "Section Break",
+      "label": "Bảo mật tài khoản"
+    },
+    {
+      "fieldname": "enforce_password_policy",
+      "fieldtype": "Check",
+      "label": "Bắt buộc mật khẩu đủ mạnh",
+      "default": "1"
+    },
+    {
+      "fieldname": "minimum_password_score",
+      "fieldtype": "Select",
+      "label": "Độ mạnh mật khẩu tối thiểu",
+      "options": "1\n2\n3\n4",
+      "default": "2",
+      "description": "1 yếu nhất, 4 mạnh nhất (đo bằng zxcvbn)",
+      "depends_on": "enforce_password_policy"
+    },
+    {
+      "fieldname": "column_break_security",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "login_max_attempts",
+      "fieldtype": "Int",
+      "label": "Số lần đăng nhập sai tối đa",
+      "default": "10",
+      "description": "Quá số lần này thì tài khoản bị khóa tạm thời"
+    },
+    {
+      "fieldname": "login_lock_seconds",
+      "fieldtype": "Int",
+      "label": "Thời gian khóa tạm thời (giây)",
+      "default": "60"
+    }
   ],
   "permissions": [
-    {"role": "Document Admin", "read": 1, "write": 1, "create": 1},
-    {"role": "System Manager", "read": 1, "write": 1, "create": 1}
+    {
+      "role": "Document Admin",
+      "read": 1,
+      "write": 1,
+      "create": 1
+    },
+    {
+      "role": "System Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1
+    }
   ]
 }

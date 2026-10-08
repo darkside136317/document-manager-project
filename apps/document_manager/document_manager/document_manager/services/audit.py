@@ -127,20 +127,21 @@ def on_logout(login_manager=None):
         log_activity("Đăng xuất", "User", user, "Đăng xuất", user=user)
 
 
-def purge_logs(before, batch_size: int = 5000) -> int:
-    """Delete log rows older than `before` in batches (one huge DELETE would lock the table).
-
-    Records its own summary row so the clean-up itself stays auditable. Returns the number deleted.
-    """
+def purge_logs(before, batch_size: int = 5000, types: list | None = None) -> int:
+    """Delete log rows older than `before` (optionally only of some activity types) in batches (one huge DELETE would
+    lock the table). Records its own summary row so the clean-up itself stays auditable. Returns the number deleted."""
+    where, params = "`timestamp` < %(before)s", {"before": before}
+    if types:
+        where += " and activity_type in %(types)s"
+        params["types"] = tuple(types)
     deleted = 0
     while True:
-        frappe.db.sql(
-            f"delete from `tab{LOG_DOCTYPE}` where `timestamp` < %s limit {int(batch_size)}", (before,)
-        )
+        frappe.db.sql(f"delete from `tab{LOG_DOCTYPE}` where {where} limit {int(batch_size)}", params)
         count = frappe.db.sql("select row_count()")[0][0] or 0
         deleted += count
         frappe.db.commit()
         if count < batch_size:
             break
-    log_activity("Dọn dẹp nhật ký", LOG_DOCTYPE, "", f"Đã xóa {deleted} dòng nhật ký trước {before}", commit=True)
+    detail = f" (loại: {', '.join(types)})" if types else ""
+    log_activity("Dọn dẹp nhật ký", LOG_DOCTYPE, "", f"Đã xóa {deleted} dòng nhật ký trước {before}{detail}", commit=True)
     return deleted

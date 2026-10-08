@@ -7,7 +7,10 @@ from document_manager.document_manager.constants import (
     ARCHIVE_SCREENS,
     GROUP_CATALOGUES,
     GROUP_CATALOGUING,
+    ADMIN_SCREENS,
+    GROUP_ADMIN,
     GROUP_EXCHANGE,
+    GROUP_PRESERVATION,
     GROUP_READERS,
     GROUP_REPORTS,
     GROUP_SLIPS,
@@ -79,6 +82,33 @@ def _exchange_nav() -> list:
         {"label": "Xuất, nhập XML", "route": "/dashboard/trao-doi-du-lieu", "icon": "arrow-left-right"}]}]
 
 
+def _preservation_nav() -> list:
+    from document_manager.document_manager.services.preservation import can_preserve
+
+    if not can_preserve():
+        return []
+    return [{"group": GROUP_PRESERVATION, "items": [
+        {"label": "Sao lưu", "route": "/dashboard/bao-quan/sao-luu", "icon": "hard-drive"},
+        {"label": "Kiểm tra toàn vẹn", "route": "/dashboard/bao-quan/kiem-tra", "icon": "shield-check"},
+        {"label": "Khôi phục", "route": "/dashboard/bao-quan/khoi-phuc", "icon": "undo"}]}]
+
+
+def _admin_nav() -> list:
+    """Administration: the pages of the administrators, then the settings screens the user may read."""
+    items = []
+    roles = set(frappe.get_roles())
+    if roles & {"Document Admin", "System Manager", "Administrator"}:
+        items += [
+            {"label": "Người dùng", "route": "/dashboard/quan-tri/nguoi-dung", "icon": "users"},
+            {"label": "Phân quyền vai trò", "route": "/dashboard/quan-tri/phan-quyen", "icon": "shield-check"},
+            {"label": "Nhật ký hệ thống", "route": "/dashboard/quan-tri/nhat-ky", "icon": "scroll-text"},
+            {"label": "Giám sát hệ thống", "route": "/dashboard/quan-tri/giam-sat", "icon": "gauge"},
+        ]
+    items += [{"label": e["label"], "route": f"/dashboard/quan-tri/{e['slug']}", "icon": e["icon"]}
+              for e in ADMIN_SCREENS if _can_read(e["doctype"])]
+    return [{"group": GROUP_ADMIN, "items": items}] if items else []
+
+
 def build_boot() -> dict:
     """Sidebar sections filtered by the user's permissions (the server still enforces every call)."""
     nav = [{"group": "Tổng quan", "items": [
@@ -93,11 +123,14 @@ def build_boot() -> dict:
     nav.extend(_reader_nav())
     nav.extend(_reports_nav())
     nav.extend(_exchange_nav())
+    nav.extend(_preservation_nav())
 
     masters = [m for m in MASTERS if _can_read(m["doctype"])]
     if masters:
         nav.append({"group": GROUP_CATALOGUES, "items": [
             {"label": m["label"], "route": f"/dashboard/danh-muc/{m['slug']}", "icon": m["icon"]} for m in masters]})
+
+    nav.extend(_admin_nav())
 
     legacy = {}
     for label, href, doctype, group in LEGACY_LINKS:
@@ -114,6 +147,7 @@ def build_boot() -> dict:
         "settings": _with_permissions([e for e in SETTINGS_SCREENS if _can_read(e["doctype"])]),
         "archive": _with_permissions([e for e in ARCHIVE_SCREENS if _can_read(e["doctype"])]),
         "inventory": _with_permissions([e for e in INVENTORY_SCREENS if _can_read(e["doctype"])]),
+        "admin": _with_permissions([e for e in ADMIN_SCREENS if _can_read(e["doctype"])]),
         "upload": {"extensions": UPLOAD_EXTENSIONS, "max_mb": UPLOAD_MAX_MB},
     }
 

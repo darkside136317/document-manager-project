@@ -106,6 +106,12 @@ website_redirects = [
     {"source": "reports/thong_ke_tai_lieu", "target": "/dashboard/bao-cao/thong-ke-phong", "redirect_http_status": 301},
     {"source": "reports/thong_ke_khai_thac", "target": "/dashboard/bao-cao/thong-ke-phieu", "redirect_http_status": 301},
     {"source": "reports(/.*)?", "target": "/dashboard/bao-cao", "redirect_http_status": 301},
+    # preservation and administration moved into the staff app
+    {"source": "backup_batches(/.*)?", "target": "/dashboard/bao-quan/sao-luu", "redirect_http_status": 301},
+    {"source": "integrity_checks(/.*)?", "target": "/dashboard/bao-quan/kiem-tra", "redirect_http_status": 301},
+    {"source": "restore_batches(/.*)?", "target": "/dashboard/bao-quan/khoi-phuc", "redirect_http_status": 301},
+    {"source": "business_activity_log(/.*)?", "target": "/dashboard/quan-tri/nhat-ky", "redirect_http_status": 301},
+    {"source": "document_manager_settings", "target": "/dashboard/quan-tri/thiet-lap-he-thong", "redirect_http_status": 301},
 ] + [
     {"source": f"{old}(/.*)?", "target": f"/dashboard/danh-muc/{slug}", "redirect_http_status": 301}
     for old, slug in (
@@ -128,7 +134,7 @@ _AUDITED = (
     "Reader", "Reader Group", "Usage Request", "Copy Request", "Reader Feedback",
     "Backup Batch", "Restore Batch", "Integrity Check",
     "Organization Info", "Organization Unit", "Reader Settings", "Document Manager Settings",
-    "Reader Registration", "Request Template", "Inventory Check",
+    "Reader Registration", "Request Template", "Inventory Check", "Staff Group", "Data Exchange Job",
 )
 for _doctype in _AUDITED:
     _events = doc_events.setdefault(_doctype, {})
@@ -148,11 +154,12 @@ scheduler_events = {
         "document_manager.document_manager.doctype.business_activity_log.business_activity_log.cleanup_old_logs",
         "document_manager.document_manager.doctype.archival_file.archival_file.check_retention_periods",
         "document_manager.document_manager.services.overdue.mark_overdue_and_remind",
+        "document_manager.document_manager.services.preservation.backup.run_scheduled",
     ],
     "cron": {
         # Integrity check every Sunday at 2 AM
         "0 2 * * 0": [
-            "document_manager.document_manager.services.backup_service.schedule_integrity_check",
+            "document_manager.document_manager.services.preservation.integrity.schedule_integrity_check",
         ],
     },
 }

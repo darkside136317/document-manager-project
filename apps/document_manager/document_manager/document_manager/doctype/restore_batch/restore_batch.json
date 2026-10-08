@@ -1,87 +1,34 @@
 {
- "name": "Restore Batch",
- "module": "Document Manager",
- "doctype": "DocType",
- "document_type": "Document",
- "engine": "InnoDB",
- "naming_rule": "Expression",
- "autoname": "format:RS-{YYYY}{MM}{DD}-{###}",
- "is_submittable": 0,
- "track_changes": 1,
- "fields": [
-  {
-   "fieldname": "restore_type",
-   "fieldtype": "Select",
-   "label": "Loại phục hồi",
-   "options": "Cơ sở dữ liệu\nTệp tài liệu\nCả hai",
-   "reqd": 1,
-   "in_list_view": 1
-  },
-  {
-   "fieldname": "source_backup",
-   "fieldtype": "Link",
-   "label": "Bản sao lưu nguồn",
-   "options": "Backup Batch",
-   "in_list_view": 1
-  },
-  {
-   "fieldname": "column_break_1",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "status",
-   "fieldtype": "Select",
-   "label": "Trạng thái",
-   "options": "Đang chờ\nĐang chạy\nThành công\nCần thao tác thủ công\nLỗi",
-   "default": "Đang chờ",
-   "in_list_view": 1,
-   "read_only": 1
-  },
-  {
-   "fieldname": "started_at",
-   "fieldtype": "Datetime",
-   "label": "Bắt đầu",
-   "read_only": 1
-  },
-  {
-   "fieldname": "completed_at",
-   "fieldtype": "Datetime",
-   "label": "Hoàn thành",
-   "read_only": 1
-  },
-  {
-   "fieldname": "section_result",
-   "fieldtype": "Section Break",
-   "label": "Kết quả"
-  },
-  {
-   "fieldname": "records_restored",
-   "fieldtype": "Int",
-   "label": "Số bản ghi phục hồi",
-   "read_only": 1
-  },
-  {
-   "fieldname": "error_log",
-   "fieldtype": "Long Text",
-   "label": "Log lỗi",
-   "read_only": 1
-  }
- ],
- "permissions": [
-  {
-   "role": "Document Admin",
-   "read": 1,
-   "write": 1,
-   "create": 1,
-   "delete": 1
-  },
-  {
-   "role": "Preservation Officer",
-   "read": 1,
-   "write": 1,
-   "create": 1
-  }
- ],
- "sort_field": "modified",
- "sort_order": "DESC"
+  "name": "Restore Batch",
+  "module": "Document Manager",
+  "doctype": "DocType",
+  "document_type": "Document",
+  "engine": "InnoDB",
+  "naming_rule": "Expression",
+  "autoname": "format:RS-{YYYY}{MM}{DD}-{###}",
+  "is_submittable": 0,
+  "track_changes": 1,
+  "quick_entry": 0,
+  "fields": [
+    {"fieldname": "restore_type", "fieldtype": "Select", "label": "Loại phục hồi", "options": "Tệp tài liệu\nCơ sở dữ liệu\nCả hai", "default": "Tệp tài liệu", "reqd": 1, "in_list_view": 1, "in_standard_filter": 1},
+    {"fieldname": "source_backup", "fieldtype": "Link", "label": "Bản sao lưu nguồn", "options": "Backup Batch", "in_list_view": 1, "description": "Để trống để lấy bản sao lưu mới nhất có tệp của từng tài liệu (khôi phục tệp)"},
+    {"fieldname": "source_check", "fieldtype": "Link", "label": "Từ đợt kiểm tra", "options": "Integrity Check", "read_only": 1},
+    {"fieldname": "column_break_1", "fieldtype": "Column Break"},
+    {"fieldname": "status", "fieldtype": "Select", "label": "Trạng thái", "options": "Chưa chạy\nĐang chờ\nĐang chạy\nThành công\nMột phần\nCần thao tác thủ công\nLỗi\nĐã hủy", "default": "Đang chờ", "in_list_view": 1, "in_standard_filter": 1, "read_only": 1},
+    {"fieldname": "initiated_by", "fieldtype": "Link", "label": "Người thực hiện", "options": "User", "read_only": 1},
+    {"fieldname": "started_at", "fieldtype": "Datetime", "label": "Bắt đầu", "read_only": 1},
+    {"fieldname": "completed_at", "fieldtype": "Datetime", "label": "Hoàn thành", "read_only": 1},
+    {"fieldname": "section_result", "fieldtype": "Section Break", "label": "Kết quả"},
+    {"fieldname": "total", "fieldtype": "Int", "label": "Số tài liệu", "read_only": 1},
+    {"fieldname": "records_restored", "fieldtype": "Int", "label": "Đã phục hồi", "read_only": 1},
+    {"fieldname": "failed", "fieldtype": "Int", "label": "Lỗi", "read_only": 1},
+    {"fieldname": "cursor", "fieldtype": "Data", "label": "Con trỏ tiến độ", "read_only": 1, "hidden": 1},
+    {"fieldname": "error_log", "fieldtype": "Long Text", "label": "Ghi chú, hướng dẫn", "read_only": 1}
+  ],
+  "permissions": [
+    {"role": "Document Admin", "read": 1, "write": 1, "create": 1, "delete": 1, "report": 1},
+    {"role": "Preservation Officer", "read": 1, "write": 1, "create": 1, "delete": 1, "report": 1},
+    {"role": "Archive Leader", "read": 1}
+  ],
+  "sort_field": "creation", "sort_order": "DESC"
 }

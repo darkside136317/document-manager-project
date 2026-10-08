@@ -112,7 +112,8 @@ def clients():
     out = {}
     for key, email in (("reader", "e2e.reader@example.com"), ("noprofile", "e2e.noprofile@example.com"),
                        ("officer", "e2e.officer@example.com"), ("leader", "e2e.leader@example.com"),
-                       ("cataloger", "e2e.cataloger@example.com"), ("admin", "e2e.admin@example.com")):
+                       ("cataloger", "e2e.cataloger@example.com"), ("preserver", "e2e.preserver@example.com"),
+                       ("admin", "e2e.admin@example.com")):
         c = Client()
         check(f"login {key}", c.login(email))
         out[key] = c
@@ -132,7 +133,8 @@ def main():
     check("officer /dashboard 200", c["officer"].request("/dashboard")[0] == 200)
     status, _, location = c["admin"].request("/readers/form")
     check("admin's old readers form forwards to the staff app", status == 302 and location == "/dashboard/doc-gia/doc-gia", f"{status} {location}")
-    check("admin settings page 200", c["admin"].request("/document_manager_settings")[0] == 200)
+    status, _, location = c["admin"].request("/document_manager_settings")
+    check("the old settings page forwards to the staff app", status == 301 and location == "/dashboard/quan-tri/thiet-lap-he-thong", f"{status} {location}")
 
     # --- search
     for key in ("reader", "officer", "admin"):
@@ -158,6 +160,7 @@ def main():
     reader_site(c, api)
     reader_management(c, api)
     reports_and_exchange(c, api)
+    preservation_and_administration(c, api)
 
     print(f"\n{failures} failure(s)")
     return failures
@@ -410,6 +413,133 @@ def reports_and_exchange(c, api):
     for finished_job in (name, upload_job):
         if finished_job:
             c["admin"].post_json(api + "exchange.delete_job", {"job": finished_job})
+
+
+def preservation_and_administration(c, api):
+    """Module 7 (preservation) and module 8 (administration): who may use them, the guards, and the old addresses."""
+    import time
+
+    outsiders = ("officer", "leader", "cataloger", "reader", "noprofile", "guest")
+    # --- preservation: administrators and preservation officers only
+    for key in outsiders:
+        for endpoint in ("preservation.overview", "preservation.list_jobs?kind=backup", "preservation.get_job?kind=backup&name=BK-x",
+                         "preservation.download_backup?name=BK-x", "preservation.list_findings?check=IC-x"):
+            check(f"{key} cannot {endpoint.split('?')[0]}", c[key].json(api + endpoint)[0] in (401, 403))
+        for endpoint, data in (("start_backup", {}), ("start_check", {}), ("start_restore", {"documents": ["x"]}), ("fix_counters", {}),
+                               ("run_retention", {}), ("delete_job", {"kind": "backup", "name": "BK-x"}), ("prepare_db_restore", {"source_backup": "BK-x"}),
+                               ("run_restore", {"name": "RS-x", "confirm_site": "x"})):
+            status, _ = c[key].post_json(api + f"preservation.{endpoint}", data)
+            check(f"{key} cannot {endpoint}", status in (401, 403), str(status))
+    for key in ("admin", "preserver"):
+        status, body = c[key].json(api + "preservation.overview")
+        check(f"{key} reads the preservation overview", status == 200 and {"settings", "site"} <= set(body.get("message", {})), f"{status} {str(body)[:160]}")
+        for kind in ("backup", "integrity", "restore"):
+            status, body = c[key].json(api + f"preservation.list_jobs?kind={kind}")
+            check(f"{key} lists {kind} jobs", status == 200 and "data" in body.get("message", {}), f"{status} {str(body)[:120]}")
+    check("an unknown kind of job is refused", c["admin"].json(api + "preservation.list_jobs?kind=bogus")[0] in (400, 417))
+    for name in ("../../../etc/passwd", "..%2f..%2fsites%2fcommon_site_config.json", "BK-khong-co"):
+        status, _, _ = c["admin"].raw(api + f"preservation.download_backup?name={name}")
+        check(f"a backup download of {name[:22]} is refused", status in (400, 403, 404, 417), str(status))
+    check("a restore of nothing is refused", c["admin"].post_json(api + "preservation.start_restore", {})[0] in (400, 417))
+    status, body = c["admin"].post_json(api + "preservation.run_restore", {"name": "RS-khong-co", "confirm_site": "x"})
+    check("a database restore needs an existing batch and the site name", status in (400, 404, 417), f"{status} {str(body)[:120]}")
+
+    # --- administration: administrators only
+    for key in ("preserver", *outsiders):
+        for endpoint in ("users.list_users", "users.roles_info", "users.role_matrix", "users.get_user?name=e2e.admin@example.com",
+                         "logs.list_logs", "logs.filter_options", "logs.download_logs", "logs.preview_purge?before=2020-01-01", "admin.monitor"):
+            check(f"{key} cannot {endpoint.split('?')[0]}", c[key].json(api + endpoint)[0] in (401, 403))
+        for endpoint, data in (("users.save_user", {"values": {"email": "e2e.nobody@example.com", "first_name": "X", "roles": ["Cataloger"]}}),
+                               ("users.set_enabled", {"name": "e2e.cataloger@example.com", "enabled": 0}),
+                               ("users.issue_password_link", {"name": "e2e.cataloger@example.com"}),
+                               ("users.delete_user", {"name": "e2e.cataloger@example.com"}),
+                               ("logs.purge", {"before": "2020-01-01", "confirm_count": 1})):
+            status, _ = c[key].post_json(api + endpoint, data)
+            check(f"{key} cannot {endpoint}", status in (401, 403), str(status))
+    check("every account is still enabled after those attempts", all(
+        c["admin"].json(api + f"users.get_user?name={e}")[1].get("message", {}).get("enabled") == 1
+        for e in ("e2e.cataloger@example.com", "e2e.officer@example.com")))
+
+    status, body = c["admin"].json(api + "users.list_users?page_size=200")
+    rows = body.get("message", {}).get("data", [])
+    names = {r["name"] for r in rows}
+    check("the user list holds staff", status == 200 and {"e2e.admin@example.com", "e2e.cataloger@example.com", "e2e.preserver@example.com"} <= names, f"{status} {len(rows)}")
+    check("it holds no reader, no system account", not ({"e2e.reader@example.com", "e2e.noprofile@example.com", "Administrator", "Guest"} & names), str(sorted(names))[:200])
+    check("the one asking is marked", any(r["name"] == "e2e.admin@example.com" and r["is_me"] for r in rows))
+    status, body = c["admin"].json(api + "users.roles_info")
+    roles = {r["role"] for r in body.get("message", [])}
+    check("the roles offered are the five staff roles", status == 200 and roles == {"Document Admin", "Cataloger", "Reading Room Officer", "Archive Leader", "Preservation Officer"}, str(roles))
+    status, body = c["admin"].json(api + "users.role_matrix")
+    sections = {s["section"] for s in body.get("message", {}).get("sections", [])}
+    check("the role matrix has its sections", status == 200 and {"Biên mục", "Danh mục", "Bảo quản", "Quản trị"} <= sections, str(sections))
+
+    # --- the guards that keep an administrator from locking everyone out or raising themselves
+    attempts = (
+        ("creating a System Manager", "users.save_user", {"values": {"email": "e2e.sm@example.com", "first_name": "X", "roles": ["System Manager"]}}),
+        ("creating an Administrator", "users.save_user", {"values": {"email": "e2e.adm@example.com", "first_name": "X", "roles": ["Administrator"]}}),
+        ("editing Administrator", "users.save_user", {"values": {"first_name": "Hacked"}, "name": "Administrator"}),
+        ("locking Administrator", "users.set_enabled", {"name": "Administrator", "enabled": 0}),
+        ("deleting Administrator", "users.delete_user", {"name": "Administrator"}),
+        ("a password link for Administrator", "users.issue_password_link", {"name": "Administrator"}),
+        ("editing a reader's account", "users.save_user", {"values": {"first_name": "Hacked"}, "name": "e2e.reader@example.com"}),
+        ("deleting a reader's account", "users.delete_user", {"name": "e2e.reader@example.com"}),
+        ("locking oneself", "users.set_enabled", {"name": "e2e.admin@example.com", "enabled": 0}),
+        ("deleting oneself", "users.delete_user", {"name": "e2e.admin@example.com"}),
+        ("demoting oneself", "users.save_user", {"values": {"roles": ["Cataloger"]}, "name": "e2e.admin@example.com"}),
+        ("a made-up email", "users.save_user", {"values": {"email": "not-an-email", "first_name": "X", "roles": ["Cataloger"]}}),
+        ("an existing email", "users.save_user", {"values": {"email": "e2e.cataloger@example.com", "first_name": "X", "roles": ["Cataloger"]}}),
+        ("a clean-up of recent days", "logs.purge", {"before": time.strftime("%Y-%m-%d"), "confirm_count": 1}),
+    )
+    for label, endpoint, data in attempts:
+        status, _ = c["admin"].post_json(api + endpoint, data)
+        check(f"{label} is refused", status in (400, 403, 404, 417), str(status))
+    check("the administrator is still themselves", c["admin"].json(api + "users.get_user?name=e2e.admin@example.com")[1]["message"]["roles"] == ["Document Admin"])
+    status, body = c["admin"].json(api + "logs.preview_purge?before=2020-01-01")
+    check("a clean-up preview counts without deleting", status == 200 and "total" in body.get("message", {}), f"{status} {str(body)[:120]}")
+    check("a clean-up needs the count back", c["admin"].post_json(api + "logs.purge", {"before": "2020-01-01", "confirm_count": 10 ** 9})[0] in (400, 417))
+
+    # --- a real account: created with a one-time link, edited, locked and removed
+    email = f"e2e.http{int(time.time()) % 100000}@example.com"
+    status, body = c["admin"].post_json(api + "users.save_user", {"values": {"email": email, "first_name": "Http", "roles": ["Cataloger", "Preservation Officer"]}})
+    made = body.get("message", {})
+    check("an account is created with its roles and a one-time link", status == 200 and made.get("name") == email and made.get("set_password_path", "").startswith("/dat-mat-khau?key="), f"{status} {str(body)[:200]}")
+    check("the new account has the roles asked for", sorted(made.get("roles", [])) == ["Cataloger", "Preservation Officer"], str(made.get("roles")))
+    status, body = c["admin"].post_json(api + "users.save_user", {"values": {"roles": ["Reading Room Officer"]}, "name": email})
+    check("its roles are replaced", status == 200 and body["message"]["roles"] == ["Reading Room Officer"], f"{status} {str(body)[:160]}")
+    status, body = c["admin"].json(api + f"users.list_users?search={email}&role=Reading%20Room%20Officer")
+    check("the list finds it by search and role", status == 200 and [r["name"] for r in body["message"]["data"]] == [email], f"{status} {str(body)[:160]}")
+    status, body = c["admin"].post_json(api + "users.set_enabled", {"name": email, "enabled": 0})
+    check("it is locked", status == 200 and body["message"]["enabled"] == 0, f"{status} {str(body)[:120]}")
+    check("a locked account gets no password link", c["admin"].post_json(api + "users.issue_password_link", {"name": email})[0] in (400, 417))
+    status, body = c["admin"].post_json(api + "users.set_enabled", {"name": email, "enabled": 1})
+    check("it is unlocked", status == 200 and body["message"]["enabled"] == 1)
+    status, body = c["admin"].post_json(api + "users.issue_password_link", {"name": email})
+    check("a new link can be issued", status == 200 and "/dat-mat-khau?key=" in body.get("message", {}).get("set_password_path", ""), f"{status} {str(body)[:120]}")
+    status, body = c["admin"].post_json(api + "users.delete_user", {"name": email})
+    check("an account never used is deleted", status == 200 and body["message"]["name"] == email, f"{status} {str(body)[:160]}")
+    check("and is gone", c["admin"].json(api + f"users.get_user?name={email}")[0] == 404)
+
+    # --- the log and the monitor
+    kind_param = urllib.parse.quote("Quản lý người dùng")
+    status, content, kind = c["admin"].raw(api + f"logs.download_logs?activity_type={kind_param}")
+    check("the log downloads as CSV with the BOM", status == 200 and content.startswith(b"\xef\xbb\xbf") and "csv" in kind, f"{status} {kind}")
+    status, body = c["admin"].json(api + f"logs.list_logs?activity_type={kind_param}&page_size=5")
+    check("the log is filtered by type", status == 200 and body["message"]["total"] >= 1 and all(r["activity_type"] == "Quản lý người dùng" for r in body["message"]["data"]), f"{status} {str(body)[:160]}")
+    check("a page of the log is capped", len(c["admin"].json(api + "logs.list_logs?page_size=100000")[1]["message"]["data"]) <= 200)
+    status, body = c["admin"].json(api + "admin.monitor")
+    check("the monitor gathers the state of the system", status == 200 and {"services", "documents", "jobs", "storage", "users", "backups", "log"} <= set(body.get("message", {})), f"{status} {str(body)[:160]}")
+
+    # --- pages and the old addresses
+    for path, target in (("/backup_batches", "/dashboard/bao-quan/sao-luu"), ("/integrity_checks", "/dashboard/bao-quan/kiem-tra"),
+                         ("/restore_batches", "/dashboard/bao-quan/khoi-phuc"), ("/business_activity_log", "/dashboard/quan-tri/nhat-ky"),
+                         ("/document_manager_settings", "/dashboard/quan-tri/thiet-lap-he-thong")):
+        status, _, location = c["admin"].request(path)
+        check(f"{path} forwards to the staff app", status == 301 and location == target, f"{status} {location}")
+    for key, path in (("admin", "/dashboard/quan-tri/nguoi-dung"), ("admin", "/dashboard/quan-tri/nhat-ky"), ("admin", "/dashboard/bao-quan/kiem-tra"),
+                      ("preserver", "/dashboard/bao-quan/sao-luu"), ("cataloger", "/dashboard/quan-tri/nguoi-dung")):
+        check(f"{key} opens {path}", c[key].request(path)[0] == 200)  # the shell loads; the data calls above enforce the rights
+    check("a reader does not get the staff app", c["reader"].request("/dashboard/quan-tri/nguoi-dung")[0] in (301, 302, 303))
+    check("a guest does not get the staff app", c["guest"].request("/dashboard/bao-quan/sao-luu")[0] in (301, 302, 303))
 
 
 if __name__ == "__main__":

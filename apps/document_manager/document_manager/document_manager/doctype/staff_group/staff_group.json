@@ -1,0 +1,76 @@
+{
+  "name": "Staff Group",
+  "module": "Document Manager",
+  "doctype": "DocType",
+  "document_type": "Setup",
+  "engine": "InnoDB",
+  "naming_rule": "By fieldname",
+  "autoname": "field:group_name",
+  "allow_rename": 0,
+  "quick_entry": 0,
+  "track_changes": 1,
+  "title_field": "group_name",
+  "search_fields": "group_name,description",
+  "fields": [
+    {
+      "fieldname": "group_name",
+      "fieldtype": "Data",
+      "label": "Tên nhóm",
+      "reqd": 1,
+      "unique": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "description",
+      "fieldtype": "Small Text",
+      "label": "Mô tả",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "section_roles",
+      "fieldtype": "Section Break",
+      "label": "Vai trò của nhóm"
+    },
+    {
+      "fieldname": "roles",
+      "fieldtype": "Table",
+      "label": "Vai trò",
+      "options": "Staff Group Role",
+      "description": "Khi lưu nhóm, các vai trò này được cấp thêm cho mọi thành viên. Bỏ một thành viên khỏi nhóm không tự thu hồi vai trò: chỉnh ở màn hình người dùng."
+    },
+    {
+      "fieldname": "section_members",
+      "fieldtype": "Section Break",
+      "label": "Thành viên"
+    },
+    {
+      "fieldname": "members",
+      "fieldtype": "Table",
+      "label": "Thành viên",
+      "options": "Staff Group Member"
+    }
+  ],
+  "permissions": [
+    {
+      "role": "Document Admin",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "delete": 1,
+      "report": 1
+    },
+    {
+      "role": "System Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "delete": 1
+    },
+    {
+      "role": "Archive Leader",
+      "read": 1
+    }
+  ],
+  "sort_field": "modified",
+  "sort_order": "DESC"
+}

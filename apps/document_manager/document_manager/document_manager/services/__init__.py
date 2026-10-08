@@ -6,5 +6,5 @@ Modules:
 - search_index: Meilisearch full-text search indexing
 - file_processor: Text extraction (PDF/DOCX/XLSX) and processing pipeline
 - exchange: XML export/import of archival data (module 5)
-- backup_service: Backup, integrity check, and restore operations
+- preservation: backups, integrity checks and restores (module 7)
 """

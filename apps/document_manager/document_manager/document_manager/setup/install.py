@@ -43,6 +43,7 @@ def seed_all():
     ensure_roles()
     ensure_confidentiality_levels()
     ensure_reader_settings_defaults()
+    ensure_settings_defaults()
     from document_manager.document_manager.services.templates import ensure_default_templates
     ensure_default_templates()
     ensure_default_reader_group()
@@ -150,6 +151,46 @@ def ensure_reader_settings_defaults() -> int:
     if missing:
         frappe.clear_document_cache("Reader Settings", "Reader Settings")
     return len(missing)
+
+
+def ensure_single_defaults(doctype: str, overrides: dict | None = None) -> int:
+    """Store the default of every field of a Single that has no stored value yet (fields added to a settings page that
+    already exists read as empty or 0 until then: a first save would fail validation or switch a check off)."""
+    stored = {row[0] for row in frappe.db.sql("select field from tabSingles where doctype = %s", doctype)}
+    overrides = overrides or {}
+    missing = {}
+    for field in frappe.get_meta(doctype).fields:
+        if field.fieldname in stored:
+            continue
+        value = overrides.get(field.fieldname, field.default)
+        if value not in (None, "") and not str(value).startswith(":") and str(value) not in ("Today", "Now"):
+            missing[field.fieldname] = value
+    for field, value in missing.items():
+        frappe.db.set_single_value(doctype, field, value)
+    if missing:
+        frappe.clear_document_cache(doctype, doctype)
+    return len(missing)
+
+
+def ensure_settings_defaults() -> int:
+    """Document Manager Settings: new fields start from their default; the account-security ones from what Frappe's
+    System Settings holds now, so that the form shows what is in force (and a first save changes nothing)."""
+    from document_manager.document_manager.doctype.document_manager_settings.document_manager_settings import SYSTEM_SETTINGS
+
+    current = {}
+    for field, target in SYSTEM_SETTINGS.items():
+        value = frappe.db.get_single_value("System Settings", target)
+        if frappe.utils.cint(value):
+            current[field] = value
+    # a zero the form once saved for an empty number is not a choice (every one of these needs 1 or more): put the default back
+    from document_manager.document_manager.doctype.document_manager_settings.document_manager_settings import RANGES
+
+    zeros = [field for field, _low, _high in RANGES if frappe.db.get_single_value("Document Manager Settings", field) in (0, "0", "")]
+    for field in zeros:
+        frappe.db.sql("delete from tabSingles where doctype = 'Document Manager Settings' and field = %s", field)
+    if zeros:
+        frappe.clear_document_cache("Document Manager Settings", "Document Manager Settings")
+    return ensure_single_defaults("Document Manager Settings", current)
 
 
 def flag_levels_needing_leader() -> int:

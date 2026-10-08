@@ -21,6 +21,7 @@ ACCOUNTS = {  # email: (roles, user type, reader profile?)
     "e2e.officer@example.com": (["Reading Room Officer"], "System User", False),
     "e2e.leader@example.com": (["Archive Leader"], "System User", False),
     "e2e.cataloger@example.com": (["Cataloger"], "System User", False),
+    "e2e.preserver@example.com": (["Preservation Officer"], "System User", False),
     "e2e.admin@example.com": (["Document Admin"], "System User", False),
 }
 
@@ -50,6 +51,21 @@ def purge_reader(email):
 
 def purge_archive():
     """Archive data and groups the browser flows create carry the prefix "E2E-" (children are removed first)."""
+    from document_manager.document_manager.services.preservation import backup, filestore
+
+    # restores first: a backup that a restore batch still points at is not deleted
+    for doctype, item, link in (("Restore Batch", "Restore Batch Item", "restore"), ("Integrity Check", "Integrity Check Item", "check"),
+                                ("Backup Batch", "Backup Batch Item", "batch")):
+        for name in frappe.get_all(doctype, filters={"owner": ["like", "e2e.%@example.com"]}, pluck="name"):
+            if doctype == "Backup Batch":
+                backup.delete_batch(name)
+                continue
+            for row in frappe.get_all(item, filters={link: name}, pluck="name"):
+                frappe.delete_doc(item, row, force=True, ignore_permissions=True)
+            frappe.delete_doc(doctype, name, force=True, ignore_permissions=True)
+    filestore.collect_garbage(keep_batches=set(frappe.get_all("Backup Batch", pluck="name")), min_age=0)
+    for name in frappe.get_all("Staff Group", filters={"group_name": ["like", "E2E-%"]}, pluck="name"):
+        frappe.delete_doc("Staff Group", name, force=True, ignore_permissions=True)
     for name in frappe.get_all("Inventory Check", filters={"check_title": ["like", "E2E-%"]}, pluck="name"):
         frappe.delete_doc("Inventory Check", name, force=True, ignore_permissions=True)
     for name in frappe.get_all("Data Exchange Job", filters={"owner": ["like", "e2e.%@example.com"]}, pluck="name"):
@@ -87,6 +103,11 @@ for email, (roles, user_type, profile) in ACCOUNTS.items():
         frappe.get_doc({"doctype": "Reader", "full_name": "E2E Reader", "user": email, "email": email,
                         "is_active": 1}).insert(ignore_permissions=True)
 purge_archive()  # after the readers: their slips point at the files
+frappe.db.delete("Business Activity Log", {"reference_doctype": "E2E-LOG"})
+if mode == "up":  # old rows for the clean-up flow (admin.mjs): far older than anything the site has logged
+    for n in range(3):
+        frappe.get_doc({"doctype": "Business Activity Log", "activity_type": "Xem", "reference_doctype": "E2E-LOG", "reference_name": f"OLD-{n}",
+                        "user": "Administrator", "timestamp": "2020-01-15 12:00:00", "description": f"E2E old log row {n}"}).insert(ignore_permissions=True)
 frappe.cache.delete_keys("rl:*")  # the sign-up and password endpoints are rate limited per IP: a rerun starts fresh
 frappe.db.commit()
 print(mode, "ok:", ", ".join(ACCOUNTS))

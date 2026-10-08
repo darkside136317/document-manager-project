@@ -6,7 +6,7 @@ import {
   Gauge, HardDrive, Inbox, Info, KeyRound, Layers, LayoutDashboard, Library, Loader2, LogOut, Menu, Moon,
   Network, Pencil, Plus, RefreshCw, Save, ScrollText, Search, Settings, ShieldCheck, Sun, Trash2, Users,
   Warehouse, X, Upload, UserPlus, Copy, Link2, MessageSquare, Undo2, CalendarPlus, PackageCheck, Send, Clock, Printer, Download, SlidersHorizontal, Bookmark, Command, FileImage, FileSpreadsheet, File, CornerDownLeft,
-  ChartBar, ClipboardCheck, ArrowLeftRight, TrendingUp, FileCode, Play, Ban, History, FileDown,
+  ChartBar, ClipboardCheck, ArrowLeftRight, TrendingUp, FileCode, Play, Ban, History, FileDown, Server, Activity, LockKeyhole,
 } from "lucide-vue-next";
 
 export const icons = {
@@ -83,6 +83,9 @@ export const icons = {
   ban: Ban,
   history: History,
   "file-down": FileDown,
+  server: Server,
+  activity: Activity,
+  "lock-keyhole": LockKeyhole,
 };
 
 export const iconFor = (name) => icons[name] || FileText;

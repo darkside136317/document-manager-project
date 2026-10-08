@@ -98,7 +98,10 @@ class TestStaffApi(IntegrationTestCase):
         self.assertIn("tu-dien", slugs)
         self.assertEqual(data["user"]["name"], CATALOGER)
         self.assertTrue(any(g["group"] == "Danh mục" for g in data["nav"]))
-        self.assertEqual(data["legacy"], [])  # what is left of the old pages (backup, log, settings) is not for a cataloguer
+        self.assertEqual(data["legacy"], [])  # every screen is in the staff app now
+        groups = {g["group"]: [i["label"] for i in g["items"]] for g in data["nav"]}
+        self.assertNotIn("Bảo quản", groups)  # preservation is not the cataloguer's
+        self.assertNotIn("Người dùng", groups.get("Quản trị", []))
         frappe.set_user(READER)
         with self.assertRaises(frappe.PermissionError):
             boot.get_staff_boot()
@@ -108,9 +111,25 @@ class TestStaffApi(IntegrationTestCase):
         slugs = {m["slug"] for m in boot.build_boot()["masters"]}
         self.assertIn("kho-luu-tru", slugs)
         self.assertNotIn("loai-tu-dien", slugs)
-        legacy = {i["label"] for g in boot.build_boot()["legacy"] for i in g["items"]}
-        self.assertIn("Đợt sao lưu", legacy)
-        self.assertNotIn("Phiếu yêu cầu sử dụng", legacy)
+        groups = {g["group"]: [i["label"] for i in g["items"]] for g in boot.build_boot()["nav"]}
+        self.assertEqual(groups["Bảo quản"], ["Sao lưu", "Kiểm tra toàn vẹn", "Khôi phục"])
+        self.assertNotIn("Khai thác tài liệu", groups)  # no slips for the preservation officer
+        self.assertNotIn("Người dùng", groups.get("Quản trị", []))
+
+    def test_an_administrator_gets_the_administration_and_preservation_menus(self):
+        frappe.set_user(ADMIN)
+        data = boot.build_boot()
+        groups = {g["group"]: [i["label"] for i in g["items"]] for g in data["nav"]}
+        self.assertEqual(groups["Quản trị"][:4], ["Người dùng", "Phân quyền vai trò", "Nhật ký hệ thống", "Giám sát hệ thống"])
+        for label in ("Thông tin đơn vị", "Cơ cấu tổ chức", "Nhóm cán bộ", "Thiết lập hệ thống"):
+            self.assertIn(label, groups["Quản trị"])
+        self.assertIn("Xuất, nhập XML", groups["Trao đổi dữ liệu"])
+        self.assertEqual({e["slug"] for e in data["admin"]}, {"thong-tin-don-vi", "co-cau-to-chuc", "nhom-can-bo", "thiet-lap-he-thong"})
+        settings = meta.get_doctype_ui("Document Manager Settings")
+        self.assertTrue(settings["is_single"])
+        self.assertIn("login_max_attempts", [f["fieldname"] for f in settings["fields"]])
+        self.assertTrue(meta.get_doctype_ui("Organization Unit")["is_tree"])
+        self.assertTrue(meta.get_doctype_ui("Staff Group")["permissions"]["create"])
 
     def test_description_reflects_the_users_permissions(self):
         self.assertTrue(meta.get_doctype_ui("Dictionary Type")["permissions"]["create"])

@@ -8,6 +8,12 @@ import FilePage from "./pages/FilePage.vue";
 import MasterPage from "./pages/MasterPage.vue";
 import NotFound from "./pages/NotFound.vue";
 import FeedbackPage from "./pages/FeedbackPage.vue";
+import GroupsPage from "./pages/GroupsPage.vue";
+import LogsPage from "./pages/LogsPage.vue";
+import MonitorPage from "./pages/MonitorPage.vue";
+import PreservationPage from "./pages/PreservationPage.vue";
+import RolesPage from "./pages/RolesPage.vue";
+import UsersPage from "./pages/UsersPage.vue";
 import RegistrationsPage from "./pages/RegistrationsPage.vue";
 import ReportPage from "./pages/ReportPage.vue";
 import ReportsHub from "./pages/ReportsHub.vue";
@@ -32,6 +38,15 @@ export const routes = [
   { path: "/bao-cao", name: "reports", component: ReportsHub, meta: { title: "Thống kê, báo cáo" } },
   { path: "/bao-cao/:slug", name: "report", component: ReportPage, props: true, meta: { title: "Báo cáo" } },
   { path: "/kiem-ke", name: "inventory", component: MasterPage, meta: { title: "Tổng kiểm kê phông", slug: "kiem-ke", sources: ["inventory"] } },
+  { path: "/bao-quan/sao-luu", name: "backups", component: PreservationPage, props: { kind: "backup" }, meta: { title: "Sao lưu" } },
+  { path: "/bao-quan/kiem-tra", name: "checks", component: PreservationPage, props: { kind: "integrity" }, meta: { title: "Kiểm tra toàn vẹn" } },
+  { path: "/bao-quan/khoi-phuc", name: "restores", component: PreservationPage, props: { kind: "restore" }, meta: { title: "Khôi phục" } },
+  { path: "/quan-tri/nguoi-dung", name: "users", component: UsersPage, meta: { title: "Người dùng" } },
+  { path: "/quan-tri/phan-quyen", name: "roles", component: RolesPage, meta: { title: "Phân quyền vai trò" } },
+  { path: "/quan-tri/nhat-ky", name: "logs", component: LogsPage, meta: { title: "Nhật ký hệ thống" } },
+  { path: "/quan-tri/giam-sat", name: "monitor", component: MonitorPage, meta: { title: "Giám sát hệ thống" } },
+  { path: "/quan-tri/nhom-can-bo", name: "groups", component: GroupsPage, meta: { title: "Nhóm cán bộ" } },
+  { path: "/quan-tri/:slug", name: "admin-screen", component: MasterPage, meta: { title: "Quản trị", sources: ["admin"] } },
   { path: "/trao-doi-du-lieu", name: "exchange", component: ExchangePage, meta: { title: "Xuất, nhập dữ liệu XML" } },
   { path: "/danh-muc/:slug", name: "master", component: MasterPage, meta: { title: "Danh mục", sources: ["masters"] } },
   { path: "/:pathMatch(.*)*", name: "not-found", component: NotFound, meta: { title: "Không tìm thấy" } },

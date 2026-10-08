@@ -1,22 +1,38 @@
 {
-  "name": "Integrity Check", "module": "Document Manager", "doctype": "DocType",
-  "document_type": "Document", "engine": "InnoDB",
-  "naming_rule": "Expression", "autoname": "format:IC-{YYYY}{MM}{DD}-{###}",
-  "is_submittable": 0, "track_changes": 1,
+  "name": "Integrity Check",
+  "module": "Document Manager",
+  "doctype": "DocType",
+  "document_type": "Document",
+  "engine": "InnoDB",
+  "naming_rule": "Expression",
+  "autoname": "format:IC-{YYYY}{MM}{DD}-{###}",
+  "is_submittable": 0,
+  "track_changes": 1,
+  "quick_entry": 0,
   "fields": [
-    {"fieldname": "check_type", "fieldtype": "Select", "label": "Loại kiểm tra", "options": "Toàn bộ\nChecksum\nLiên kết file-metadata\nFile bị thiếu", "reqd": 1, "in_list_view": 1},
-    {"fieldname": "status", "fieldtype": "Select", "label": "Trạng thái", "options": "Đang chờ\nĐang chạy\nHoàn thành\nPhát hiện lỗi", "default": "Đang chờ", "in_list_view": 1, "read_only": 1},
+    {"fieldname": "check_type", "fieldtype": "Select", "label": "Loại kiểm tra", "options": "Toàn bộ\nCơ sở dữ liệu\nTệp tài liệu\nSiêu dữ liệu\nChecksum\nLiên kết file-metadata\nFile bị thiếu", "default": "Toàn bộ", "reqd": 1, "in_list_view": 1, "in_standard_filter": 1},
+    {"fieldname": "status", "fieldtype": "Select", "label": "Trạng thái", "options": "Đang chờ\nĐang chạy\nHoàn thành\nPhát hiện lỗi\nLỗi\nĐã hủy", "default": "Đang chờ", "in_list_view": 1, "in_standard_filter": 1, "read_only": 1},
+    {"fieldname": "trigger", "fieldtype": "Select", "label": "Cách chạy", "options": "Thủ công\nTheo lịch", "default": "Thủ công", "read_only": 1},
     {"fieldname": "column_break_1", "fieldtype": "Column Break"},
+    {"fieldname": "fonds", "fieldtype": "Link", "label": "Phạm vi (phông)", "options": "Fonds", "description": "Để trống để kiểm tra tất cả các phông"},
+    {"fieldname": "initiated_by", "fieldtype": "Link", "label": "Người thực hiện", "options": "User", "read_only": 1},
     {"fieldname": "started_at", "fieldtype": "Datetime", "label": "Bắt đầu", "read_only": 1},
     {"fieldname": "completed_at", "fieldtype": "Datetime", "label": "Hoàn thành", "read_only": 1},
-    {"fieldname": "total_checked", "fieldtype": "Int", "label": "Tổng đã kiểm tra", "read_only": 1},
+    {"fieldname": "section_result", "fieldtype": "Section Break", "label": "Kết quả"},
+    {"fieldname": "total_checked", "fieldtype": "Int", "label": "Tài liệu đã kiểm tra", "read_only": 1},
     {"fieldname": "errors_found", "fieldtype": "Int", "label": "Lỗi phát hiện", "read_only": 1},
-    {"fieldname": "section_result", "fieldtype": "Section Break", "label": "Chi tiết lỗi"},
-    {"fieldname": "error_details", "fieldtype": "Long Text", "label": "Chi tiết lỗi", "read_only": 1}
+    {"fieldname": "warnings_found", "fieldtype": "Int", "label": "Cảnh báo", "read_only": 1},
+    {"fieldname": "column_break_2", "fieldtype": "Column Break"},
+    {"fieldname": "phase", "fieldtype": "Data", "label": "Đang kiểm tra", "read_only": 1},
+    {"fieldname": "cursor", "fieldtype": "Data", "label": "Con trỏ tiến độ", "read_only": 1, "hidden": 1},
+    {"fieldname": "summary", "fieldtype": "Small Text", "label": "Tóm tắt", "read_only": 1},
+    {"fieldname": "section_details", "fieldtype": "Section Break", "label": "Chi tiết"},
+    {"fieldname": "error_details", "fieldtype": "Long Text", "label": "Ghi chú của lần chạy", "read_only": 1}
   ],
   "permissions": [
     {"role": "Document Admin", "read": 1, "write": 1, "create": 1, "delete": 1, "report": 1},
-    {"role": "Preservation Officer", "read": 1, "write": 1, "create": 1}
+    {"role": "Preservation Officer", "read": 1, "write": 1, "create": 1, "delete": 1, "report": 1},
+    {"role": "Archive Leader", "read": 1}
   ],
-  "sort_field": "modified", "sort_order": "DESC"
+  "sort_field": "creation", "sort_order": "DESC"
 }
