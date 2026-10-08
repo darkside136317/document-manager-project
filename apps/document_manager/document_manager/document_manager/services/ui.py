@@ -156,6 +156,7 @@ def describe(doctype: str) -> dict:
             "in_list_view": bool(df.in_list_view),
             "in_standard_filter": bool(df.in_standard_filter),
             "depends_on": df.depends_on or "",
+            "read_only_depends_on": df.read_only_depends_on or "",
             "suggest": suggest.get(df.fieldname, ""),
             **({"table": {"doctype": df.options, "columns": table_columns(df.options)}} if df.fieldtype == "Table" else {}),
         })
@@ -185,6 +186,7 @@ def describe(doctype: str) -> dict:
         "allow_rename": bool(meta.allow_rename),
         "is_tree": bool(meta.is_tree),
         "is_single": bool(meta.issingle),
+        "drawer_width": entry.get("drawer_width") or "",
         "parent_field": parent_field_of(meta),
         "search_fields": search_fields,
         "list_fields": list_fields,

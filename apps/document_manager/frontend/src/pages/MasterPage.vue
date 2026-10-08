@@ -15,7 +15,7 @@ import SettingsPage from "./SettingsPage.vue";
 // a tree, or - for a single DocType such as the reader settings - one form.
 const route = useRoute();
 const sources = computed(() => (route.meta.sources || ["masters"]));
-const master = computed(() => sources.value.map((source) => masterBySlug(route.params.slug, source)).find(Boolean) || null);
+const master = computed(() => sources.value.map((source) => masterBySlug(route.params.slug || route.meta.slug, source)).find(Boolean) || null);
 const meta = ref(null);
 const error = ref("");
 const loading = ref(false);

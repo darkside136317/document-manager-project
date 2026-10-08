@@ -1,0 +1,35 @@
+{
+  "name": "Inventory Check",
+  "module": "Document Manager",
+  "doctype": "DocType",
+  "document_type": "Document",
+  "engine": "InnoDB",
+  "naming_rule": "Expression",
+  "autoname": "format:KK-{YYYY}-{###}",
+  "quick_entry": 0,
+  "track_changes": 1,
+  "title_field": "check_title",
+  "search_fields": "check_title,fonds,status",
+  "fields": [
+    {"fieldname": "check_title", "fieldtype": "Data", "label": "Đợt kiểm kê", "reqd": 1, "in_list_view": 1, "description": "Ví dụ: Tổng kiểm kê phông năm 2026", "read_only_depends_on": "eval:doc.status=='Hoàn thành'"},
+    {"fieldname": "check_date", "fieldtype": "Date", "label": "Ngày kiểm kê", "reqd": 1, "default": "Today", "in_list_view": 1, "read_only_depends_on": "eval:doc.status=='Hoàn thành'"},
+    {"fieldname": "fonds", "fieldtype": "Link", "label": "Phạm vi (phông)", "options": "Fonds", "description": "Để trống để kiểm kê tất cả các phông", "read_only_depends_on": "eval:doc.status=='Hoàn thành'"},
+    {"fieldname": "column_break_1", "fieldtype": "Column Break"},
+    {"fieldname": "status", "fieldtype": "Select", "label": "Tình trạng", "options": "Nháp\nĐang kiểm kê\nHoàn thành", "default": "Nháp", "read_only": 1, "in_list_view": 1, "in_standard_filter": 1},
+    {"fieldname": "checked_by", "fieldtype": "Link", "label": "Người kiểm kê", "options": "User", "read_only_depends_on": "eval:doc.status=='Hoàn thành'"},
+    {"fieldname": "completed_on", "fieldtype": "Datetime", "label": "Hoàn thành lúc", "read_only": 1},
+    {"fieldname": "section_items", "fieldtype": "Section Break", "label": "Số liệu kiểm kê"},
+    {"fieldname": "items", "fieldtype": "Table", "label": "Các phông", "options": "Inventory Check Item", "description": "Lập danh sách từ số liệu hiện có, rồi nhập số đếm thực tế của từng phông", "read_only_depends_on": "eval:doc.status=='Hoàn thành'"},
+    {"fieldname": "section_result", "fieldtype": "Section Break", "label": "Kết quả"},
+    {"fieldname": "total_difference", "fieldtype": "Int", "label": "Số phông có chênh lệch", "read_only": 1},
+    {"fieldname": "notes", "fieldtype": "Small Text", "label": "Nhận xét, kiến nghị"}
+  ],
+  "permissions": [
+    {"role": "Document Admin", "read": 1, "write": 1, "create": 1, "delete": 1, "print": 1, "export": 1, "report": 1},
+    {"role": "Cataloger", "read": 1, "write": 1, "create": 1, "print": 1, "report": 1},
+    {"role": "Preservation Officer", "read": 1, "print": 1, "report": 1},
+    {"role": "Archive Leader", "read": 1, "print": 1, "report": 1}
+  ],
+  "sort_field": "modified",
+  "sort_order": "DESC"
+}

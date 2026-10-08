@@ -9,6 +9,7 @@ const empty = {
   readers: [],
   settings: [],
   archive: [],
+  inventory: [],
   upload: { extensions: [], max_mb: 0 },
 };
 

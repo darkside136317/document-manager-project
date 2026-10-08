@@ -179,7 +179,7 @@ class TestAccessControl(IntegrationTestCase):
     # ---- staff pages must also respect DocType permissions (raw SQL / get_all bypass them)
     def test_staff_without_doctype_permission_is_denied(self):
         cases = {
-            "document_manager.www.reports.thong_ke_khai_thac": "Preservation Officer",
+            "document_manager.www.backup_batches.index": "Cataloger",
         }
         for mod, role in cases.items():
             frappe.set_user(_staff_email(role))

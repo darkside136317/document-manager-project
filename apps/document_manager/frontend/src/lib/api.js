@@ -166,6 +166,30 @@ export const api = {
     list: (params = {}) => call(`${BASE}.feedback.list_feedback`, params),
     get: (name) => call(`${BASE}.feedback.get_feedback`, { name }),
   },
+  reports: {
+    list: () => call(`${BASE}.reports.list_reports`),
+    get: (slug) => call(`${BASE}.reports.get_report`, { slug }),
+    run: (slug, filters = {}, page = 1, pageSize = 50) =>
+      call(`${BASE}.reports.run_report`, { slug, filters, page, page_size: pageSize }),
+  },
+  inventory: {
+    populate: (name) => call(`${BASE}.inventory.populate`, { name }, { post: true }),
+    complete: (name) => call(`${BASE}.inventory.complete`, { name }, { post: true }),
+    reopen: (name) => call(`${BASE}.inventory.reopen`, { name }, { post: true }),
+  },
+  exchange: {
+    capabilities: () => call(`${BASE}.exchange.capabilities`),
+    previewExport: (level, filters, includeChildren) =>
+      call(`${BASE}.exchange.preview_export`, { level, filters, include_children: includeChildren ? 1 : 0 }),
+    startExport: (level, filters, fields, includeChildren) =>
+      call(`${BASE}.exchange.start_export`, { level, filters, fields, include_children: includeChildren ? 1 : 0 }, { post: true }),
+    analyze: (fileUrl) => call(`${BASE}.exchange.analyze_import`, { file_url: fileUrl }, { post: true }),
+    startImport: (job, options) => call(`${BASE}.exchange.start_import`, { job, ...options }, { post: true }),
+    job: (job) => call(`${BASE}.exchange.get_job`, { job }),
+    jobs: (params = {}) => call(`${BASE}.exchange.list_jobs`, params),
+    cancel: (job) => call(`${BASE}.exchange.cancel_job`, { job }, { post: true }),
+    remove: (job) => call(`${BASE}.exchange.delete_job`, { job }, { post: true }),
+  },
   readerAccess: (reader) => call(`${BASE}.registration.issue_reader_access`, { reader }, { post: true }),
   preview: (docName) => call(`${BASE}.file_access.get_preview`, { doc_name: docName }),
   // Own endpoint: a wrong current password must not end the session (Frappe's update_password would).

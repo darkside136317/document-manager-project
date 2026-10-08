@@ -25,6 +25,9 @@ const add = () => emit("update:modelValue", [...rows.value, blankRow(columns.val
 const remove = (index) => emit("update:modelValue", rows.value.filter((_, i) => i !== index));
 const numeric = (value) => (value === "" ? null : Number(value));
 const cellDisabled = (column) => !editable.value || column.read_only;
+// A cell needs room for what it holds: a name to read, a number of a few digits, a note to type.
+const widths = { Link: "min-w-[12rem]", Select: "min-w-[8rem]", Int: "min-w-[4.5rem]", Float: "min-w-[5.5rem]", Date: "min-w-[9rem]", Check: "", "Small Text": "min-w-[10rem]", Data: "min-w-[9rem]" };
+const cellWidth = (column) => widths[column.fieldtype] ?? "min-w-[8rem]";
 </script>
 
 <template>
@@ -43,7 +46,7 @@ const cellDisabled = (column) => !editable.value || column.read_only;
             <td :colspan="columns.length + 1" class="text-center text-ink-muted">Chưa có dòng nào</td>
           </tr>
           <tr v-for="(row, index) in rows" :key="index">
-            <td v-for="column in columns" :key="column.fieldname" class="!py-1.5">
+            <td v-for="column in columns" :key="column.fieldname" class="!py-1.5" :class="cellWidth(column)">
               <input
                 v-if="column.fieldtype === 'Check'"
                 type="checkbox" class="h-4 w-4 accent-[var(--dm-primary)]" :checked="Boolean(row[column.fieldname])"

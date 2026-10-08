@@ -1,0 +1,23 @@
+{
+  "name": "Inventory Check Item",
+  "module": "Document Manager",
+  "doctype": "DocType",
+  "document_type": "Setup",
+  "istable": 1,
+  "engine": "InnoDB",
+  "fields": [
+    {"fieldname": "fonds", "fieldtype": "Link", "label": "Phông", "options": "Fonds", "reqd": 1, "in_list_view": 1},
+    {"fieldname": "recorded_files", "fieldtype": "Int", "label": "Hồ sơ (sổ sách)", "read_only": 1, "in_list_view": 1},
+    {"fieldname": "counted_files", "fieldtype": "Int", "label": "Hồ sơ (thực tế)", "in_list_view": 1},
+    {"fieldname": "difference_files", "fieldtype": "Int", "label": "Chênh lệch hồ sơ", "read_only": 1},
+    {"fieldname": "recorded_documents", "fieldtype": "Int", "label": "Văn bản (sổ sách)", "read_only": 1},
+    {"fieldname": "counted_documents", "fieldtype": "Int", "label": "Văn bản (thực tế)"},
+    {"fieldname": "difference_documents", "fieldtype": "Int", "label": "Chênh lệch văn bản", "read_only": 1},
+    {"fieldname": "recorded_boxes", "fieldtype": "Int", "label": "Hộp (sổ sách)", "read_only": 1},
+    {"fieldname": "counted_boxes", "fieldtype": "Int", "label": "Hộp (thực tế)"},
+    {"fieldname": "difference_boxes", "fieldtype": "Int", "label": "Chênh lệch hộp", "read_only": 1},
+    {"fieldname": "counted", "fieldtype": "Check", "label": "Đã kiểm", "in_list_view": 1, "description": "Đánh dấu khi đã đếm thực tế phông này"},
+    {"fieldname": "note", "fieldtype": "Small Text", "label": "Ghi chú"}
+  ],
+  "permissions": []
+}

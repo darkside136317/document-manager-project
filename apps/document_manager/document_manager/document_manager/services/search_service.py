@@ -64,10 +64,8 @@ def _count(doctype: str, filters, or_filters=None) -> int:
 # Archival files
 # ---------------------------------------------------------------------------
 
-def search_files(params: dict, page=1, page_size=20) -> dict:
-    """Basic (`query`) and advanced (any other key) search of archival files."""
-    params = _clean(params)
-    page, page_size = _paging(page, page_size)
+def file_conditions(params: dict) -> tuple[list, list | None]:
+    """(filters, or_filters) of the basic and advanced file search for `get_list`; `params` already cleaned."""
     filters = [["Archival File", f, "=", params[f]] for f in (
         "fonds", "record_group", "catalog", "confidentiality_level", "storage_warehouse",
         "document_type_category", "status") if f in params]
@@ -83,6 +81,14 @@ def search_files(params: dict, page=1, page_size=20) -> dict:
     if "query" in params:
         like = f"%{params['query']}%"
         or_filters = [["Archival File", f, "like", like] for f in ("file_title", "file_number", "name")]
+    return filters, or_filters
+
+
+def search_files(params: dict, page=1, page_size=20) -> dict:
+    """Basic (`query`) and advanced (any other key) search of archival files."""
+    params = _clean(params)
+    page, page_size = _paging(page, page_size)
+    filters, or_filters = file_conditions(params)
 
     data = frappe.get_list(
         "Archival File", filters=filters, or_filters=or_filters, fields=FILE_FIELDS,
@@ -122,13 +128,19 @@ def _document_filters(params: dict) -> list:
     return filters
 
 
-def _search_documents_db(params: dict, page: int, page_size: int) -> dict:
+def document_conditions(params: dict) -> tuple[list, list | None]:
+    """(filters, or_filters) of the metadata search of documents for `get_list`; `params` already cleaned."""
     filters = _document_filters(params)
     or_filters = None
     if "query" in params:
         like = f"%{params['query']}%"
         or_filters = [["Archive Document", f, "like", like]
                       for f in ("document_title", "document_number", "author", "name")]
+    return filters, or_filters
+
+
+def _search_documents_db(params: dict, page: int, page_size: int) -> dict:
+    filters, or_filters = document_conditions(params)
     rows = frappe.get_list(
         "Archive Document", filters=filters, or_filters=or_filters, fields=DOCUMENT_FIELDS,
         order_by=DOCUMENT_SORTS.get(params.get("sort_by"), DOCUMENT_SORTS["modified"]),

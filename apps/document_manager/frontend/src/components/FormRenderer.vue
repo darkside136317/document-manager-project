@@ -15,7 +15,10 @@ const props = defineProps({
 
 const byName = (name) => props.meta.fields.find((f) => f.fieldname === name);
 // The name of a record built from one of its fields is fixed once the record exists.
-const locked = (field) => props.readOnly || (props.editing && field.fieldname === props.meta.name_field);
+// A field can also lock itself once the record reaches a state (a completed inventory): `read_only_depends_on`.
+const locked = (field) => props.readOnly
+  || (props.editing && field.fieldname === props.meta.name_field)
+  || Boolean(field.read_only_depends_on && isVisible(field.read_only_depends_on, props.record));
 // Stacked: every column of a section one under the other, which suits a narrow drawer.
 // Fields and sections whose `depends_on` is not met stay out of the form.
 const stacked = (section) => section.columns.flat().map(byName).filter((f) => f && isVisible(f.depends_on, props.record));

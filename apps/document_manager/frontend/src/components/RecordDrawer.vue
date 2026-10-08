@@ -110,7 +110,7 @@ async function remove() {
 </script>
 
 <template>
-  <Drawer :open="open" :title="title" @close="requestClose">
+  <Drawer :open="open" :title="title" :width="meta.drawer_width || '560px'" @close="requestClose">
     <div v-if="loading" class="flex items-center gap-2 py-8 text-ink-muted"><Icon name="loader" spin /> Đang tải...</div>
     <template v-else>
       <p v-if="error" class="mb-4 whitespace-pre-line rounded-md bg-danger-soft px-3 py-2 text-sm text-danger" role="alert">{{ error }}</p>
@@ -123,7 +123,7 @@ async function remove() {
         :read-only="!canWrite"
         :link-filters="(field) => linkFilters(field, record)"
       />
-      <component :is="extra" v-if="extra && editing && Object.keys(record).length" :record="record" :meta="meta" @changed="load({ quiet: true })" />
+      <component :is="extra" v-if="extra && editing && Object.keys(record).length" :record="record" :meta="meta" :dirty="dirty" @changed="load({ quiet: true })" />
     </template>
     <template #footer>
       <button v-if="canDelete" class="btn mr-auto text-danger" type="button" :disabled="saving" @click="confirmDelete.open = true">

@@ -11,6 +11,7 @@ Optional keys of an entry:
   list_fields  columns of the list, when they should differ from the DocType's "in list view"
   suggest      {field: Dictionary Type}: the field offers the values of that quick-entry dictionary
   tree_filter  field that selects the list a tree belongs to (dictionary values)
+  drawer_width width of the record drawer when a form needs more room than the default (a wide grid)
 """
 
 STAFF_HOME = "/dashboard"
@@ -20,6 +21,8 @@ GROUP_CATALOGUES = "Danh mục"
 GROUP_CATALOGUING = "Biên mục"
 GROUP_READERS = "Độc giả"
 GROUP_SLIPS = "Khai thác tài liệu"
+GROUP_REPORTS = "Thống kê, báo cáo"
+GROUP_EXCHANGE = "Trao đổi dữ liệu"
 
 # `slug` is the URL segment: /dashboard/danh-muc/<slug>
 MASTERS = [
@@ -70,7 +73,15 @@ SETTINGS_SCREENS = [
     {"doctype": "Reader Settings", "slug": "thiet-lap-doc-gia", "label": "Thiết lập độc giả", "icon": "settings"},
 ]
 
-REGISTRY = {entry["doctype"]: entry for entry in [*MASTERS, *ARCHIVE_SCREENS, *READER_SCREENS, *SETTINGS_SCREENS]}
+# Inventory of the fonds (tổng kiểm kê): /dashboard/kiem-ke
+INVENTORY_SCREENS = [
+    {"doctype": "Inventory Check", "slug": "kiem-ke", "label": "Tổng kiểm kê phông", "icon": "clipboard-check",
+     "list_fields": ["check_title", "check_date", "fonds", "status", "total_difference"],
+     "hide": ["completed_on"], "drawer_width": "1080px"},
+]
+
+REGISTRY = {entry["doctype"]: entry for entry in [*MASTERS, *ARCHIVE_SCREENS, *READER_SCREENS, *SETTINGS_SCREENS,
+                                                   *INVENTORY_SCREENS]}
 MASTER_BY_DOCTYPE = REGISTRY  # kept for older imports
 
 # Files accepted for upload (documents). Legacy Office formats are stored but not text-extracted.
@@ -80,8 +91,6 @@ UPLOAD_MAX_MB = 100
 # Screens still served by the previous server-rendered pages while they are rebuilt in the SPA.
 # (label, href, DocType used to decide whether the user sees it, sidebar section)
 LEGACY_LINKS = [
-    ("Thống kê tài liệu", "/reports/thong_ke_tai_lieu", "Archive Document", "Báo cáo"),
-    ("Thống kê khai thác", "/reports/thong_ke_khai_thac", "Usage Request", "Báo cáo"),
     ("Đợt sao lưu", "/backup_batches", "Backup Batch", "Bảo quản"),
     ("Kiểm tra toàn vẹn", "/integrity_checks", "Integrity Check", "Bảo quản"),
     ("Khôi phục dữ liệu", "/restore_batches", "Restore Batch", "Bảo quản"),

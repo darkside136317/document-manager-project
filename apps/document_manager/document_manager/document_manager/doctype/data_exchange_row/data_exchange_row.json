@@ -1,0 +1,15 @@
+{
+  "name": "Data Exchange Row",
+  "module": "Document Manager",
+  "doctype": "DocType",
+  "document_type": "Setup",
+  "istable": 1,
+  "engine": "InnoDB",
+  "fields": [
+    {"fieldname": "severity", "fieldtype": "Select", "label": "Mức độ", "options": "Lỗi\nCảnh báo\nThông tin", "in_list_view": 1},
+    {"fieldname": "level", "fieldtype": "Data", "label": "Cấp", "in_list_view": 1},
+    {"fieldname": "path", "fieldtype": "Small Text", "label": "Vị trí trong tệp", "in_list_view": 1},
+    {"fieldname": "message", "fieldtype": "Small Text", "label": "Nội dung", "in_list_view": 1}
+  ],
+  "permissions": []
+}

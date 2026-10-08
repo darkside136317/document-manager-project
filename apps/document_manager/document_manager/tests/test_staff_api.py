@@ -98,7 +98,7 @@ class TestStaffApi(IntegrationTestCase):
         self.assertIn("tu-dien", slugs)
         self.assertEqual(data["user"]["name"], CATALOGER)
         self.assertTrue(any(g["group"] == "Danh mục" for g in data["nav"]))
-        self.assertTrue(data["legacy"])
+        self.assertEqual(data["legacy"], [])  # what is left of the old pages (backup, log, settings) is not for a cataloguer
         frappe.set_user(READER)
         with self.assertRaises(frappe.PermissionError):
             boot.get_staff_boot()

@@ -7,8 +7,11 @@ from document_manager.document_manager.constants import (
     ARCHIVE_SCREENS,
     GROUP_CATALOGUES,
     GROUP_CATALOGUING,
+    GROUP_EXCHANGE,
     GROUP_READERS,
+    GROUP_REPORTS,
     GROUP_SLIPS,
+    INVENTORY_SCREENS,
     LEGACY_LINKS,
     MASTERS,
     READER_SCREENS,
@@ -55,6 +58,27 @@ def _reader_nav() -> list:
     return nav
 
 
+def _reports_nav() -> list:
+    """The report hub and the inventory of the fonds, for whoever may run at least one report."""
+    from document_manager.document_manager.services import reports
+
+    items = []
+    if reports.visible():
+        items.append({"label": "Báo cáo, thống kê", "route": "/dashboard/bao-cao", "icon": "chart-bar"})
+    items += [{"label": e["label"], "route": f"/dashboard/{e['slug']}", "icon": e["icon"]}
+              for e in INVENTORY_SCREENS if _can_read(e["doctype"])]
+    return [{"group": GROUP_REPORTS, "items": items}] if items else []
+
+
+def _exchange_nav() -> list:
+    from document_manager.document_manager.services.exchange import can_exchange
+
+    if not can_exchange():
+        return []
+    return [{"group": GROUP_EXCHANGE, "items": [
+        {"label": "Xuất, nhập XML", "route": "/dashboard/trao-doi-du-lieu", "icon": "arrow-left-right"}]}]
+
+
 def build_boot() -> dict:
     """Sidebar sections filtered by the user's permissions (the server still enforces every call)."""
     nav = [{"group": "Tổng quan", "items": [
@@ -67,6 +91,8 @@ def build_boot() -> dict:
         ]})
 
     nav.extend(_reader_nav())
+    nav.extend(_reports_nav())
+    nav.extend(_exchange_nav())
 
     masters = [m for m in MASTERS if _can_read(m["doctype"])]
     if masters:
@@ -87,6 +113,7 @@ def build_boot() -> dict:
         "readers": _with_permissions([e for e in READER_SCREENS if _can_read(e["doctype"])]),
         "settings": _with_permissions([e for e in SETTINGS_SCREENS if _can_read(e["doctype"])]),
         "archive": _with_permissions([e for e in ARCHIVE_SCREENS if _can_read(e["doctype"])]),
+        "inventory": _with_permissions([e for e in INVENTORY_SCREENS if _can_read(e["doctype"])]),
         "upload": {"extensions": UPLOAD_EXTENSIONS, "max_mb": UPLOAD_MAX_MB},
     }
 

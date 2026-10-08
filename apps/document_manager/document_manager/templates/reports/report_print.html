@@ -1,0 +1,70 @@
+{% autoescape true %}<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>{{ title }}</title>
+<style>
+  @page { size: A4 {{ 'landscape' if landscape else 'portrait' }}; margin: 14mm 12mm; }
+  * { box-sizing: border-box; }
+  body { font-family: "Times New Roman", Times, serif; font-size: 12pt; color: #000; margin: 0; padding: 12mm; }
+  .unit { text-align: center; line-height: 1.35; margin-bottom: 10pt; }
+  .unit strong { text-transform: uppercase; font-size: 12.5pt; }
+  .unit small { display: block; font-size: 10.5pt; }
+  h1 { text-align: center; font-size: 15pt; text-transform: uppercase; margin: 12pt 0 4pt; }
+  .meta { text-align: center; font-size: 11pt; margin: 0 0 10pt; }
+  .meta div { margin: 1pt 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 10.5pt; }
+  th, td { border: 1px solid #000; padding: 3pt 5pt; vertical-align: top; }
+  th { background: #e9edf2; text-align: center; }
+  td.right { text-align: right; white-space: nowrap; }
+  tfoot td { font-weight: bold; background: #f4f6f9; }
+  thead { display: table-header-group; }
+  tr { page-break-inside: avoid; }
+  .empty { text-align: center; font-style: italic; padding: 14pt; }
+  .signatures { display: flex; justify-content: space-between; margin-top: 22pt; page-break-inside: avoid; }
+  .signatures > div { width: 45%; text-align: center; }
+  .signatures .date { font-style: italic; margin-bottom: 2pt; }
+  .signatures .sign { height: 60pt; }
+  @media screen { body { max-width: 1200px; margin: 0 auto; } }
+  @media print { body { padding: 0; } }
+</style>
+</head>
+<body>
+  <div class="unit">
+    {% if unit.name %}<strong>{{ unit.name }}</strong>{% endif %}
+    {% if unit.address %}<small>{{ unit.address }}</small>{% endif %}
+    {% if unit.phone %}<small>Điện thoại: {{ unit.phone }}</small>{% endif %}
+  </div>
+  <h1>{{ title }}</h1>
+  {% if info or filters %}
+  <div class="meta">
+    {% for label, text in info %}<div>{{ label }}: <strong>{{ text }}</strong></div>{% endfor %}
+    {% for label, text in filters %}<div>{{ label }}: <strong>{{ text }}</strong></div>{% endfor %}
+  </div>
+  {% endif %}
+  <table>
+    <thead>
+      <tr><th style="width: 4%">STT</th>{% for column in columns %}<th>{{ column.label }}</th>{% endfor %}</tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr>
+        <td class="right">{{ loop.index }}</td>
+        {% for cell in row %}<td class="{{ 'right' if aligns[loop.index0] == 'right' else '' }}">{{ cell }}</td>{% endfor %}
+      </tr>
+      {% else %}
+      <tr><td class="empty" colspan="{{ columns | length + 1 }}">Không có dữ liệu</td></tr>
+      {% endfor %}
+    </tbody>
+    {% if summary %}
+    <tfoot>
+      <tr><td></td>{% for cell in summary %}<td class="{{ 'right' if aligns[loop.index0] == 'right' else '' }}">{{ cell }}</td>{% endfor %}</tr>
+    </tfoot>
+    {% endif %}
+  </table>
+  <div class="signatures">
+    <div><div class="date">&nbsp;</div><strong>Người lập biểu</strong><div class="sign"></div>{{ user }}</div>
+    <div><div class="date">Ngày {{ printed_on }}</div><strong>Thủ trưởng đơn vị</strong><div class="sign"></div></div>
+  </div>
+</body>
+</html>{% endautoescape %}

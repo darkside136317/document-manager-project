@@ -102,6 +102,10 @@ website_redirects = [
     # The document viewer moved into the reader site; the query string (?name=DOC-...) is kept.
     {"source": "portal_document", "target": "/portal/van-ban", "redirect_http_status": 301,
      "forward_query_parameters": True},
+    # the report pages moved into the staff app
+    {"source": "reports/thong_ke_tai_lieu", "target": "/dashboard/bao-cao/thong-ke-phong", "redirect_http_status": 301},
+    {"source": "reports/thong_ke_khai_thac", "target": "/dashboard/bao-cao/thong-ke-phieu", "redirect_http_status": 301},
+    {"source": "reports(/.*)?", "target": "/dashboard/bao-cao", "redirect_http_status": 301},
 ] + [
     {"source": f"{old}(/.*)?", "target": f"/dashboard/danh-muc/{slug}", "redirect_http_status": 301}
     for old, slug in (
@@ -124,7 +128,7 @@ _AUDITED = (
     "Reader", "Reader Group", "Usage Request", "Copy Request", "Reader Feedback",
     "Backup Batch", "Restore Batch", "Integrity Check",
     "Organization Info", "Organization Unit", "Reader Settings", "Document Manager Settings",
-    "Reader Registration",
+    "Reader Registration", "Request Template", "Inventory Check",
 )
 for _doctype in _AUDITED:
     _events = doc_events.setdefault(_doctype, {})

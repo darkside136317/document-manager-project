@@ -20,6 +20,7 @@ ACCOUNTS = {  # email: (roles, user type, reader profile?)
     "e2e.noprofile@example.com": (["Reader"], "Website User", False),
     "e2e.officer@example.com": (["Reading Room Officer"], "System User", False),
     "e2e.leader@example.com": (["Archive Leader"], "System User", False),
+    "e2e.cataloger@example.com": (["Cataloger"], "System User", False),
     "e2e.admin@example.com": (["Document Admin"], "System User", False),
 }
 
@@ -49,9 +50,14 @@ def purge_reader(email):
 
 def purge_archive():
     """Archive data and groups the browser flows create carry the prefix "E2E-" (children are removed first)."""
+    for name in frappe.get_all("Inventory Check", filters={"check_title": ["like", "E2E-%"]}, pluck="name"):
+        frappe.delete_doc("Inventory Check", name, force=True, ignore_permissions=True)
+    for name in frappe.get_all("Data Exchange Job", filters={"owner": ["like", "e2e.%@example.com"]}, pluck="name"):
+        frappe.delete_doc("Data Exchange Job", name, force=True, ignore_permissions=True)
     for doctype, field in (("Archive Document", "document_title"), ("Archival File", "file_title"), ("Catalog", "catalog_title"),
                            ("Record Group", "group_title"), ("Fonds", "fonds_name"), ("Archival Agency", "agency_name"),
-                           ("Confidentiality Level", "level_name"), ("Reader Group", "group_name")):
+                           ("Confidentiality Level", "level_name"), ("Reader Group", "group_name"), ("Document Type Category", "type_name"),
+                           ("Document Group", "group_name")):
         for name in frappe.get_all(doctype, filters={field: ["like", "E2E-%"]}, pluck="name"):
             frappe.delete_doc(doctype, name, force=True, ignore_permissions=True)
     for name in frappe.get_all("Reader", filters={"full_name": ["like", "E2E-%"]}, pluck="name"):

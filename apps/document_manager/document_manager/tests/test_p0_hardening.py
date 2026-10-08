@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
-"""Regression tests for the P0 fixes: XML access, reader visibility, cascade, counters, honesty.
+"""Regression tests for the P0 fixes: reader visibility, cascade, counters, honesty.
 
 Run: bench --site <site> run-tests --app document_manager --module document_manager.tests.test_p0_hardening
 """
 
-import json
 from unittest.mock import MagicMock, patch
 
 import frappe
@@ -16,7 +15,7 @@ from document_manager.document_manager.permissions import (
     has_archival_file_permission,
     has_archive_document_permission,
 )
-from document_manager.document_manager.services import backup_service, xml_handler
+from document_manager.document_manager.services import backup_service
 from document_manager.document_manager.setup import install
 from document_manager.tests.test_request_workflow import _names, _reader, _seed_archive, _user
 
@@ -67,49 +66,7 @@ class TestP0Hardening(IntegrationTestCase):
     def tearDown(self):
         frappe.set_user("Administrator")
 
-    # ---- XML exchange
-    def test_xml_export_and_import_are_refused_to_readers_and_catalogers(self):
-        sample = "<ArchivalData><ArchivalFile><file_title>x</file_title></ArchivalFile></ArchivalData>"
-        for user in (READER, CATALOGER):
-            frappe.set_user(user)
-            with self.assertRaises(frappe.PermissionError, msg=user):
-                xml_handler.export_xml("Archival File")
-            with self.assertRaises(frappe.PermissionError, msg=user):
-                xml_handler.import_xml(sample, "Archival File")
-
-    def test_xml_export_emits_only_whitelisted_columns(self):
-        frappe.set_user(ADMIN)
-        res = xml_handler.export_xml("Archive Document", fields=json.dumps(
-            ["document_title", "content_text", "gridfs_file_id", "owner"]))
-        self.assertGreaterEqual(res["count"], 2)
-        self.assertIn("<document_title>", res["xml_content"])
-        for forbidden in ("content_text", "gridfs_file_id", "<owner>"):
-            self.assertNotIn(forbidden, res["xml_content"])
-
-    def test_xml_import_rejects_entity_declarations(self):
-        frappe.set_user(ADMIN)
-        bomb = '<?xml version="1.0"?><!DOCTYPE d [<!ENTITY a "aaaa">]><ArchivalData>&a;</ArchivalData>'
-        with self.assertRaises(frappe.ValidationError):
-            xml_handler.import_xml(bomb, "Fonds")
-
-    def test_xml_import_ignores_columns_outside_the_whitelist(self):
-        frappe.set_user(ADMIN)
-        xml = ("<ArchivalData><Fonds><fonds_name>P0 Import</fonds_name><owner>Administrator</owner>"
-               "<docstatus>1</docstatus><total_files>999</total_files></Fonds></ArchivalData>")
-        fonds = frappe.db.get_value("Archival File", self.file_a, "fonds")
-        agency = frappe.db.get_value("Fonds", fonds, "archival_agency")
-        xml = xml.replace("</fonds_name>", f"</fonds_name><archival_agency>{agency}</archival_agency>")
-        results = xml_handler._import_xml_worker(xml, "Fonds")
-        try:
-            self.assertEqual(results["imported"], 1, results)
-            name = frappe.db.get_value("Fonds", {"fonds_name": "P0 Import"})
-            self.assertEqual(frappe.db.get_value("Fonds", name, "owner"), ADMIN)
-            self.assertEqual(frappe.db.get_value("Fonds", name, "docstatus"), 0)
-            self.assertEqual(frappe.db.get_value("Fonds", name, "total_files"), 0)
-        finally:
-            for name in frappe.get_all("Fonds", filters={"fonds_name": "P0 Import"}, pluck="name"):
-                frappe.delete_doc("Fonds", name, force=True, ignore_permissions=True)
-
+    # (XML exchange: see test_exchange.py)
     def test_retention_job_is_not_callable_from_the_web(self):
         from document_manager.document_manager.doctype.archival_file import archival_file
         self.assertNotIn(archival_file.check_retention_periods, frappe.whitelisted)
