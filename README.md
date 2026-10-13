@@ -225,12 +225,12 @@ Tài liệu chi tiết bằng tiếng Việt trong thư mục `docs/`:
 
 | Tệp | Nội dung |
 |---|---|
-| `DEPLOYMENT.md` | Triển khai sản xuất, TLS, cập nhật, xử lý sự cố |
-| `KICH_BAN_DEMO_CHUC_NANG_VA_PHAN_QUYEN.md` | Kịch bản demo và danh sách nghiệm thu phân quyền |
-| `UI_CUSTOMIZATION.md` | Đổi nhận diện giao diện |
-| `TRACEABILITY.md` | Từng dòng của Phụ lục 03 → màn hình, API, kiểm thử |
-| `SAO_LUU_KHOI_PHUC.md` | Vận hành sao lưu, kiểm tra toàn vẹn, khôi phục |
-| `HIEU_NANG.md` | Cách đo và kết quả ở một triệu văn bản |
-| `DEV_WORKFLOW.md` | Quy trình phát triển và CI/CD |
-| `PHAN_QUYEN_DOC_GIA.md`, `XML_SCHEMA.md` | Phân quyền độc giả; lược đồ XML |
-| `BAO_CAO_REFACTOR.md` | Báo cáo quá trình tái cấu trúc |
+| [DEPLOYMENT.md](docs/DEPLOYMENT.md) | Triển khai sản xuất, TLS, cập nhật, xử lý sự cố |
+| [KICH_BAN_DEMO_CHUC_NANG_VA_PHAN_QUYEN.md](docs/KICH_BAN_DEMO_CHUC_NANG_VA_PHAN_QUYEN.md) | Kịch bản demo và danh sách nghiệm thu phân quyền |
+| [UI_CUSTOMIZATION.md](docs/UI_CUSTOMIZATION.md) | Đổi nhận diện giao diện |
+| [TRACEABILITY.md](docs/TRACEABILITY.md) | Từng dòng của Phụ lục 03 → màn hình, API, kiểm thử |
+| [SAO_LUU_KHOI_PHUC.md](docs/SAO_LUU_KHOI_PHUC.md) | Vận hành sao lưu, kiểm tra toàn vẹn, khôi phục |
+| [HIEU_NANG.md](docs/HIEU_NANG.md) | Cách đo và kết quả ở một triệu văn bản |
+| [DEV_WORKFLOW.md](docs/DEV_WORKFLOW.md) | Quy trình phát triển và CI/CD |
+| [PHAN_QUYEN_DOC_GIA.md](docs/PHAN_QUYEN_DOC_GIA.md), [XML_SCHEMA.md](docs/XML_SCHEMA.md) | Phân quyền độc giả; lược đồ XML |
+| [BAO_CAO_REFACTOR.md](docs/BAO_CAO_REFACTOR.md) | Báo cáo quá trình tái cấu trúc |

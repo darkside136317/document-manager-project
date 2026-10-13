@@ -2,148 +2,152 @@
 
 ## 1. Mục đích và phạm vi
 
-Kịch bản này dùng để demo và nghiệm thu ứng dụng **Document Manager** theo một luồng nghiệp vụ xuyên suốt: cán bộ chuẩn bị dữ liệu, biên mục tài liệu số, độc giả tra cứu/gửi yêu cầu, phòng đọc xử lý yêu cầu, cán bộ bảo quản vận hành sao lưu và quản trị viên giám sát hệ thống.
+Kịch bản dùng để demo và nghiệm thu **Document Manager** theo một luồng nghiệp vụ xuyên suốt: quản trị viên dựng tài khoản, biên mục viên biên mục tài liệu số,
+độc giả đăng ký và khai thác, phòng đọc và lãnh đạo xử lý phiếu, cán bộ bảo quản sao lưu và kiểm tra, quản trị viên giám sát.
 
-Thời lượng gợi ý: **45–60 phút**. Mọi thao tác thực hiện trên site Frappe đã cài ứng dụng `document_manager`.
+Thời lượng gợi ý: **60 phút**. Mọi thao tác thực hiện trên site đã cài ứng dụng `document_manager` (xem [DEPLOYMENT.md](DEPLOYMENT.md)).
+Ánh xạ từng bước tới yêu cầu của Phụ lục 03: [TRACEABILITY.md](TRACEABILITY.md).
 
-> Lưu ý: đây là kịch bản theo chức năng hiện có trong mã nguồn. Các tác vụ nền (trích xuất nội dung, lập chỉ mục, sao lưu, kiểm tra toàn vẹn) cần worker/Redis và các kết nối MongoDB GridFS, Meilisearch được cấu hình hoạt động trước khi demo.
+> Trước buổi demo: worker (`queue-long`, `queue-short`, `scheduler`), Redis, MariaDB và Meilisearch đang chạy. MongoDB Atlas là tùy chọn: nếu không kết nối, mọi thứ
+> vẫn chạy và màn hình **Giám sát hệ thống** ghi rõ trạng thái đó. Trích xuất nội dung và lập chỉ mục mất khoảng 15 giây sau khi lưu một tệp.
 
-## 2. Tài khoản và dữ liệu chuẩn bị
+## 2. Tài khoản
 
-Tạo các tài khoản thử nghiệm, mỗi tài khoản chỉ gán đúng một vai trò dưới đây (ngoài các role Frappe mặc định cần thiết):
+Tạo bằng `Administrator` ở **Quản trị → Người dùng → Thêm người dùng**; mỗi tài khoản nhận một liên kết đặt mật khẩu dùng một lần (hiện đúng một lần, gửi cho người dùng).
 
-| Mã tài khoản | Vai trò | Mục đích demo |
+| Tài khoản gợi ý | Vai trò | Dùng để demo |
 |---|---|---|
-| `admin.demo` | Document Admin | Quản trị dữ liệu, cấu hình, xuất/nhập, báo cáo và toàn quyền nghiệp vụ |
-| `cataloger.demo` | Cataloger | Tạo, cập nhật, xóa dữ liệu biên mục |
-| `readingroom.demo` | Reading Room Officer | Quản lý độc giả và xử lý yêu cầu khai thác/sao chụp |
-| `preservation.demo` | Preservation Officer | Sao lưu, kiểm tra toàn vẹn, lập đợt khôi phục |
-| `reader.demo` | Reader | Tra cứu trên cổng và gửi yêu cầu |
+| `admin.demo` | Quản trị tài liệu | Quản trị, thiết lập, xuất/nhập, báo cáo, sao lưu và mọi quyền nghiệp vụ |
+| `bienmuc.demo` | Biên mục viên | Danh mục, biên mục, tổng kiểm kê |
+| `phongdoc.demo` | Cán bộ phòng đọc | Độc giả, phiếu sử dụng và sao chụp, góp ý |
+| `lanhdao.demo` | Lãnh đạo | Xem toàn bộ dữ liệu và báo cáo; duyệt phiếu cần lãnh đạo |
+| `baoquan.demo` | Cán bộ bảo quản | Sao lưu, kiểm tra toàn vẹn, khôi phục |
+| độc giả | Đăng ký ở `/dang-ky` | Tra cứu và gửi phiếu (không cần tạo tay) |
 
-Thiết lập dữ liệu mẫu trước buổi demo:
+## 3. Dữ liệu chuẩn bị
 
-1. Cơ quan lưu trữ: `TTLT-DEMO` – Trung tâm Lưu trữ Demo.
-2. Mức độ mật, theo thứ tự ưu tiên: `Thường` (1), `Hạn chế` (2), `Mật` (3).
-3. Kho lưu trữ: `KHO-01`; Loại tài liệu: `Quyết định`; Nhóm tài liệu: `Hành chính`; một bảng phân loại và vài từ điển nhập nhanh.
-4. Phông `P-2024` → Khối `HC` → Mục lục `ML-01` → Hồ sơ `HS-001 – Hồ sơ công tác năm 2024`.
-5. Hai văn bản thuộc `HS-001`: `QD-001` ở mức `Thường` và `QD-MAT-001` ở mức `Mật`. Đính kèm ít nhất một PDF có thể trích xuất nội dung.
-6. Tạo hồ sơ Reader liên kết với `reader.demo`, đặt `max_confidentiality_priority = 1` để chỉ đọc dữ liệu mức `Thường`.
+Do `bienmuc.demo` hoặc `admin.demo` nhập qua giao diện (hoặc nhập một tệp XML mẫu ở **Xuất, nhập dữ liệu**):
 
-## 3. Ma trận phân quyền thực tế
+1. **Danh mục**: cơ quan lưu trữ, mức độ mật (đã gieo sẵn *Thường*, *Mật*, *Tối mật*, *Tuyệt mật*), kho/giá/hộp, loại hình, nhóm tài liệu, khung phân loại, từ điển "Cơ quan ban hành".
+2. **Biên mục**: Phông `P-2024` → Khối `HC` → Mục lục `ML-01` → Hồ sơ `HS-001 – Hồ sơ công tác năm 2024`.
+3. **Văn bản** của `HS-001`: một văn bản mức *Thường* và một mức *Mật* (tải PDF có chữ để thử tìm theo nội dung).
+4. **Giới thiệu đơn vị**: `scripts/demo/seed_organization.py up` gieo nội dung mẫu cho các trang công khai (đây là dữ liệu mẫu; `down` gỡ đi), hoặc nhập ở **Quản trị → Thông tin đơn vị**.
 
-Ký hiệu: **C** tạo, **R** xem, **U** sửa, **D** xóa, **S** submit, **H** hủy/amend, **P** in, **X/I** xuất/nhập.
+## 4. Ma trận phân quyền thực tế
 
-| Nhóm dữ liệu/chức năng | Document Admin | Cataloger | Reading Room Officer | Preservation Officer | Reader |
-|---|---|---|---|---|---|
-| Phông, khối, mục lục, hồ sơ, văn bản | CRUD; Admin có P/X/I ở các DocType chính | CRUD hồ sơ/văn bản/mục lục/khối; không xóa Phông | R | – | R, bị lọc theo độ mật |
-| Cơ quan, bảng phân loại, nhóm/loại tài liệu, từ điển | CRUD; P/X/I | CRUD, trừ xóa ở một số danh mục | R ở danh mục được cấp | – | – |
-| Mức độ mật | CRUD; P/X/I | R | R | – | – |
-| Kho lưu trữ | CRUD; P/X/I | CRU, không xóa | R | R | – |
-| Độc giả và thiết lập độc giả | CRUD; P/X/I | – | CRU, không xóa Reader | – | chỉ sửa hồ sơ Reader của mình; không tạo |
-| Phiếu yêu cầu khai thác/sao chụp | CRUD, S/H/P/X | – | CRU, S/H/P | – | CRU, S; không hủy/amend/xóa |
-| Phản hồi độc giả | CRUD | – | RU | – | CRU, không xóa |
-| Sao lưu, kiểm tra toàn vẹn, khôi phục | CRUD | – | – | CRU, không xóa | – |
-| Thiết lập hệ thống, thông tin tổ chức, nhật ký | CRUD thiết lập/thông tin; R/X nhật ký | – | R thông tin tổ chức; RU thiết lập độc giả | – | R thông tin tổ chức |
-| Báo cáo và export/import XML | Toàn quyền báo cáo; XML cho Phông/Khối/Mục lục/Hồ sơ/Văn bản | theo quyền đọc/tác nghiệp | theo quyền đọc | – | không có export/import |
+Màn hình **Quản trị → Phân quyền vai trò** hiển thị ma trận này trực tiếp từ cấu hình thật (quyền theo từng loại dữ liệu). Tóm tắt:
 
-Quy tắc bảo mật bổ sung: nhân sự nội bộ (bốn role nghiệp vụ, System Manager, Administrator) xem được mọi mức độ mật. Reader chỉ thấy **Hồ sơ lưu trữ** và **Văn bản/tài liệu** có ưu tiên mức mật không vượt `max_confidentiality_priority` trong hồ sơ Reader.
+| Nhóm chức năng | Quản trị tài liệu | Biên mục viên | Cán bộ phòng đọc | Lãnh đạo | Cán bộ bảo quản | Độc giả |
+|---|---|---|---|---|---|---|
+| Phông | Toàn quyền | Tạo, sửa (không xóa) | Xem | Xem | – | Xem phần được cấp |
+| Khối, mục lục, hồ sơ, văn bản | Toàn quyền | Tạo, sửa, xóa | Xem | Xem | – | Xem phần được cấp |
+| Tổng kiểm kê phông | Toàn quyền | Tạo, sửa (không xóa) | – | Xem | Xem | – |
+| Danh mục chung (cơ quan, loại hình, nhóm, kho, từ điển…) | Toàn quyền | Tạo, sửa (từ điển: cả xóa) | Xem | Xem | Chỉ xem kho | – |
+| Mức độ mật | Toàn quyền | Xem | Xem | Xem | – | – |
+| Độc giả | Toàn quyền | – | Tạo, sửa | Xem | – | Sửa liên hệ của mình |
+| Nhóm độc giả, mẫu phiếu | Toàn quyền | – | Xem | Xem | – | – |
+| Đăng ký độc giả (hàng đợi duyệt) | Toàn quyền | – | Duyệt, từ chối | – | – | Gửi đăng ký |
+| Phiếu sử dụng, phiếu sao chụp | Toàn quyền | – | Tiếp nhận, quyết định từng mục, giao, nhận trả, gia hạn | Duyệt phiếu cần lãnh đạo | – | Tạo, gửi, hủy phiếu của mình |
+| Góp ý | Toàn quyền | – | Xử lý | Xem | – | Gửi |
+| Thiết lập độc giả | Toàn quyền | – | Sửa | Xem | – | – |
+| Báo cáo | Toàn bộ | Báo cáo phông, mục lục, hồ sơ, văn bản, thống kê | Báo cáo độc giả và phiếu | Toàn bộ | – | – |
+| Xuất, nhập XML | Có | – | – | – | – | – |
+| Sao lưu, kiểm tra, khôi phục | Có | – | – | – | Có | – |
+| Người dùng, nhóm cán bộ, phân quyền, nhật ký, giám sát | Có | – | – | – | – | – |
+| Thiết lập hệ thống, thông tin đơn vị, cơ cấu tổ chức | Có | – | Xem thông tin đơn vị | Xem | – | – |
 
-## 4. Kịch bản trình diễn
+Quy tắc chung: độc giả chỉ thấy hồ sơ và văn bản **đã công bố** (không "Nháp", không "Đã tiêu hủy"), không vượt mức mật của nhóm quyền, trong phạm vi phông của nhóm. Mọi API
+kiểm quyền lại phía máy chủ; ẩn nút trên giao diện chỉ là tiện lợi.
 
-### Pha A – Đăng nhập và tổng quan (3 phút)
+## 5. Kịch bản trình diễn
 
-1. Đăng nhập bằng `admin.demo`, mở workspace **Document Manager**.
-2. Giới thiệu dashboard và các nhóm: Biên mục, Độc giả & khai thác, Bảo quản, Danh mục, Thống kê, Quản trị.
-3. Mở **Thông tin tổ chức** để chứng minh thông tin giới thiệu/liên hệ có thể quản lý và Reader chỉ được xem.
-4. Đăng xuất và đăng nhập nhanh bằng `reader.demo`: xác nhận đây là tài khoản portal, không có Desk; menu portal gồm Tìm kiếm, Phiếu yêu cầu, Phiếu sao chụp và Góp ý.
+### Pha A – Hai giao diện và tài khoản (6 phút)
 
-**Kết quả mong đợi:** giao diện/đường dẫn khả dụng khác nhau theo role.
+1. `Administrator` vào `/dashboard`: tổng quan, thanh bên theo quyền. Vào **Quản trị → Người dùng**, tạo `bienmuc.demo` (vai trò Biên mục viên) → hiện liên kết đặt mật khẩu một lần.
+2. Mở liên kết ở cửa sổ ẩn danh, đặt mật khẩu → vào thẳng `/dashboard`; thanh bên chỉ có phần Biên mục, Danh mục. Mở lại liên kết cũ: báo đã dùng.
+3. Quay lại tài khoản quản trị: thử tự khóa hoặc tự bỏ vai trò quản trị của mình → bị từ chối; tạo **Nhóm cán bộ** cấp một vai trò cho nhiều người.
+4. Mở `/gioi-thieu` (không đăng nhập): trang công khai của đơn vị, lãnh đạo, cơ cấu, liên hệ.
 
-### Pha B – Chuẩn hóa danh mục và biên mục (12 phút)
+**Kết quả mong đợi:** mỗi vai trò thấy menu riêng; liên kết đặt mật khẩu chỉ dùng một lần; không ai tự khóa mình.
 
-Thực hiện bằng `cataloger.demo`.
+### Pha B – Danh mục và biên mục (12 phút)
 
-1. Vào **Cơ quan lưu trữ**, **Bảng phân loại**, **Nhóm tài liệu**, **Loại tài liệu**, **Kho lưu trữ**, **Từ điển nhập nhanh**; tạo hoặc sửa một giá trị minh họa. Với từ điển, minh họa nhập nhanh từ khóa hay lặp lại.
-2. Mở **Mức độ mật**: chỉ cho thấy quyền xem của Cataloger. Chuyển sang `admin.demo`, tạo/sửa mức `Hạn chế` hoặc `Mật` để chứng minh đây là danh mục quản trị.
-3. Với Cataloger, tạo chuỗi dữ liệu 5 tầng: **Phông → Khối tài liệu → Mục lục → Hồ sơ lưu trữ → Văn bản/tài liệu**.
-4. Khi tạo Hồ sơ, chọn phông/khối/mục lục, kho lưu trữ, mức độ mật, thời gian tài liệu. Khi tạo Văn bản, đính kèm PDF, điền số/ngày văn bản, tác giả, loại tệp, số trang và mức độ mật.
-5. Lưu văn bản, chờ worker xử lý. Mở lại để chỉ ra tệp đính kèm, checksum SHA-256, phiên bản, trạng thái lập chỉ mục và nội dung được trích xuất (nếu dịch vụ đã hoàn tất).
-6. Tìm kiếm từ List View theo mã/tên hồ sơ và văn bản; in hồ sơ hoặc văn bản bằng `admin.demo` để minh họa mẫu in chuẩn.
+Thực hiện bằng `bienmuc.demo`.
 
-**Kết quả mong đợi:** dữ liệu liên kết đúng cấp cha–con; số lượng văn bản của hồ sơ và tổng hồ sơ của phông được cập nhật tự động; Cataloger có thể xóa văn bản/hồ sơ/mục lục/khối nhưng không xóa Phông.
+1. **Danh mục**: sửa một mục ở *Cơ quan lưu trữ*, tạo từ điển nhiều cấp ở *Từ điển nhập nhanh* (cùng một giá trị dưới hai cha khác nhau), cây *Kho lưu trữ* (kho → phòng → giá → hộp).
+2. **Biên mục** (`/dashboard/bien-muc`): dựng cây Phông → Khối → Mục lục → Hồ sơ; mở một hồ sơ, **tải lên nhiều tệp cùng lúc** (mỗi tệp có tiến độ riêng, mỗi tệp thành một văn bản).
+3. Mở một văn bản: xem trước PDF/ảnh/văn bản, mã SHA-256, trạng thái xử lý nền; sửa mô tả (trường *Cơ quan ban hành* gợi ý theo từ điển); in phiếu mô tả hồ sơ và mục lục hồ sơ.
+4. **Tìm kiếm** (`/dashboard/tim-kiem`): tìm cơ bản theo từ trong nội dung (có làm nổi từ khóa), tìm nâng cao theo phông, loại tệp, khoảng ngày; lưu bộ lọc; Ctrl+K.
+5. Thử xóa một mục lục còn hồ sơ → bị từ chối; chuyển một hồ sơ sang mục lục khác → số văn bản và vị trí của các văn bản con cập nhật theo.
 
-### Pha C – Tra cứu, preview và kiểm tra độ mật (8 phút)
+**Kết quả mong đợi:** cấp bậc luôn nhất quán; số liệu tự cập nhật; không xóa được cha còn con.
 
-Thực hiện bằng `reader.demo`.
+### Pha C – Độc giả đăng ký, tra cứu và độ mật (10 phút)
 
-1. Mở `/search`, tìm `công tác` hoặc một từ có trong PDF đã trích xuất. Minh họa tìm toàn văn.
-2. Thử bộ lọc: phông, mức độ mật, loại tệp; thay đổi sắp xếp và chuyển trang nếu có đủ dữ liệu.
-3. Trên một kết quả mức `Thường`, chọn **Xem trước**. Minh họa PDF/ảnh hiển thị trực tiếp hoặc nội dung trích xuất với tệp chưa hỗ trợ preview; mở chi tiết và tải tệp nếu được phép.
-4. Tìm `QD-MAT-001`. Xác nhận không xuất hiện với Reader ưu tiên 1.
-5. Dùng `admin.demo` mở cùng văn bản để xác nhận cán bộ nội bộ vẫn thấy được. Tăng `max_confidentiality_priority` của Reader lên 3, đăng nhập lại Reader và tìm lại để xác nhận quyền được mở rộng.
+1. Ẩn danh mở `/dang-ky`, đăng ký một độc giả. Không có thông báo nào lộ email đã tồn tại hay chưa.
+2. `phongdoc.demo`: **Độc giả → Đăng ký độc giả**, duyệt → hiện **liên kết đặt mật khẩu một lần** (không cần email). Độc giả đặt mật khẩu và vào `/portal`.
+3. Độc giả tìm một từ có trong PDF (tìm theo nội dung). Văn bản mức *Mật* **không** hiện. Thử mở thẳng địa chỉ của văn bản mật → báo như không tồn tại.
+4. Quản trị viên (`admin.demo`): **Độc giả → Nhóm độc giả**, nâng *mức mật tối đa* của nhóm → độc giả tìm lại và thấy; thu hẹp *phạm vi phông* → thấy ít đi.
 
-**Kết quả mong đợi:** cả danh sách, tìm kiếm toàn văn, preview/tải tệp và truy cập trực tiếp đều tuân theo độ mật.
+**Kết quả mong đợi:** danh sách, tìm kiếm, xem trước, tải tệp và truy cập địa chỉ trực tiếp đều theo cùng một chính sách.
 
-### Pha D – Yêu cầu khai thác, sao chụp và phản hồi (12 phút)
+### Pha D – Phiếu sử dụng, sao chụp, lãnh đạo duyệt, trả (12 phút)
 
-1. Với `reader.demo`, tạo **Phiếu yêu cầu khai thác**, thêm Hồ sơ/Văn bản mức `Thường` vào bảng chi tiết, lưu và **Submit**. Trạng thái chuyển thành `Chờ duyệt`.
-2. Tạo **Phiếu yêu cầu sao chụp**, thêm văn bản, điền yêu cầu sao chụp, Submit. Trạng thái cũng là `Chờ duyệt`.
-3. Gửi một **Phản hồi độc giả** để minh họa kênh góp ý.
-4. Đăng nhập `readingroom.demo`: mở danh sách Reader để tìm/cập nhật độc giả; mở hai phiếu đang chờ.
-5. Duyệt phiếu khai thác: thao tác **Approve**, kiểm tra `approved_by`, `approved_date`, trạng thái `Đã duyệt`; sau khi hoàn trả, chọn **Mark returned** để thành `Đã trả`.
-6. Duyệt phiếu sao chụp: **Approve**, sau khi cấp bản sao chọn **Mark completed** để thành `Đã hoàn thành`. Tạo thêm một phiếu và **Reject**, nhập lý do để minh họa nhánh từ chối.
-7. Mở phản hồi độc giả và trả lời bằng `readingroom.demo`; Reader mở lại để xem phản hồi.
-8. Mở mẫu in của phiếu bằng `readingroom.demo` hoặc `admin.demo`.
+1. Độc giả: ở kết quả tìm kiếm bấm **Thêm vào phiếu** cho vài hồ sơ và văn bản (phiếu nháp phía máy chủ là giỏ), mở phiếu, chọn mục đích, **Gửi**. Làm tương tự cho phiếu sao chụp.
+2. `phongdoc.demo`: `/dashboard/doc-gia/phieu-su-dung`, hàng đợi *Chờ tiếp nhận* có số đếm trên thanh bên; mở phiếu, **quyết định từng mục** (đồng ý hoặc từ chối kèm lý do).
+3. Phiếu có mục mức *Mật* tự chuyển sang *Chờ lãnh đạo duyệt*: `lanhdao.demo` duyệt các mục đó; có thể trả phiếu về phòng đọc.
+4. Phòng đọc **giao** tài liệu (đặt hạn trả), **nhận trả** (ghi tình trạng từng mục), **gia hạn** một phiếu. In phiếu giao, phiếu lấy tài liệu, thẻ độc giả.
+5. Thử vượt hạn mức (số mục/phiếu, số phiếu/ngày, có tài liệu quá hạn) → độc giả bị từ chối kèm lý do. Công việc hằng ngày đánh dấu phiếu quá hạn và nhắc độc giả.
+6. Độc giả nhận **thông báo trong ứng dụng** (chuông) ở mỗi bước; gửi một **góp ý**, phòng đọc xử lý.
 
-**Kết quả mong đợi:** Reader tạo/submit được yêu cầu của mình nhưng không được xóa, hủy hoặc amend; Reading Room Officer xử lý vòng đời yêu cầu nhưng không xóa yêu cầu; Admin có toàn quyền.
+**Kết quả mong đợi:** vòng đời đủ: nháp → chờ tiếp nhận → (chờ lãnh đạo) → đã duyệt → đang sử dụng → đã trả; quá hạn là cờ, không phải trạng thái.
 
-### Pha E – Báo cáo, export/import XML (6 phút)
+### Pha E – Báo cáo và xuất/nhập XML (8 phút)
 
 Thực hiện bằng `admin.demo`.
 
-1. Mở **Thống kê tài liệu**, lọc theo phông/kho/loại tài liệu và chạy báo cáo. Chỉ ra các tổng số và biểu đồ.
-2. Mở **Thống kê khai thác**, lọc khoảng thời gian để xem yêu cầu khai thác/sao chụp theo trạng thái và biểu đồ.
-3. Xuất dữ liệu XML cho lần lượt một trong các loại được hỗ trợ: `Fonds`, `Record Group`, `Catalog`, `Archival File`, `Archive Document`; chọn bộ trường cần xuất nếu gọi qua API.
-4. Nhập lại một XML thử nghiệm với bản ghi mới; kiểm tra job nền và log. Nhập lại lần hai với `update_existing = false` để minh họa bỏ qua trùng; chỉ dùng `update_existing = true` khi chủ trì demo đã xác nhận dữ liệu được phép cập nhật.
+1. `/dashboard/bao-cao`: báo cáo phông, mục lục, hồ sơ, văn bản; thống kê theo phông, năm, mức mật, loại hình, kho; báo cáo độc giả, phiếu quá hạn. Tải CSV/XLSX; **In** (có đầu đề đơn vị và chữ ký), PDF.
+2. **Tổng kiểm kê** (`/dashboard/kiem-ke`): tạo kỳ kiểm kê, lấy số liệu hệ thống, nhập số đếm thực tế, xem chênh lệch, hoàn thành (khóa số liệu).
+3. `/dashboard/trao-doi-du-lieu`: **Xuất** theo bộ lọc, chọn trường theo từng cấp, xem trước số lượng, tải XML (và XSD). **Nhập**: tải tệp lên, hệ thống phân tích và báo lỗi từng dòng, **chạy thử** (không ghi gì) rồi chạy thật; nhập lại cùng tệp không tạo thêm bản ghi.
 
-**Kết quả mong đợi:** XML export/import chỉ hỗ trợ năm DocType trên; import chạy nền, không chờ trực tiếp trên trình duyệt.
+**Kết quả mong đợi:** xuất/nhập chạy nền có tiến độ, theo quyền của người chạy; tệp độc hại (DTD, thực thể) bị từ chối.
 
-### Pha F – Bảo quản, kiểm tra toàn vẹn và khôi phục (6 phút)
+### Pha F – Bảo quản (8 phút)
 
-Thực hiện bằng `preservation.demo`.
+Thực hiện bằng `baoquan.demo`.
 
-1. Tạo **Đợt sao lưu**, chọn `Cơ sở dữ liệu`, `Tệp tài liệu` hoặc `Cả hai`, sau đó bấm **Run backup**. Theo dõi `Đang chạy` → `Thành công/Lỗi`, thời gian hoàn thành, đường dẫn và dung lượng sao lưu.
-2. Tạo **Kiểm tra toàn vẹn**, chọn `Checksum`, `File bị thiếu`, `Liên kết file-metadata` hoặc `Toàn bộ`; chạy kiểm tra. Mở lại bản ghi để xem tổng số đã kiểm tra, lỗi phát hiện và chi tiết lỗi.
-3. Tạo **Đợt khôi phục**, chọn đợt sao lưu nguồn, chạy để thể hiện cơ chế điều phối và trạng thái job.
-4. Dùng Admin mở cùng màn hình để chứng minh Admin cũng có toàn quyền; Cataloger/Reader không thấy quyền thao tác.
+1. Sao lưu → **Sao lưu mới** (*Cả hai*): theo dõi tiến độ; lần thứ hai chỉ chép tệp mới. Mở bản kết xuất: **Kiểm tra bản sao lưu**, tải về.
+2. Làm hỏng có chủ đích một tệp trên máy chủ (hoặc xóa nó), rồi Kiểm tra → **Kiểm tra mới** (*Tệp tài liệu*): phát hiện tệp mất và cho biết có bản sao lưu khôi phục được.
+3. **Chuyển sang khôi phục**: đợt khôi phục đưa đúng tệp cũ về; chạy kiểm tra lại: sạch.
+4. Khôi phục → bản sao lưu CSDL → **Khôi phục từ bản này…**: hiện hướng dẫn đã kiểm tra, **không** tự chạy.
 
-**Giới hạn cần nêu khi demo:** mã hiện tại chỉ ghi nhận tác vụ khôi phục CSDL và yêu cầu thực hiện restore thực tế thủ công qua `bench restore`; không tuyên bố đã tự động khôi phục dữ liệu CSDL.
+**Giới hạn cần nêu:** khôi phục CSDL tự động tắt mặc định (cần `dm_allow_db_restore`, mật khẩu root và gõ lại tên site). Chi tiết: [SAO_LUU_KHOI_PHUC.md](SAO_LUU_KHOI_PHUC.md).
 
-### Pha G – Quản trị, cấu hình và nhật ký (4 phút)
+### Pha G – Quản trị, nhật ký, giám sát (4 phút)
 
-Thực hiện bằng `admin.demo` hoặc `System Manager` cho phần được Frappe cấp role chuẩn.
+Thực hiện bằng `admin.demo`.
 
-1. Mở **Document Manager Settings**, điền/cập nhật cấu hình MongoDB GridFS và Meilisearch, bấm kiểm tra kết nối MongoDB/Meilisearch.
-2. Bật/tắt lịch kiểm tra toàn vẹn tự động. Nêu lịch cron hiện cấu hình: Chủ nhật, 02:00.
-3. Mở **Reader Settings** để kiểm tra tham số khai thác độc giả; `readingroom.demo` được cập nhật thiết lập này nhưng không tạo bản ghi mới.
-4. Mở **Nhật ký nghiệp vụ**, tìm theo loại hoạt động/thời gian, export nếu dùng Admin/System Manager; kiểm tra tác vụ dọn log định kỳ.
-5. Trong quản trị chuẩn Frappe, minh họa tạo người dùng, gán role và đổi mật khẩu (đây là chức năng nền tảng của Frappe, không phải DocType riêng của ứng dụng).
+1. **Thiết lập hệ thống**: sao lưu tự động, thời hạn giữ, chính sách mật khẩu, số lần đăng nhập sai.
+2. **Nhật ký hệ thống**: lọc theo loại, người dùng, ngày; xem chi tiết một dòng; tải CSV. **Dọn dẹp**: xem trước số dòng, chỉ dòng cũ hơn 7 ngày, phải gõ lại số dòng để xác nhận (việc dọn cũng được ghi lại).
+3. **Giám sát hệ thống**: dịch vụ, chỉ mục tìm kiếm, hàng đợi, đĩa, sao lưu gần nhất, người dùng.
+4. **Phân quyền vai trò**: ma trận quyền theo loại dữ liệu.
 
-## 5. Checklist nghiệm thu phân quyền
+## 6. Checklist nghiệm thu phân quyền
 
-Thực hiện tối thiểu các phép thử âm sau trước khi kết thúc:
+Thực hiện các phép thử âm sau (kết quả kỳ vọng ở cuối dòng); phần lớn đã có sẵn trong `scripts/e2e/e2e_http.py`:
 
-- Reader ưu tiên 1 không thấy hoặc không mở được Hồ sơ/Văn bản mức `Mật`; Reader ưu tiên 3 mở được.
-- Cataloger không có quyền xóa Phông, không sửa Mức độ mật và không vận hành Sao lưu.
-- Reading Room Officer không tạo/sửa Phông, Hồ sơ hay Văn bản; chỉ đọc chúng.
-- Preservation Officer không biên mục hay xử lý phiếu yêu cầu.
-- Reader không vào Desk, không export/import XML, không xóa/hủy/amend phiếu.
-- Admin có quyền tạo/sửa/xóa toàn bộ DocType ứng dụng, vận hành bảo quản, cấu hình và export/import tại các DocType đã hỗ trợ.
+- Độc giả không vào `/dashboard` (bị chuyển về `/portal`); cán bộ vẫn mở được `/portal` qua liên kết "Giao diện độc giả" nếu có hồ sơ độc giả.
+- Độc giả nhóm thấp không thấy, không mở được hồ sơ/văn bản mức cao hơn, hồ sơ nháp và đã tiêu hủy; nhóm cao hơn thấy.
+- Độc giả không gọi được API xuất/nhập XML, báo cáo, bảo quản, người dùng, nhật ký (HTTP 403).
+- Biên mục viên không có menu Bảo quản và Quản trị; gọi trực tiếp API người dùng bị từ chối.
+- Cán bộ phòng đọc không tạo/sửa phông, hồ sơ, văn bản; chỉ xem.
+- Cán bộ bảo quản không thấy Người dùng và Nhật ký.
+- Quản trị viên không tạo được tài khoản System Manager, không sửa/khóa/xóa Administrator, không tự khóa hoặc tự hạ quyền, luôn còn ít nhất một quản trị viên.
+- Không ai (kể cả quản trị viên) sửa hoặc xóa lẻ từng dòng nhật ký; chỉ có "Dọn dẹp" có kiểm soát.
 
-## 6. Điểm cần xác nhận kỹ thuật trước khi nghiệm thu
+## 7. Điểm cần xác nhận kỹ thuật trước khi nghiệm thu
 
-1. Dịch vụ MongoDB, Meilisearch, Redis và worker hoạt động; nếu không, upload vẫn có thể lưu metadata nhưng preview, toàn văn, chỉ mục hoặc tác vụ nền có thể không hoàn tất.
-2. Kiểm tra có bản PDF mẫu không mật và một bản mật để chứng minh chính xác lọc quyền.
-3. Không chạy khôi phục trên môi trường demo có dữ liệu quan trọng; tạo backup trước mọi thử nghiệm.
-4. Các phương thức duyệt/từ chối/hoàn tất phiếu hiện được khai báo là API document method. Khi nghiệm thu bảo mật, cần kiểm tra chúng từ phiên Reader bằng kiểm thử API trực tiếp, không chỉ kiểm tra nút giao diện; nếu Reader có thể gọi trực tiếp phương thức đổi trạng thái, cần bổ sung kiểm tra role phía máy chủ trước khi đưa production.
-
+1. MongoDB Atlas: nếu dùng, địa chỉ IP máy chủ đã được cho phép; nếu chưa, nêu rõ chế độ dự phòng đang chạy (xem Giám sát hệ thống).
+2. Có sẵn một PDF không mật và một PDF mật để chứng minh lọc quyền.
+3. Không chạy khôi phục CSDL trên môi trường có dữ liệu quan trọng; luôn tạo bản sao lưu trước.
+4. Chưa có đăng nhập OTP (2FA) trên trang `/dang-nhap`; tài khoản bật 2FA dùng `/login` của Frappe.

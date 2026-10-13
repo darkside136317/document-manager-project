@@ -1,180 +1,99 @@
-# 🚀 Hướng dẫn Triển khai Production — Document Manager
+# Hướng dẫn triển khai sản xuất — Document Manager
 
-## Yêu cầu Server
+## 1. Yêu cầu máy chủ
 
-| Thành phần | Tối thiểu | Khuyến nghị |
-|-----------|----------|-------------|
-| **CPU** | 2 cores | 4+ cores |
-| **RAM** | 4 GB | 8+ GB |
-| **Disk** | 40 GB SSD | 100+ GB SSD |
-| **OS** | Ubuntu 22.04+ / Debian 12+ | Ubuntu 24.04 LTS |
-| **Docker** | Docker Engine 24+ | Docker Engine 27+ |
-| **Network** | Port 80/443 mở | Reverse proxy (Traefik/Nginx) |
+| Thành phần | Tối thiểu | Khuyến nghị (khoảng 1 triệu văn bản) |
+|---|---|---|
+| CPU | 2 lõi | 4 lõi trở lên |
+| RAM | 4 GB | 8 GB trở lên (MariaDB và Meilisearch cần nhiều bộ nhớ) |
+| Đĩa | 40 GB SSD | 200 GB SSD trở lên; tệp tài liệu và kho sao lưu tăng theo dữ liệu |
+| Hệ điều hành | Ubuntu 22.04 / Debian 12 | Ubuntu 24.04 LTS |
+| Docker | Engine 24, Compose v2 | Engine 27 |
+| Mạng | Cổng 80/443 | Reverse proxy có TLS phía trước |
 
----
-
-## Bước 1: Chuẩn bị Server
+## 2. Chuẩn bị
 
 ```bash
-# 1.1 — Cài Docker Engine + Docker Compose v2
-curl -fsSL https://get.docker.com | sh
-sudo usermod -aG docker $USER
-# Logout rồi login lại
-
-# 1.2 — Kiểm tra
-docker --version        # >= 24.0
-docker compose version  # >= 2.20
-
-# 1.3 — Clone project lên server
-git clone <your-repo-url> /opt/docmanager
-cd /opt/docmanager
+curl -fsSL https://get.docker.com | sh && sudo usermod -aG docker $USER   # đăng nhập lại sau lệnh này
+git clone <địa-chỉ-repo> /opt/docmanager && cd /opt/docmanager
 ```
 
----
+### MongoDB Atlas (tùy chọn, khuyến nghị)
 
-## Bước 2: Cấu hình MongoDB Atlas
+MongoDB GridFS giữ tệp gốc và bản xem trước. Không có nó, hệ thống vẫn chạy: tệp nằm ở thư mục riêng của Frappe và việc kiểm tra bản GridFS bị bỏ qua
+(ghi thành một cảnh báo). Nếu dùng:
 
-### 2.1 — Tạo tài khoản MongoDB Atlas
-1. Truy cập https://www.mongodb.com/atlas
-2. Đăng ký tài khoản → Tạo **Organization** → **Project**
+1. Tạo cluster (khu vực gần nhất, ví dụ Singapore), một người dùng cơ sở dữ liệu có quyền đọc/ghi.
+2. **Network Access**: thêm địa chỉ IP của máy chủ. Quên bước này là nguyên nhân thường gặp của lỗi *SSL handshake failed* khi kết nối.
+3. Lấy chuỗi kết nối `mongodb+srv://…` (Database → Connect → Drivers).
 
-### 2.2 — Tạo Cluster
-1. **Database** → **Build a Database**
-2. Chọn **M0 Free** (512MB) hoặc **M10+** (production)
-3. Region: **Singapore** (gần VN nhất)
-4. Cluster Name: `docmanager-cluster`
-
-### 2.3 — Tạo Database User
-1. **Security** → **Database Access** → **Add New Database User**
-2. Username: `docmanager_user`, Password: strong password
-3. Role: **Read and write to any database**
-
-### 2.4 — Whitelist IP
-1. **Security** → **Network Access** → **Add IP Address**
-2. Nhập IP server cụ thể (hoặc `0.0.0.0/0` cho dev)
-
-### 2.5 — Lấy Connection String
-1. **Database** → **Connect** → **Drivers** → **Python**
-2. Copy connection string dạng:
-```
-mongodb+srv://docmanager_user:<password>@cluster.xxxxx.mongodb.net/?retryWrites=true&w=majority
-```
-
----
-
-## Bước 3: Tạo file .env
+## 3. Cấu hình `.env`
 
 ```bash
 cd /opt/docmanager/docker
-cp .env.production .env
+cp .env.example .env
 nano .env
 ```
 
-Các giá trị BẮT BUỘC thay đổi:
-
-| Biến | Hành động |
-|------|----------|
-| `FRAPPE_SITE_NAME` | Domain thực (ví dụ: `luutru.coquan.gov.vn`) |
-| `ADMIN_PASSWORD` | `openssl rand -base64 24` |
+| Biến | Cần làm |
+|---|---|
+| `FRAPPE_SITE_NAME` | Tên miền thật, ví dụ `luutru.coquan.gov.vn` (nginx dùng làm tên site) |
+| `ADMIN_PASSWORD` | Mật khẩu của `Administrator`: `openssl rand -base64 24` |
 | `MARIADB_ROOT_PASSWORD` | `openssl rand -base64 24` |
-| `MONGODB_ATLAS_URI` | Connection string từ Bước 2.5 |
-| `MEILISEARCH_MASTER_KEY` | `openssl rand -hex 16` |
-| `GUNICORN_WORKERS` | `2 × CPU cores + 1` |
+| `MONGODB_ATLAS_URI`, `MONGODB_DATABASE` | Chuỗi kết nối và tên cơ sở dữ liệu GridFS (mặc định `docmanager_files`) |
+| `MEILISEARCH_MASTER_KEY` | `openssl rand -hex 16`; **bắt buộc đổi**, Meilisearch không công khai ra máy chủ |
+| `GUNICORN_WORKERS` / `GUNICORN_THREADS` | Khoảng `2 × số lõi + 1` tiến trình |
+| `HTTP_PUBLISH_PORT` | Cổng nginx công bố (mặc định `80` ở chế độ production) |
+| `CLIENT_MAX_BODY_SIZE` | Giới hạn tải lên của nginx, đặt `200m`; giới hạn tệp của ứng dụng là 100 MB |
 
----
+Không đưa `.env` vào git.
 
-## Bước 4: Build Docker Image
-
-```bash
-cd /opt/docmanager
-
-docker build \
-  -t docmanager-custom:v16.26.2 \
-  --build-arg ERPNEXT_VERSION=v16.26.2 \
-  -f docker/Dockerfile .
-
-docker images | grep docmanager
-```
-
----
-
-## Bước 5: Khởi động hệ thống
+## 4. Build image và khởi động
 
 ```bash
 cd /opt/docmanager/docker
-
-# Khởi động (base + production override)
+docker compose -f docker-compose.yml -f docker-compose.prod.yml build backend   # có tầng Node: chạy vitest và build giao diện cán bộ
 docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
-
-# Xem logs — chờ create-site hoàn thành (~2-5 phút)
-docker compose logs -f create-site
-
-# Kiểm tra services
+docker compose logs -f create-site   # chờ xong (2–5 phút): tạo site, cài ERPNext và document_manager
 docker compose ps
 ```
 
----
+`create-site` chạy `bench new-site` với `--install-app document_manager`; ứng dụng tự gieo vai trò, mức độ mật, workflow, thông báo, nhóm độc giả
+mặc định và các giá trị mặc định của thiết lập (`setup/install.py`). **Không cần cài ứng dụng hay chạy migrate bằng tay** ở lần đầu.
 
-## Bước 6: Cài đặt App
+Kiểm tra: `https://<tên-miền>/gioi-thieu` (trang công khai) và `https://<tên-miền>/dang-nhap`; cán bộ đăng nhập rồi vào `/dashboard`.
 
-```bash
-# Vào container backend
-docker compose exec backend bash
+## 5. Cấu hình sau cài đặt
 
-# Cài app
-bench --site docmanager.yourdomain.com install-app document_manager
+1. Đăng nhập `Administrator`, vào **Quản trị → Người dùng**, tạo tài khoản cho cán bộ (vai trò: Quản trị tài liệu, Biên mục viên, Cán bộ phòng đọc, Lãnh đạo,
+   Cán bộ bảo quản). Hệ thống đưa một liên kết đặt mật khẩu dùng một lần: gửi cho người dùng, không cần email. Liên kết hết hạn sau 72 giờ.
+2. **Quản trị → Thông tin đơn vị** và **Cơ cấu tổ chức**: nội dung hiện ở các trang công khai.
+3. **Quản trị → Thiết lập hệ thống**: lịch sao lưu tự động, thời hạn giữ bản sao lưu và nhật ký, chính sách mật khẩu, số lần đăng nhập sai.
+4. **Độc giả → Thiết lập độc giả** và **Nhóm độc giả**: hạn mức phiếu, gia hạn, nhắc hạn, đăng ký tự do hay phải duyệt.
+5. **Quản trị → Giám sát hệ thống**: kiểm tra Meilisearch, MongoDB, hàng đợi, đĩa và lần sao lưu gần nhất đều xanh.
 
-# Migrate
-bench --site docmanager.yourdomain.com migrate
+## 6. TLS và reverse proxy
 
-exit
-```
-
----
-
-## Bước 7: Cấu hình Services trong Frappe
-
-```bash
-# MongoDB Atlas
-docker compose exec backend bench --site <site> set-config \
-  mongodb_atlas_uri "mongodb+srv://user:pass@cluster.mongodb.net/?retryWrites=true&w=majority"
-
-docker compose exec backend bench --site <site> set-config \
-  mongodb_database "docmanager_files"
-
-# Meilisearch
-docker compose exec backend bench --site <site> set-config \
-  meilisearch_host "http://meilisearch:7700"
-
-docker compose exec backend bench --site <site> set-config \
-  meilisearch_master_key "YOUR_MEILI_MASTER_KEY"
-```
-
----
-
-## Bước 8: Cấu hình SSL
-
-### Option A: Nginx bên ngoài Docker
+nginx trong compose lắng nghe HTTP. Đặt phía trước một reverse proxy có TLS (Nginx, Traefik hoặc Caddy). Với Nginx ngoài Docker:
 
 ```nginx
 server {
     listen 80;
-    server_name docmanager.yourdomain.com;
+    server_name luutru.coquan.gov.vn;
     return 301 https://$server_name$request_uri;
 }
 
 server {
     listen 443 ssl http2;
-    server_name docmanager.yourdomain.com;
+    server_name luutru.coquan.gov.vn;
+    ssl_certificate     /etc/letsencrypt/live/luutru.coquan.gov.vn/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/luutru.coquan.gov.vn/privkey.pem;
 
-    ssl_certificate     /etc/letsencrypt/live/docmanager.yourdomain.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/docmanager.yourdomain.com/privkey.pem;
-
-    client_max_body_size 100m;
+    client_max_body_size 200m;
     proxy_read_timeout 300;
 
     location / {
-        proxy_pass http://127.0.0.1:8080;
+        proxy_pass http://127.0.0.1:80;      # HTTP_PUBLISH_PORT
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -183,56 +102,44 @@ server {
 }
 ```
 
-Cài Let's Encrypt:
-```bash
-sudo apt install certbot python3-certbot-nginx
-sudo certbot --nginx -d docmanager.yourdomain.com
-```
+## 7. Sao lưu
 
----
+Hệ thống tự sao lưu: bật **Sao lưu tự động** trong Thiết lập hệ thống (tần suất ngày/tuần/tháng; có thể gồm cả tệp). Công việc chạy từ bộ lập lịch hằng ngày
+và hàng đợi `long`, nên `scheduler` và `queue-long` phải chạy. Bản sao lưu nằm ở `sites/<site>/private/backups` (cơ sở dữ liệu) và
+`sites/<site>/private/dm-backup-store` (kho tệp theo nội dung).
 
-## Bước 9: Kiểm tra
+**Hai thư mục này cùng volume với site, nên không thay thế được bản sao lưu ra ngoài máy chủ.** Hãy sao chép định kỳ ra nơi khác
+(rsync, restic, snapshot đĩa). MongoDB Atlas bản M10 trở lên tự sao lưu; bản miễn phí thì phải làm tay.
 
-1. Truy cập `https://docmanager.yourdomain.com` → Login Administrator
-2. **Setup > Document Manager Settings** → Test MongoDB + Meilisearch connections
-3. Tạo test: Fonds → Record Group → Catalog → Archival File → Archive Document (upload PDF)
-4. Kiểm tra: text extraction (`docker compose logs queue-long`), search index, portal `/search`
+Vận hành, kiểm tra và khôi phục: xem [SAO_LUU_KHOI_PHUC.md](SAO_LUU_KHOI_PHUC.md).
 
----
-
-## Bước 10: Backup tự động
+## 8. Cập nhật phiên bản
 
 ```bash
-# Crontab — backup lúc 2:00 AM hàng ngày
-crontab -e
-
-# Thêm dòng:
-0 2 * * * cd /opt/docmanager/docker && docker compose exec -T backend bench --site <site> backup --with-files >> /var/log/docmanager-backup.log 2>&1
-```
-
-MongoDB Atlas M10+: tự động backup. M0 Free: backup thủ công qua Atlas UI.
-
----
-
-## Troubleshooting
-
-| Vấn đề | Giải pháp |
-|--------|----------|
-| `create-site` timeout | Tăng RAM, xem: `docker compose logs create-site` |
-| MongoDB refused | Kiểm tra IP whitelist Atlas, URI trong site_config |
-| Meilisearch 401 | Kiểm tra master_key khớp giữa compose và site_config |
-| Text extract không chạy | `docker compose logs queue-long` |
-| Trang trắng | `docker compose exec backend bench --site <site> clear-cache` |
-
----
-
-## Cập nhật
-
-```bash
-git pull origin main
-docker build -t docmanager-custom:v16.26.2 -f docker/Dockerfile .
+cd /opt/docmanager && git pull
 cd docker
+docker compose -f docker-compose.yml -f docker-compose.prod.yml build backend
 docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
-docker compose exec backend bench --site <site> migrate
-docker compose exec backend bench --site <site> clear-cache
+docker compose exec backend bench --site <tên-site> migrate
+docker compose exec backend bench --site <tên-site> clear-cache
 ```
+
+Hoặc kéo image đã phát hành bởi CI (`ghcr.io/<chủ-repo>/docmanager-custom`) và đổi `image:` trong `docker-compose.prod.yml`.
+Sau mỗi lần cập nhật, **khởi động lại `queue-long`, `queue-short` và `scheduler`** (`up -d` làm việc này khi image đổi): worker chỉ nạp mã mới khi khởi động.
+
+Bản có chỉ mục mới (G9) tạo thêm hai chỉ mục kép trên `tabArchive Document` và `tabArchival File` ở lần `migrate` đầu. MariaDB xây chỉ mục phụ ở chế độ
+trực tuyến (vẫn đọc và ghi được), nhưng trên kho cỡ một triệu văn bản việc này tốn thời gian và I/O: nên làm ngoài giờ cao điểm.
+
+## 9. Xử lý sự cố
+
+| Triệu chứng | Nguyên nhân thường gặp và cách xử lý |
+|---|---|
+| `create-site` quá thời gian | Thiếu RAM; xem `docker compose logs create-site` |
+| Giám sát báo MongoDB "Không kết nối" | IP máy chủ chưa có trong Network Access của Atlas, hoặc URI sai; hệ thống vẫn chạy ở chế độ dự phòng |
+| Meilisearch 401 | `MEILISEARCH_MASTER_KEY` ở `.env` và trong site config khác nhau; chạy lại `configurator` |
+| Tìm kiếm chỉ ra kết quả cũ | Chỉ mục chưa kịp cập nhật (khoảng 15 giây sau khi lưu); xem `queue-long` |
+| Sao lưu, kiểm tra không chạy | `scheduler` hoặc `queue-long` không chạy: `docker compose ps`, `docker compose logs queue-long` |
+| Trang trắng sau cập nhật | `bench --site <site> clear-cache`, rồi tải lại bằng Ctrl+F5 |
+| HTTP 500 khi nhiều người cùng ghi | Kiểm tra `docker/mariadb/my_custom.cnf` còn `innodb_snapshot_isolation=OFF` |
+| Redis dừng, trang báo 502 | `docker compose up -d` rồi `docker compose restart frontend` |
+| Tìm văn bản báo "mất quá nhiều thời gian" | Meilisearch đang hỏng nên hệ thống tìm bằng cơ sở dữ liệu; sửa Meilisearch hoặc thu hẹp điều kiện tìm |
