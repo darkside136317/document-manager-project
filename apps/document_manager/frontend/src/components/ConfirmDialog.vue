@@ -31,7 +31,7 @@ onBeforeUnmount(() => document.removeEventListener("keydown", onKey));
         <h2 class="m-0 flex items-center gap-2 text-base font-semibold">
           <Icon v-if="danger" name="alert-triangle" class="text-danger" /> {{ title }}
         </h2>
-        <p class="mt-3 whitespace-pre-line text-sm text-ink-soft">{{ message }}</p>
+        <div class="mt-3 text-sm text-ink-soft"><slot><p class="m-0 whitespace-pre-line">{{ message }}</p></slot></div>
         <p v-if="error" class="mt-3 whitespace-pre-line rounded-md bg-danger-soft px-3 py-2 text-sm text-danger" role="alert">{{ error }}</p>
         <div class="mt-5 flex justify-end gap-2">
           <button class="btn" type="button" :disabled="busy" @click="emit('cancel')">Hủy</button>

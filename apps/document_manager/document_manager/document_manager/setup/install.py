@@ -41,6 +41,7 @@ def after_migrate():
 
 def seed_all():
     ensure_roles()
+    ensure_staff_role_profiles()
     ensure_confidentiality_levels()
     ensure_reader_settings_defaults()
     ensure_settings_defaults()
@@ -55,6 +56,26 @@ def ensure_roles():
         if not frappe.db.exists("Role", name):
             frappe.get_doc({"doctype": "Role", "role_name": name, "desk_access": desk_access,
                             "is_custom": 1}).insert(ignore_permissions=True)
+
+
+def ensure_staff_role_profiles() -> int:
+    """Each staff role of the application is a permission group; the built-in ones start with exactly what the
+    hard-coded checks used to allow. An existing group is never changed (an administrator may have edited it)."""
+    from document_manager.document_manager.constants import BUILTIN_CAPABILITIES, ROLE_INFO
+
+    if not frappe.db.table_exists("Staff Role Profile"):
+        return 0
+    created = 0
+    for role, info in ROLE_INFO.items():
+        if frappe.db.exists("Staff Role Profile", role) or not frappe.db.exists("Role", role):
+            continue
+        frappe.get_doc({
+            "doctype": "Staff Role Profile", "role": role, "label": info["label"], "group_label": info["group"],
+            "description": info["description"], "is_builtin": 1,
+            "capabilities": [{"capability": code} for code in BUILTIN_CAPABILITIES.get(role, ())],
+        }).insert(ignore_permissions=True)
+        created += 1
+    return created
 
 
 def ensure_confidentiality_levels():

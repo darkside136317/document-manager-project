@@ -4,15 +4,14 @@
 import frappe
 from frappe import _
 
-from document_manager.document_manager.permissions import assert_roles
+from document_manager.document_manager.permissions import assert_capability
 from document_manager.document_manager.services.audit import log_activity
 
 DOCTYPE = "Inventory Check"
-CHECKERS = ("Document Admin", "Cataloger")
 
 
-def _load(name: str, *roles: str):
-    assert_roles(*roles)
+def _load(name: str, capability: str):
+    assert_capability(capability)
     doc = frappe.get_doc(DOCTYPE, name)
     doc.check_permission("write")
     return doc
@@ -26,7 +25,7 @@ def _answer(doc) -> dict:
 @frappe.whitelist(methods=["POST"])
 def populate(name):
     """Take the lines from the figures the system holds now (counts already typed for a listed fonds are kept)."""
-    doc = _load(name, *CHECKERS)
+    doc = _load(name, "inventory.manage")
     doc.populate()
     log_activity("Cập nhật", DOCTYPE, doc.name, "Lập danh sách phông kiểm kê")
     return _answer(doc)
@@ -35,7 +34,7 @@ def populate(name):
 @frappe.whitelist(methods=["POST"])
 def complete(name):
     """Close the check: every fonds must be marked counted; the figures are then locked."""
-    doc = _load(name, *CHECKERS)
+    doc = _load(name, "inventory.manage")
     doc.complete()
     log_activity("Cập nhật", DOCTYPE, doc.name, f"Hoàn thành kiểm kê, {doc.total_difference} phông chênh lệch")
     return _answer(doc)
@@ -44,7 +43,7 @@ def complete(name):
 @frappe.whitelist(methods=["POST"])
 def reopen(name):
     """Unlock a completed check (administrators only)."""
-    doc = _load(name, "Document Admin")
+    doc = _load(name, "inventory.reopen")
     doc.reopen()
     log_activity("Cập nhật", DOCTYPE, doc.name, _("Mở lại đợt kiểm kê"))
     return _answer(doc)

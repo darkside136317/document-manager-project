@@ -19,6 +19,7 @@ const TAG = `E2E-A${RUN}`;
 const NEW_MAIL = `e2e.newstaff${RUN}@example.com`;
 const SPARE_MAIL = `e2e.spare${RUN}@example.com`;
 const GROUP = `${TAG} Nhóm`;
+const FILE_LABEL = "Hồ sơ lưu trữ"; // the row of Archival File in the permission matrix
 
 const browser = await chromium.launch(process.env.PW_CHANNEL ? { channel: process.env.PW_CHANNEL } : {});
 const problems = [];
@@ -57,7 +58,7 @@ const searchUsers = async (text) => {
   await page.getByLabel("Tìm người dùng").fill(text);
   await page.waitForTimeout(900);
 };
-const staffAdminEntries = ["Người dùng", "Phân quyền vai trò", "Nhật ký hệ thống", "Giám sát hệ thống", "Thông tin đơn vị", "Cơ cấu tổ chức", "Nhóm cán bộ", "Thiết lập hệ thống"];
+const staffAdminEntries = ["Người dùng", "Phân quyền", "Nhật ký hệ thống", "Giám sát hệ thống", "Thông tin đơn vị", "Cơ cấu tổ chức", "Nhóm cán bộ", "Thiết lập hệ thống"];
 
 const admin = await newContext();
 await loginOk(admin, "e2e.admin@example.com");
@@ -167,9 +168,9 @@ try {
     await visible(dialog());
     await dialog().getByRole("button", { name: "Khóa", exact: true }).click();
     await visible(dialog().getByText("Không thể tự khóa tài khoản của chính mình"));
-    await dialog().locator("label", { hasText: "Quản trị tài liệu" }).locator("input").uncheck();
+    await dialog().locator("label", { hasText: "Quản trị viên" }).locator("input").uncheck();
     await dialog().getByRole("button", { name: "Lưu", exact: true }).click();
-    await visible(dialog().getByText("Không thể tự bỏ quyền Quản trị tài liệu"));
+    await visible(dialog().getByText("Không thể tự bỏ quyền Quản trị viên"));
     await dialog().getByRole("button", { name: "Xóa", exact: true }).click();
     await page.getByRole("alertdialog").getByRole("button", { name: "Xóa" }).click();
     await visible(dialog().getByText("Không thể xóa tài khoản của chính mình"));
@@ -229,12 +230,46 @@ try {
     expect((await row(GROUP).count()) === 0, "the deleted group is still listed");
   });
 
-  await run("the role matrix shows every role and every group of data", async () => {
+  await run("permission groups: a right taken away is enforced at once, a built-in group is reset, a copied group comes and goes", async () => {
     await page.goto(`${BASE}/dashboard/quan-tri/phan-quyen`, { waitUntil: "networkidle" });
-    await visible(page.getByRole("heading", { name: "Phân quyền vai trò", level: 1 }));
-    for (const role of ["Quản trị tài liệu", "Lãnh đạo", "Biên mục viên", "Cán bộ phòng đọc", "Cán bộ bảo quản"]) await visible(page.getByRole("heading", { name: new RegExp(`^${role}`), level: 2 }));
-    for (const section of ["Biên mục", "Danh mục", "Độc giả và khai thác", "Bảo quản", "Quản trị"]) await visible(page.getByRole("heading", { name: section, level: 2, exact: true }));
+    await visible(page.getByRole("heading", { name: "Phân quyền", level: 1 }));
+    const groups = page.getByRole("navigation", { name: "Các nhóm quyền" });
+    for (const label of ["Quản trị viên", "Biên mục viên", "Cán bộ phòng đọc", "Lãnh đạo", "Cán bộ bảo quản"]) await visible(groups.getByRole("button", { name: new RegExp(label) }));
+    await groups.getByRole("button", { name: /Quản trị viên/ }).click();
+    await visible(page.getByText("Quản trị viên luôn có mọi quyền"));
+    await groups.getByRole("button", { name: /Biên mục viên/ }).click();
+    await visible(page.getByRole("heading", { name: "Biên mục viên", level: 2 }));
+    for (const section of ["Biên mục", "Danh mục", "Độc giả và khai thác", "Bảo quản", "Quản trị"]) await visible(page.getByRole("heading", { name: section, level: 3, exact: true }));
     await page.screenshot({ path: `${OUT}/admin_roles.png` });
+
+    const cataloguer = await newContext();
+    await loginOk(cataloguer, "e2e.cataloger@example.com");
+    const canDelete = async () => (await (await cataloguer.request.get(`${API}.meta.get_doctype_ui?doctype=Archival%20File`)).json()).message.permissions.delete;
+    expect(await canDelete(), "a cataloguer should start with the right to delete files");
+    const box = page.getByRole("checkbox", { name: new RegExp(`^${FILE_LABEL}: Xóa$`) });
+    await box.uncheck();
+    await page.getByRole("button", { name: "Lưu thay đổi" }).click();
+    await visible(page.getByRole("alertdialog").getByText(new RegExp(`${FILE_LABEL}: bỏ Xóa`)));
+    await page.getByRole("alertdialog").getByRole("button", { name: "Lưu", exact: true }).click();
+    await visible(page.getByText("Đã lưu nhóm quyền"));
+    expect(!(await canDelete()), "the cataloguer can still delete files after the right was taken away");
+    await page.getByRole("button", { name: "Khôi phục mặc định" }).click();
+    await page.getByRole("alertdialog").getByRole("button", { name: "Khôi phục" }).click();
+    await visible(page.getByText("Đã khôi phục quyền mặc định"));
+    expect(await canDelete(), "the reset did not give the right back");
+    await cataloguer.close();
+
+    await page.getByRole("button", { name: "Thêm nhóm quyền" }).click();
+    await dialog().locator("input[type=text]").first().fill(`${TAG} Tra cứu`);
+    await dialog().locator("select").last().selectOption({ label: "Biên mục viên" });
+    await dialog().getByRole("button", { name: "Tạo", exact: true }).click();
+    await visible(page.getByText("Đã tạo nhóm quyền"));
+    await visible(groups.getByRole("button", { name: new RegExp(`${TAG} Tra cứu`) }));
+    expect(await page.getByRole("checkbox", { name: new RegExp(`^${FILE_LABEL}: Xóa$`) }).isChecked(), "the copy did not take the rights of the source group");
+    await page.getByRole("button", { name: "Xóa", exact: true }).click();
+    await page.getByRole("alertdialog").getByRole("button", { name: "Xóa" }).click();
+    await visible(page.getByText("Đã xóa nhóm quyền"));
+    await groups.getByRole("button", { name: new RegExp(`${TAG} Tra cứu`) }).waitFor({ state: "detached", timeout: 10000 });
   });
 
   await run("the log is filtered, opened and downloaded as CSV", async () => {
@@ -315,7 +350,7 @@ try {
       page = await ctx.newPage();
       watch(page, who);
       await page.goto(`${BASE}/dashboard`, { waitUntil: "networkidle" });
-      for (const label of ["Người dùng", "Phân quyền vai trò", "Nhật ký hệ thống", "Giám sát hệ thống"]) {
+      for (const label of ["Người dùng", "Phân quyền", "Nhật ký hệ thống", "Giám sát hệ thống"]) {
         expect((await nav().getByRole("link", { name: label, exact: true }).count()) === 0, `${label} is offered to a ${who}`);
       }
       for (const slug of ["nguoi-dung", "nhat-ky", "giam-sat", "phan-quyen"]) {
@@ -349,6 +384,12 @@ try {
   const csrf = (await headersResponse.text()).match(/"csrf(?:_token)?":\s*"([^"]+)"/)?.[1];
   const headers = { "X-Frappe-CSRF-Token": csrf, "Content-Type": "application/json" };
   const notes = [];
+  // the permission step stopped half way: the built-in group goes back to its defaults, a copied group goes away
+  await admin.request.post(`${API}.permissions.reset_group`, { headers, data: { role: "Cataloger" } });
+  const left = await (await admin.request.get(`${API}.permissions.list_groups`)).json();
+  for (const g of left.message || []) {
+    if (g.role.startsWith(TAG)) await admin.request.post(`${API}.permissions.delete_group`, { headers, data: { role: g.role } });
+  }
   if (keepMin !== null) { // the setting step stopped half way: put the value back
     const r = await admin.request.put(`${BASE}/api/resource/Document%20Manager%20Settings/Document%20Manager%20Settings`, { headers, data: { backup_keep_min: Number(keepMin) || 3 } });
     if (!r.ok()) notes.push(`setting backup_keep_min not restored (${r.status()})`);

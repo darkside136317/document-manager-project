@@ -42,7 +42,7 @@ export const routes = [
   { path: "/bao-quan/kiem-tra", name: "checks", component: PreservationPage, props: { kind: "integrity" }, meta: { title: "Kiểm tra toàn vẹn" } },
   { path: "/bao-quan/khoi-phuc", name: "restores", component: PreservationPage, props: { kind: "restore" }, meta: { title: "Khôi phục" } },
   { path: "/quan-tri/nguoi-dung", name: "users", component: UsersPage, meta: { title: "Người dùng" } },
-  { path: "/quan-tri/phan-quyen", name: "roles", component: RolesPage, meta: { title: "Phân quyền vai trò" } },
+  { path: "/quan-tri/phan-quyen", name: "roles", component: RolesPage, meta: { title: "Phân quyền" } },
   { path: "/quan-tri/nhat-ky", name: "logs", component: LogsPage, meta: { title: "Nhật ký hệ thống" } },
   { path: "/quan-tri/giam-sat", name: "monitor", component: MonitorPage, meta: { title: "Giám sát hệ thống" } },
   { path: "/quan-tri/nhom-can-bo", name: "groups", component: GroupsPage, meta: { title: "Nhóm cán bộ" } },

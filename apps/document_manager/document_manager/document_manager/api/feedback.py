@@ -3,12 +3,11 @@
 (`api.requests.apply_action`, actions "Đánh dấu đã xem" and "Phản hồi")."""
 
 import frappe
-from frappe import _
 from frappe.model.workflow import get_transitions
 from frappe.utils import cint
 from frappe.utils.html_utils import clean_html
 
-from document_manager.document_manager.permissions import assert_roles
+from document_manager.document_manager.permissions import assert_capability
 
 STATUSES = ("Mới", "Đã xem", "Đã phản hồi")
 FIELDS = ["name", "reader", "reader_name", "subject", "status", "feedback_date", "creation"]
@@ -16,7 +15,7 @@ FIELDS = ["name", "reader", "reader_name", "subject", "status", "feedback_date",
 
 @frappe.whitelist()
 def list_feedback(status=None, search=None, page=1, page_size=20):
-    assert_roles("Reading Room Officer", "Document Admin", "Archive Leader")
+    assert_capability("feedback.handle")
     filters = {"status": status} if status in STATUSES else {}
     or_filters = None
     search = (search or "").strip()
@@ -34,7 +33,7 @@ def list_feedback(status=None, search=None, page=1, page_size=20):
 
 @frappe.whitelist()
 def get_feedback(name):
-    assert_roles("Reading Room Officer", "Document Admin", "Archive Leader")
+    assert_capability("feedback.handle")
     doc = frappe.get_doc("Reader Feedback", name)
     doc.check_permission("read")
     return {

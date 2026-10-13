@@ -308,6 +308,8 @@ class TestPreservation(IntegrationTestCase):
             return frappe._dict(auto_backup_enabled=1, backup_frequency="Hàng ngày", backup_retention_days=30, backup_keep_min=3,
                                 backup_include_files=1, **kw)
 
+        # the site's own scheduler may already have made today's backup: the test starts from an overdue schedule
+        frappe.db.sql("update `tabBackup Batch` set completed_at = '2000-01-01' where `trigger` = 'Theo lịch'")
         with patch.object(runner, "settings", return_value=config()), patch.object(backup, "apply_retention", return_value=[]):
             name = backup.run_scheduled()
             self.assertTrue(name)

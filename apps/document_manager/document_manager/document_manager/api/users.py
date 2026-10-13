@@ -5,7 +5,7 @@ and the matrix of what each role may do.
 Who may: Document Admin and System Manager. The rules that keep an administrator from locking everyone out or
 raising themselves above their station are enforced here, not in the screen:
 
-* only the staff roles of the app can be given (`STAFF_ASSIGNABLE_ROLES`): never System Manager, never Administrator;
+* only the permission groups of the app can be given (`policy.assignable_roles`): never System Manager, never Administrator;
 * an account that holds System Manager is shown but only a System Manager may change it; Administrator and Guest never;
 * nobody disables themselves or takes their own Document Admin role away;
 * at least one enabled user other than Administrator keeps Document Admin or System Manager;
@@ -16,8 +16,10 @@ import frappe
 from frappe import _
 from frappe.utils import cint, now_datetime, validate_email_address
 
-from document_manager.document_manager.constants import ROLE_INFO, ROLE_MATRIX, STAFF_ASSIGNABLE_ROLES
-from document_manager.document_manager.permissions import assert_roles
+from document_manager.document_manager.constants import DOCTYPE_LABELS, ROLE_MATRIX, STAFF_ASSIGNABLE_ROLES  # noqa: F401  (kept for callers)
+from document_manager.document_manager.permissions import assert_capability
+from document_manager.document_manager.policy import assignable_roles, staff_role_profiles
+from document_manager.document_manager.services import permission_matrix
 from document_manager.document_manager.services.audit import log_activity
 from document_manager.document_manager.services.registration import SET_PASSWORD_PATH
 
@@ -28,7 +30,7 @@ GROUP_DOCTYPE = "Staff Group"
 
 
 def _require_admin() -> None:
-    assert_roles(*ADMIN_ROLES)
+    assert_capability("users.manage")
 
 
 def _is_system_manager(user: str | None = None) -> bool:
@@ -74,7 +76,7 @@ def _shown(row, roles: dict, groups: dict) -> dict:
     mine = roles.get(row.name, [])
     return {"name": row.name, "full_name": row.full_name or row.name, "first_name": row.first_name or "", "last_name": row.last_name or "",
             "phone": row.phone or "", "enabled": cint(row.enabled), "last_login": row.last_login, "creation": row.creation,
-            "roles": [r for r in STAFF_ASSIGNABLE_ROLES if r in mine], "protected": "System Manager" in mine or row.name in RESERVED,
+            "roles": [r for r in assignable_roles() if r in mine], "protected": "System Manager" in mine or row.name in RESERVED,
             "groups": sorted(groups.get(row.name, [])), "is_me": row.name == frappe.session.user}
 
 
@@ -85,7 +87,7 @@ USER_FIELDS = ["name", "full_name", "first_name", "last_name", "phone", "enabled
 def roles_info():
     """The roles that can be given, with their description (for the forms and the matrix)."""
     _require_admin()
-    return [{"role": role, **ROLE_INFO[role]} for role in STAFF_ASSIGNABLE_ROLES]
+    return [{key: p[key] for key in ("role", "label", "group", "description", "is_builtin", "is_admin")} for p in staff_role_profiles()]
 
 
 @frappe.whitelist()
@@ -97,7 +99,7 @@ def list_users(search=None, role=None, group=None, enabled=None, page=1, page_si
         filters.append(["enabled", "=", cint(enabled)])
     names = None
     if role:
-        if role not in STAFF_ASSIGNABLE_ROLES:
+        if role not in assignable_roles():
             frappe.throw(_("Vai trò {0} không hợp lệ").format(role))
         names = set(frappe.get_all("Has Role", filters={"role": role, "parenttype": "User"}, pluck="parent"))
     if group:
@@ -138,19 +140,21 @@ def _admins_left(excluding: str | None, becoming_enabled_admin: bool = False) ->
 
 def _clean_roles(roles) -> list[str]:
     roles = frappe.parse_json(roles) if isinstance(roles, str) else (roles or [])
-    bad = [r for r in roles if r not in STAFF_ASSIGNABLE_ROLES]
+    known = assignable_roles()
+    bad = [r for r in roles if r not in known]
     if bad:
         frappe.throw(_("Vai trò {0} không được cấp ở đây").format(", ".join(bad)))
-    return [r for r in STAFF_ASSIGNABLE_ROLES if r in roles]
+    return [r for r in known if r in roles]
 
 
 def _sync_roles(user, wanted: list[str]) -> None:
     """Make the staff roles of `user` exactly `wanted`; roles outside the app's staff roles are left alone."""
     current = {h.role for h in user.roles}
-    for role in STAFF_ASSIGNABLE_ROLES:
+    known = assignable_roles()
+    for role in known:
         if role in wanted and role not in current:
             user.append("roles", {"role": role})
-    user.roles = [h for h in user.roles if h.role not in STAFF_ASSIGNABLE_ROLES or h.role in wanted]
+    user.roles = [h for h in user.roles if h.role not in known or h.role in wanted]
 
 
 def _sync_groups(user_name: str, wanted: list[str] | None) -> None:
@@ -185,13 +189,13 @@ def save_user(values, name=None):
         if me and "enabled" in values and not cint(values["enabled"]):
             frappe.throw(_("Không thể tự khóa tài khoản của chính mình"))
         if me and roles is not None and "Document Admin" in {h.role for h in user.roles} and "Document Admin" not in roles:
-            frappe.throw(_("Không thể tự bỏ quyền Quản trị tài liệu của chính mình"))
+            frappe.throw(_("Không thể tự bỏ quyền Quản trị viên của chính mình"))
         existing = {h.role for h in user.roles}
         new_enabled = cint(values["enabled"]) if "enabled" in values else cint(user.enabled)
-        kept = (existing - set(STAFF_ASSIGNABLE_ROLES)) | (set(roles) if roles is not None else existing)
+        kept = (existing - set(assignable_roles())) | (set(roles) if roles is not None else existing)
         if cint(user.enabled) and existing & set(ADMIN_ROLES) and not (new_enabled and kept & set(ADMIN_ROLES)) \
                 and _admins_left(name) < 1:
-            frappe.throw(_("Phải còn ít nhất một người dùng đang hoạt động có quyền Quản trị tài liệu"))
+            frappe.throw(_("Phải còn ít nhất một người dùng đang hoạt động có quyền Quản trị viên"))
     else:
         email = (values.get("email") or "").strip().lower()
         if not validate_email_address(email):
@@ -255,7 +259,7 @@ def delete_user(name):
     if name == frappe.session.user:
         frappe.throw(_("Không thể xóa tài khoản của chính mình"))
     if "Document Admin" in frappe.get_roles(name) and _admins_left(name) < 1:
-        frappe.throw(_("Phải còn ít nhất một người dùng đang hoạt động có quyền Quản trị tài liệu"))
+        frappe.throw(_("Phải còn ít nhất một người dùng đang hoạt động có quyền Quản trị viên"))
     for group in frappe.get_all("Staff Group Member", filters={"user": name}, pluck="parent"):  # membership is not "records"
         doc = frappe.get_doc(GROUP_DOCTYPE, group)
         doc.members = [m for m in doc.members if m.user != name]
@@ -278,11 +282,11 @@ def role_matrix():
         for doctype in doctypes:
             if not frappe.db.exists("DocType", doctype):
                 continue
-            perms = {role: {"read": 0, "write": 0, "create": 0, "delete": 0} for role in STAFF_ASSIGNABLE_ROLES}
-            for rule in frappe.get_meta(doctype).get("permissions") or []:
+            perms = {role: {"read": 0, "write": 0, "create": 0, "delete": 0} for role in assignable_roles()}
+            for rule in permission_matrix.rules(doctype):  # the customised rules when there are any
                 if cint(rule.permlevel) == 0 and rule.role in perms:
                     for key in ("read", "write", "create", "delete"):
                         perms[rule.role][key] = perms[rule.role][key] or cint(rule.get(key))
-            rows.append({"doctype": doctype, "label": _(doctype), "perms": perms})
+            rows.append({"doctype": doctype, "label": DOCTYPE_LABELS.get(doctype) or _(doctype), "perms": perms})
         sections.append({"section": section, "doctypes": rows})
     return {"roles": roles_info(), "sections": sections, "checked_on": str(now_datetime())}

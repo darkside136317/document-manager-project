@@ -218,6 +218,14 @@ export const api = {
     remove: (name) => call(`${BASE}.users.delete_user`, { name }, { post: true }),
     matrix: () => call(`${BASE}.users.role_matrix`),
   },
+  permissions: {
+    list: () => call(`${BASE}.permissions.list_groups`),
+    get: (role) => call(`${BASE}.permissions.get_group`, { role }),
+    save: (role, values) => call(`${BASE}.permissions.save_group`, { role, values }, { post: true }),
+    create: (values) => call(`${BASE}.permissions.create_group`, values, { post: true }),
+    remove: (role) => call(`${BASE}.permissions.delete_group`, { role }, { post: true }),
+    reset: (role) => call(`${BASE}.permissions.reset_group`, { role }, { post: true }),
+  },
   logs: {
     options: () => call(`${BASE}.logs.filter_options`),
     list: (params = {}) => call(`${BASE}.logs.list_logs`, params),

@@ -16,6 +16,7 @@ from document_manager.document_manager.services.preservation import (
     backup,
     backups_dir,
     filestore,
+    KIND_CAPABILITY,
     integrity,
     require_preservation,
     restore,
@@ -140,7 +141,7 @@ def get_job(kind, name):
 
 @frappe.whitelist(methods=["POST"])
 def start_backup(backup_type="Cả hai", fonds=None, notes=""):
-    require_preservation()
+    require_preservation("preservation.backup")
     if backup_type not in ("Cơ sở dữ liệu", "Tệp tài liệu", "Cả hai"):
         frappe.throw(_("Loại sao lưu không hợp lệ"))
     if runner.is_active("Backup Batch"):
@@ -153,7 +154,7 @@ def start_backup(backup_type="Cả hai", fonds=None, notes=""):
 
 @frappe.whitelist(methods=["POST"])
 def start_check(check_type="Toàn bộ", fonds=None):
-    require_preservation()
+    require_preservation("preservation.check")
     if check_type not in integrity.PHASES:
         frappe.throw(_("Loại kiểm tra không hợp lệ"))
     if runner.is_active("Integrity Check"):
@@ -167,7 +168,7 @@ def start_check(check_type="Toàn bộ", fonds=None):
 @frappe.whitelist(methods=["POST"])
 def start_restore(documents=None, source_backup=None, check=None):
     """Restore the files of documents (a list of names) or of every restorable finding of an integrity check."""
-    require_preservation()
+    require_preservation("preservation.restore")
     if check:
         batch = restore.create_from_check(check, source_backup)
     else:
@@ -180,7 +181,7 @@ def start_restore(documents=None, source_backup=None, check=None):
 @frappe.whitelist(methods=["POST"])
 def prepare_db_restore(source_backup):
     """Check a database dump and make the restore batch for it (nothing runs yet): returns the verification and the runbook."""
-    require_preservation()
+    require_preservation("preservation.db_restore")
     check = restore.verify_db_backup(source_backup)
     batch = restore.create_db_restore(source_backup) if check["ok"] else None
     return {"verification": check, "batch": _job("restore", frappe.get_doc("Restore Batch", batch.name)) if batch else None,
@@ -191,8 +192,9 @@ def prepare_db_restore(source_backup):
 @frappe.whitelist(methods=["POST"])
 def run_restore(name, confirm_site=""):
     """Run a restore batch; a database restore needs `confirm_site` (the site's name) to run itself."""
-    require_preservation()
+    require_preservation("preservation.restore", "preservation.db_restore")
     batch = frappe.get_doc("Restore Batch", name)
+    require_preservation("preservation.restore" if batch.restore_type == "Tệp tài liệu" else "preservation.db_restore")
     if batch.status in runner.BUSY and not _stale(batch):
         frappe.throw(_("Đợt phục hồi này đang chạy"))
     restore.start(batch, confirm_site)
@@ -202,7 +204,7 @@ def run_restore(name, confirm_site=""):
 
 @frappe.whitelist(methods=["POST"])
 def cancel(kind, name):
-    require_preservation()
+    require_preservation(KIND_CAPABILITY.get(kind, "preservation.backup"))
     doctype, _item, _link = _kind(kind)
     doc = frappe.get_doc(doctype, name)
     if doc.status not in runner.BUSY or _stale(doc):
@@ -216,7 +218,7 @@ def cancel(kind, name):
 @frappe.whitelist(methods=["POST"])
 def resume(kind, name):
     """Continue a job from where it stopped (it keeps a cursor), or run it again from the start when it had not begun."""
-    require_preservation()
+    require_preservation(KIND_CAPABILITY.get(kind, "preservation.backup"))
     doctype, _item, _link = _kind(kind)
     doc = frappe.get_doc(doctype, name)
     if not _resumable(kind, doc):
@@ -233,7 +235,7 @@ def resume(kind, name):
 
 @frappe.whitelist(methods=["POST"])
 def delete_job(kind, name):
-    require_preservation()
+    require_preservation(KIND_CAPABILITY.get(kind, "preservation.backup"))
     doctype, item, link = _kind(kind)
     if kind == "backup":
         result = backup.delete_batch(name)
@@ -252,14 +254,14 @@ def delete_job(kind, name):
 
 @frappe.whitelist()
 def verify_backup(name):
-    require_preservation()
+    require_preservation("preservation.backup")
     return restore.verify_db_backup(name)
 
 
 @frappe.whitelist()
 def download_backup(name, which="database"):
     """The database dump of a backup batch (a .sql.gz) or its manifest; the download is logged."""
-    require_preservation()
+    require_preservation("preservation.backup")
     batch = frappe.get_doc("Backup Batch", name)
     if which == "manifest":
         path = filestore.manifest_path(name)
@@ -281,7 +283,7 @@ def download_backup(name, which="database"):
 @frappe.whitelist(methods=["POST"])
 def fix_counters():
     """Recompute the counters of files per fonds and documents per file (what the COUNTER_* findings are about)."""
-    require_preservation()
+    require_preservation("preservation.check")
     result = integrity.fix_counters()
     log_activity("Kiểm tra", "Integrity Check", "", f"Sửa bộ đếm: {result['fonds']} phông, {result['files']} hồ sơ")
     return result
@@ -290,7 +292,7 @@ def fix_counters():
 @frappe.whitelist(methods=["POST"])
 def set_finding_status(name, status):
     """Mark a finding handled ("Đã bỏ qua") or open again ("Chưa xử lý")."""
-    require_preservation()
+    require_preservation("preservation.check")
     if status not in ("Chưa xử lý", "Đã bỏ qua"):
         frappe.throw(_("Trạng thái không hợp lệ"))
     frappe.db.set_value("Integrity Check Item", name, "status", status)
@@ -299,7 +301,7 @@ def set_finding_status(name, status):
 
 @frappe.whitelist()
 def list_findings(check, status=None, severity=None, code=None, page=1, page_size=50):
-    require_preservation()
+    require_preservation("preservation.check")
     page, size = max(1, cint(page) or 1), min(MAX_PAGE, max(1, cint(page_size) or 50))
     filters = {"check": check, **{k: v for k, v in (("status", status), ("severity", severity), ("code", code)) if v}}
     rows = frappe.get_all("Integrity Check Item", filters=filters, order_by="creation asc", start=(page - 1) * size, page_length=size,
@@ -310,7 +312,7 @@ def list_findings(check, status=None, severity=None, code=None, page=1, page_siz
 @frappe.whitelist(methods=["POST"])
 def run_retention():
     """Delete the backups older than the retention period now (the daily job does the same)."""
-    require_preservation()
+    require_preservation("preservation.backup")
     removed = backup.apply_retention()
     log_activity("Xóa", "Backup Batch", "", f"Dọn bản sao lưu cũ: {len(removed)} đợt")
     return {"removed": removed}

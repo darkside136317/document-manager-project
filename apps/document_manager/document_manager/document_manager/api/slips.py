@@ -15,16 +15,17 @@ from frappe.model.workflow import apply_workflow, get_transitions
 from frappe.utils import cint, format_date, getdate, nowdate
 
 from document_manager.document_manager.api.archive import print_urls
-from document_manager.document_manager.permissions import assert_roles
+from document_manager.document_manager.permissions import assert_capability, has_capability
 from document_manager.document_manager.policy import get_limits
 from document_manager.document_manager.services import lifecycle as lc
 from document_manager.document_manager.services.audit import log_activity
 from document_manager.document_manager.services.notify import SLIP_KINDS, notify_user
 
 KINDS = {"usage": lc.USAGE, "copy": lc.COPY}
-STAFF = ("Reading Room Officer", "Archive Leader", "Document Admin")
-OFFICERS = ("Reading Room Officer", "Document Admin")
-LEADERS = ("Archive Leader", "Document Admin")
+# capabilities: seeing the queues, handling slips in the reading room, deciding as a leader
+STAFF = ("slips.view",)
+OFFICERS = ("slips.receive",)
+LEADERS = ("slips.leader_approve",)
 PAGE_SIZE = 20
 
 # view -> (label, filters). Counters are computed for every view of a kind.
@@ -52,17 +53,18 @@ def _doctype(kind: str) -> str:
     return KINDS[kind]
 
 
-def _roles() -> set:
-    return set(frappe.get_roles())
+def _has(*capabilities) -> bool:
+    return has_capability(*capabilities)
 
 
-def _has(*roles) -> bool:
-    return "Administrator" == frappe.session.user or bool(_roles() & set(roles))
+def _leader_only() -> bool:
+    """A leader who does not also work the reading room: their queue is what waits for a leader."""
+    return _has(*LEADERS) and not _has(*OFFICERS)
 
 
 def default_view() -> str:
     """Where a user's queue opens: the leader on what waits for them, everybody else on the reception."""
-    if "Archive Leader" in _roles() and not _roles() & {"Reading Room Officer", "Document Admin"}:
+    if _leader_only():
         return "cho_lanh_dao"
     return "cho_tiep_nhan"
 
@@ -70,7 +72,7 @@ def default_view() -> str:
 def waiting_counts() -> dict:
     """What waits for the current user in each queue (sidebar badges): a leader sees the slips waiting for a
     leader; the reading room sees the slips waiting for reception, plus overdue ones and feedback not answered."""
-    leader_only = "Archive Leader" in _roles() and not _roles() & {"Reading Room Officer", "Document Admin"}
+    leader_only = _leader_only()
     counts = {}
     for kind, doctype in KINDS.items():
         if leader_only:
@@ -86,7 +88,7 @@ def waiting_counts() -> dict:
 @frappe.whitelist()
 def queue_badges():
     """The sidebar counters, refreshed after an action: {route: count}."""
-    assert_roles(*STAFF)
+    assert_capability(*STAFF)
     counts = waiting_counts()
     out = {"/dashboard/doc-gia/phieu-su-dung": counts["usage"], "/dashboard/doc-gia/phieu-sao-chup": counts["copy"],
            "/dashboard/doc-gia/gop-y": counts["feedback"]}
@@ -99,7 +101,7 @@ def queue_badges():
 @frappe.whitelist()
 def queue_summary():
     """Counters of both queues, for the sidebar badges and the tabs."""
-    assert_roles(*STAFF)
+    assert_capability(*STAFF)
     out = {}
     for kind, doctype in KINDS.items():
         out[kind] = {view: frappe.db.count(doctype, VIEWS[view][1]) for view in VIEWS_OF[kind]}
@@ -109,7 +111,7 @@ def queue_summary():
 
 @frappe.whitelist()
 def list_slips(kind, view=None, search=None, page=1, page_size=PAGE_SIZE):
-    assert_roles(*STAFF)
+    assert_capability(*STAFF)
     doctype = _doctype(kind)
     view = view or default_view()
     if view not in VIEWS_OF[kind]:
@@ -222,7 +224,7 @@ def _slip(doc) -> dict:
 
 @frappe.whitelist()
 def get_slip(kind, name):
-    assert_roles(*STAFF)
+    assert_capability(*STAFF)
     doc = frappe.get_doc(_doctype(kind), name)
     doc.check_permission("read")
     return _slip(doc)
@@ -230,8 +232,8 @@ def get_slip(kind, name):
 
 # --- decisions --------------------------------------------------------------------------------------------------------
 
-def _load_for_staff(kind, name, roles):
-    assert_roles(*roles)
+def _load_for_staff(kind, name, capabilities):
+    assert_capability(*capabilities)
     doc = frappe.get_doc(_doctype(kind), name)
     doc.check_permission("write")
     return doc
@@ -244,13 +246,13 @@ def decide_items(kind, name, decisions):
     `decisions` is a JSON list of {row, status, note}; status "Đã duyệt" | "Từ chối" | "Chờ duyệt".
     The officer decides while the slip is "Chờ duyệt", the leader while it is "Chờ lãnh đạo duyệt"; the
     slip itself is then approved or refused through the workflow (items nobody turned down are approved)."""
-    assert_roles(*STAFF)  # before looking the slip up: whoever is not staff learns nothing about which slips exist
+    assert_capability(*STAFF)  # before looking the slip up: whoever is not staff learns nothing about which slips exist
     doc = frappe.get_doc(_doctype(kind), name)
     doc.check_permission("write")
     state = doc.workflow_state
     if state not in lc.REVIEW_STATES:
         frappe.throw(_("Phiếu không ở bước duyệt hồ sơ, văn bản"))
-    assert_roles(*(LEADERS if state == lc.STATE_LEADER else OFFICERS))
+    assert_capability(*(LEADERS if state == lc.STATE_LEADER else OFFICERS))
     decisions = frappe.parse_json(decisions) if isinstance(decisions, str) else decisions
     by_row = {row.name: row for row in doc.items}
     for decision in decisions or []:
@@ -313,7 +315,7 @@ def renew(name):
 @frappe.whitelist(methods=["POST"])
 def delete_draft(kind, name):
     """Staff delete a draft slip (a slip that was sent is withdrawn or refused, never deleted)."""
-    assert_roles(*OFFICERS)
+    assert_capability(*OFFICERS)
     doctype = _doctype(kind)
     if frappe.db.get_value(doctype, name, "docstatus") != 0:
         frappe.throw(_("Chỉ xóa được phiếu nháp"))
@@ -325,7 +327,7 @@ def delete_draft(kind, name):
 def reader_slips(reader, limit=10):
     """What the reader's page in the staff app shows besides the profile: recent slips of both kinds, how many
     are open or overdue, and the links to print the reader card."""
-    assert_roles(*STAFF)
+    assert_capability(*STAFF)
     recent = []
     for kind, doctype in KINDS.items():
         for row in frappe.get_all(doctype, filters={"reader": reader, "docstatus": ["<", 2]},

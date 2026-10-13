@@ -22,7 +22,7 @@ from document_manager.document_manager.constants import (
     UPLOAD_EXTENSIONS,
     UPLOAD_MAX_MB,
 )
-from document_manager.document_manager.permissions import display_name, is_staff
+from document_manager.document_manager.permissions import capabilities_of, display_name, has_capability, is_staff
 
 
 def _can_read(doctype) -> bool:
@@ -96,14 +96,15 @@ def _preservation_nav() -> list:
 def _admin_nav() -> list:
     """Administration: the pages of the administrators, then the settings screens the user may read."""
     items = []
-    roles = set(frappe.get_roles())
-    if roles & {"Document Admin", "System Manager", "Administrator"}:
+    if has_capability("users.manage"):
         items += [
             {"label": "Người dùng", "route": "/dashboard/quan-tri/nguoi-dung", "icon": "users"},
-            {"label": "Phân quyền vai trò", "route": "/dashboard/quan-tri/phan-quyen", "icon": "shield-check"},
-            {"label": "Nhật ký hệ thống", "route": "/dashboard/quan-tri/nhat-ky", "icon": "scroll-text"},
-            {"label": "Giám sát hệ thống", "route": "/dashboard/quan-tri/giam-sat", "icon": "gauge"},
+            {"label": "Phân quyền", "route": "/dashboard/quan-tri/phan-quyen", "icon": "shield-check"},
         ]
+    if has_capability("logs.view"):
+        items.append({"label": "Nhật ký hệ thống", "route": "/dashboard/quan-tri/nhat-ky", "icon": "scroll-text"})
+    if has_capability("monitor.view"):
+        items.append({"label": "Giám sát hệ thống", "route": "/dashboard/quan-tri/giam-sat", "icon": "gauge"})
     items += [{"label": e["label"], "route": f"/dashboard/quan-tri/{e['slug']}", "icon": e["icon"]}
               for e in ADMIN_SCREENS if _can_read(e["doctype"])]
     return [{"group": GROUP_ADMIN, "items": items}] if items else []
@@ -138,7 +139,8 @@ def build_boot() -> dict:
             legacy.setdefault(group, []).append({"label": label, "href": href})
     user = frappe.session.user
     return {
-        "user": {"name": user, "full_name": display_name(user), "roles": frappe.get_roles(user)},
+        "user": {"name": user, "full_name": display_name(user), "roles": frappe.get_roles(user),
+                 "capabilities": sorted(capabilities_of(user))},
         "org": frappe.db.get_single_value("Organization Info", "org_name") or "Document Manager",
         "nav": nav,
         "legacy": [{"group": g, "items": items} for g, items in legacy.items()],

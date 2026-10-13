@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
 import frappe
-from frappe import _
 from frappe.model.document import Document
 
-from document_manager.document_manager.permissions import STAFF_ROLES
+from document_manager.document_manager.permissions import is_staff
 
 
 class Reader(Document):
@@ -23,7 +22,7 @@ class Reader(Document):
 
 
 def _is_staff_account(user):
-    return user == "Administrator" or bool(STAFF_ROLES.intersection(frappe.get_roles(user)))
+    return user == "Administrator" or is_staff(user)
 
 
 def _sync_user(reader):

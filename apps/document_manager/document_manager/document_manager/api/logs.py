@@ -13,12 +13,11 @@ import frappe
 from frappe import _
 from frappe.utils import add_days, cint, getdate, nowdate
 
-from document_manager.document_manager.permissions import assert_roles
+from document_manager.document_manager.permissions import assert_capability
 from document_manager.document_manager.services import audit
 from document_manager.document_manager.services.queries import bounded_scan, capped_count, total_of_short_page
 
 DOCTYPE = audit.LOG_DOCTYPE
-ADMIN_ROLES = ("Document Admin", "System Manager")
 MAX_PAGE = 200
 MAX_EXPORT = 50_000
 MIN_KEEP_DAYS = 7
@@ -26,8 +25,8 @@ SEARCH_WINDOW_DAYS = 30  # a text search with no dates looks at this many recent
 LIST_FIELDS = ["name", "activity_type", "reference_doctype", "reference_name", "user", "ip_address", "timestamp", "description"]
 
 
-def _require() -> None:
-    assert_roles(*ADMIN_ROLES)
+def _require(capability: str = "logs.view") -> None:
+    assert_capability(capability)
 
 
 def _conditions(params: dict) -> tuple[list, list | None]:
@@ -133,7 +132,7 @@ def _purge_conditions(before, activity_types) -> tuple[str, dict]:
 @frappe.whitelist()
 def preview_purge(before, activity_types=None):
     """What a clean-up of everything before `before` would delete: the count, the oldest and newest row, per type."""
-    _require()
+    _require("logs.purge")
     where, params = _purge_conditions(before, activity_types)
     total, oldest, newest = frappe.db.sql(f"select count(*), min(`timestamp`), max(`timestamp`) from `tab{DOCTYPE}` where {where}", params)[0]
     by_type = frappe.db.sql(f"select activity_type, count(*) from `tab{DOCTYPE}` where {where} group by activity_type order by 2 desc", params)
@@ -144,7 +143,7 @@ def preview_purge(before, activity_types=None):
 @frappe.whitelist(methods=["POST"])
 def purge(before, confirm_count, activity_types=None):
     """Delete the rows `preview_purge` counted. `confirm_count` must be that very number, so a stale preview cannot delete more."""
-    _require()
+    _require("logs.purge")
     preview = preview_purge(before, activity_types)
     if not preview["total"]:
         frappe.throw(_("Không có dòng nhật ký nào để dọn"))

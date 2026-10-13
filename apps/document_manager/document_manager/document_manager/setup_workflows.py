@@ -1,13 +1,18 @@
 # -*- coding: utf-8 -*-
 """Idempotent seed of Workflows and in-app Notifications for reader requests.
 
-Called from `setup.after_migrate`. Workflow State / Action Master records are created
-first (a Workflow links to them), then each Workflow is rebuilt from the tables below.
+Called from `setup.after_migrate` and whenever a permission group's slip functions change. Workflow State / Action
+Master records are created first (a Workflow links to them), then each Workflow is rebuilt from the tables below.
+
+Who may move a slip is decided by capabilities, not by fixed roles: the reading room is every permission group with
+`slips.receive`, the leaders every group with `slips.leader_approve`; Document Admin may always decide.
 """
 
 import frappe
 
-STAFF = ("Reading Room Officer", "Document Admin")
+ADMIN = "Document Admin"
+DEFAULT_OFFICERS = ("Reading Room Officer",)
+DEFAULT_LEADERS = ("Archive Leader",)
 
 STATE_STYLE = {
     "Nháp": "Inverse",
@@ -25,15 +30,23 @@ STATE_STYLE = {
 }
 
 
-LEADER = ("Archive Leader", "Document Admin")
+def _roles_with(capability: str, default: tuple) -> tuple:
+    """The roles whose permission group grants `capability` (the built-in role before the groups exist)."""
+    from document_manager.document_manager.policy import _profile_capabilities
+
+    roles = sorted(role for role, caps in _profile_capabilities().items()
+                   if capability in caps and role != ADMIN and frappe.db.exists("Role", role))
+    return tuple(roles) or default
 
 
-def _request_workflow(final_state: str, in_use: bool) -> dict:
+def _request_workflow(final_state: str, in_use: bool, officers: tuple, leaders: tuple) -> dict:
     """Nháp → Chờ duyệt (phòng đọc) → [Chờ lãnh đạo duyệt] → Đã duyệt → [Đang sử dụng →] final state.
 
     The reading room approves by itself only a slip that needs no leader (`doc.requires_leader`);
     Document Admin can always decide. The reader withdraws a slip nobody decided on yet.
     """
+    staff = (*officers, ADMIN)
+    leader = (*leaders, ADMIN)
     states = [
         ("Nháp", 0, "Reader"),
         ("Chờ duyệt", 1, "Reading Room Officer"),
@@ -43,45 +56,51 @@ def _request_workflow(final_state: str, in_use: bool) -> dict:
     ]
     # (from, action, to, roles, allow_self_approval, condition)
     transitions = [
-        ("Nháp", "Gửi duyệt", "Chờ duyệt", ("Reader", *STAFF), 1, None),
-        ("Chờ duyệt", "Chuyển lãnh đạo", "Chờ lãnh đạo duyệt", STAFF, 0, None),
-        ("Chờ duyệt", "Duyệt", "Đã duyệt", ("Reading Room Officer",), 0, "doc.requires_leader == 0"),
-        ("Chờ duyệt", "Duyệt", "Đã duyệt", ("Document Admin",), 0, None),
-        ("Chờ duyệt", "Từ chối", "Từ chối", STAFF, 0, None),
+        ("Nháp", "Gửi duyệt", "Chờ duyệt", ("Reader", *staff), 1, None),
+        ("Chờ duyệt", "Chuyển lãnh đạo", "Chờ lãnh đạo duyệt", staff, 0, None),
+        ("Chờ duyệt", "Duyệt", "Đã duyệt", officers, 0, "doc.requires_leader == 0"),
+        ("Chờ duyệt", "Duyệt", "Đã duyệt", (ADMIN,), 0, None),
+        ("Chờ duyệt", "Từ chối", "Từ chối", staff, 0, None),
         ("Chờ duyệt", "Hủy phiếu", "Đã hủy", ("Reader",), 1, None),
-        ("Chờ lãnh đạo duyệt", "Duyệt", "Đã duyệt", LEADER, 0, None),
-        ("Chờ lãnh đạo duyệt", "Từ chối", "Từ chối", LEADER, 0, None),
-        ("Chờ lãnh đạo duyệt", "Trả lại phòng đọc", "Chờ duyệt", LEADER, 1, None),
+        ("Chờ lãnh đạo duyệt", "Duyệt", "Đã duyệt", leader, 0, None),
+        ("Chờ lãnh đạo duyệt", "Từ chối", "Từ chối", leader, 0, None),
+        ("Chờ lãnh đạo duyệt", "Trả lại phòng đọc", "Chờ duyệt", leader, 1, None),
         ("Chờ lãnh đạo duyệt", "Hủy phiếu", "Đã hủy", ("Reader",), 1, None),
-        ("Đã duyệt", "Hủy phiếu", "Đã hủy", ("Document Admin",), 1, None),
+        ("Đã duyệt", "Hủy phiếu", "Đã hủy", (ADMIN,), 1, None),
     ]
     if in_use:
         states.append(("Đang sử dụng", 1, "Reading Room Officer"))
-        transitions += [("Đã duyệt", "Giao tài liệu", "Đang sử dụng", STAFF, 1, None),
-                        ("Đang sử dụng", "Nhận trả", final_state, STAFF, 1, None)]
+        transitions += [("Đã duyệt", "Giao tài liệu", "Đang sử dụng", staff, 1, None),
+                        ("Đang sử dụng", "Nhận trả", final_state, staff, 1, None)]
     else:
-        transitions.append(("Đã duyệt", "Hoàn thành", final_state, STAFF, 1, None))
+        transitions.append(("Đã duyệt", "Hoàn thành", final_state, staff, 1, None))
     states += [(final_state, 1, "Reading Room Officer"), ("Đã hủy", 1, "Document Admin")]
     return {"states": states, "transitions": transitions}
 
 
-WORKFLOWS = {
-    "Usage Request": {"field": "workflow_state", **_request_workflow("Đã trả", in_use=True)},
-    "Copy Request": {"field": "workflow_state", **_request_workflow("Đã hoàn thành", in_use=False)},
-    "Reader Feedback": {
-        "field": "status",
-        "states": [
-            ("Mới", 0, "Reading Room Officer"),
-            ("Đã xem", 0, "Reading Room Officer"),
-            ("Đã phản hồi", 0, "Reading Room Officer"),
-        ],
-        "transitions": [
-            ("Mới", "Đánh dấu đã xem", "Đã xem", STAFF, 1, None),
-            ("Mới", "Phản hồi", "Đã phản hồi", STAFF, 1, None),
-            ("Đã xem", "Phản hồi", "Đã phản hồi", STAFF, 1, None),
-        ],
-    },
-}
+def workflows(officers: tuple = DEFAULT_OFFICERS, leaders: tuple = DEFAULT_LEADERS) -> dict:
+    staff = (*officers, ADMIN)
+    return {
+        "Usage Request": {"field": "workflow_state", **_request_workflow("Đã trả", True, officers, leaders)},
+        "Copy Request": {"field": "workflow_state", **_request_workflow("Đã hoàn thành", False, officers, leaders)},
+        "Reader Feedback": {
+            "field": "status",
+            "states": [
+                ("Mới", 0, "Reading Room Officer"),
+                ("Đã xem", 0, "Reading Room Officer"),
+                ("Đã phản hồi", 0, "Reading Room Officer"),
+            ],
+            "transitions": [
+                ("Mới", "Đánh dấu đã xem", "Đã xem", staff, 1, None),
+                ("Mới", "Phản hồi", "Đã phản hồi", staff, 1, None),
+                ("Đã xem", "Phản hồi", "Đã phản hồi", staff, 1, None),
+            ],
+        },
+    }
+
+
+# the tables in force (refreshed in place by setup_all, from the permission groups of the site)
+WORKFLOWS = workflows()
 
 # (name, doctype, event, subject, message)
 NOTIFICATIONS = [
@@ -101,11 +120,14 @@ NOTIFICATIONS = [
 
 
 def setup_all():
+    officers = _roles_with("slips.receive", DEFAULT_OFFICERS)
+    WORKFLOWS.clear()
+    WORKFLOWS.update(workflows(officers, _roles_with("slips.leader_approve", DEFAULT_LEADERS)))
     _ensure_masters()
     for doctype, spec in WORKFLOWS.items():
         _ensure_workflow(doctype, spec)
     for args in NOTIFICATIONS:
-        _ensure_notification(*args)
+        _ensure_notification(*args, recipients=officers)
 
 
 def _ensure_masters():
@@ -146,11 +168,11 @@ def _ensure_workflow(doctype: str, spec: dict):
     wf.save()
 
 
-def _ensure_notification(name, doctype, event, subject, message):
+def _ensure_notification(name, doctype, event, subject, message, recipients=DEFAULT_OFFICERS):
     values = {
         "document_type": doctype, "event": event, "channel": "System Notification",
         "subject": subject, "message": message, "enabled": 1,
-        "recipients": [{"receiver_by_role": "Reading Room Officer"}],
+        "recipients": [{"receiver_by_role": role} for role in recipients],
     }
     doc = frappe.get_doc("Notification", name) if frappe.db.exists("Notification", name)         else frappe.new_doc("Notification")
     doc.update(values)

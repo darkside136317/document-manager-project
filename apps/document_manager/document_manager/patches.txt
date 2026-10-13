@@ -16,3 +16,4 @@ document_manager.patches.enable_leader_approval
 document_manager.patches.backfill_reader_names
 document_manager.patches.remove_legacy_reports
 document_manager.patches.add_volume_indexes
+document_manager.patches.permission_groups

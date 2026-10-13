@@ -27,7 +27,8 @@ SLIP_KINDS = {
     "Copy Request": ("Phiếu sao chụp", "/portal/sao-chep", "/dashboard/doc-gia/phieu-sao-chup"),
 }
 FEEDBACK_ROUTE = "/portal/gop-y"
-LEADER_ROLE, OFFICER_ROLE = "Archive Leader", "Reading Room Officer"
+# who is told: the staff whose permission groups grant the capability (administrators are not told about every slip)
+LEADER_CAPABILITY, OFFICER_CAPABILITY = "slips.leader_approve", "slips.receive"
 
 
 def notify_user(user: str, subject: str, link: str, doctype: str = "", name: str = "") -> str | None:
@@ -51,15 +52,11 @@ def _reader_user(reader: str | None) -> str | None:
     return frappe.db.get_value("Reader", reader, "user") if reader else None
 
 
-def users_with_role(role: str) -> list[str]:
-    """Enabled users holding `role` (a role's users, never Guest/Administrator)."""
-    users = frappe.get_all("Has Role", filters={"role": role, "parenttype": "User"}, pluck="parent")
-    return frappe.get_all("User", filters={"name": ["in", users or [""]], "enabled": 1}, pluck="name") if users else []
+def notify_capability(capability: str, subject: str, link: str, doctype: str = "", name: str = "") -> int:
+    from document_manager.document_manager.policy import users_with_capability
 
-
-def notify_role(role: str, subject: str, link: str, doctype: str = "", name: str = "") -> int:
     sent = 0
-    for user in users_with_role(role):
+    for user in users_with_capability(capability):
         if user != frappe.session.user and notify_user(user, subject, link, doctype, name):
             sent += 1
     return sent
@@ -82,9 +79,9 @@ def on_slip_change(doc, method=None):
         notify_user(user, subject, f"{reader_route}/{doc.name}", doc.doctype, doc.name)
     link = f"{staff_route}/{doc.name}"
     if state == "Chờ lãnh đạo duyệt":
-        notify_role(LEADER_ROLE, f"{label} {doc.name} của {doc.reader_name or doc.reader} chờ lãnh đạo duyệt", link, doc.doctype, doc.name)
+        notify_capability(LEADER_CAPABILITY, f"{label} {doc.name} của {doc.reader_name or doc.reader} chờ lãnh đạo duyệt", link, doc.doctype, doc.name)
     elif state in ("Đã duyệt", "Từ chối") and doc.get("leader"):
-        notify_role(OFFICER_ROLE, f"Lãnh đạo đã xử lý {label.lower()} {doc.name}: {SLIP_STATES[state]}", link, doc.doctype, doc.name)
+        notify_capability(OFFICER_CAPABILITY, f"Lãnh đạo đã xử lý {label.lower()} {doc.name}: {SLIP_STATES[state]}", link, doc.doctype, doc.name)
 
 
 def on_feedback_change(doc, method=None):

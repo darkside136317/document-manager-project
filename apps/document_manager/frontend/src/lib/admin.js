@@ -13,7 +13,9 @@ export function userToForm(user) {
 }
 
 /** Roles in the order the screen shows them, whatever order the user holds them in. */
-export const sortRoles = (roles) => [...roles].sort((a, b) => ROLE_ORDER.indexOf(a) - ROLE_ORDER.indexOf(b));
+export const sortRoles = (roles) => [...roles].sort((a, b) => rank(a) - rank(b) || String(a).localeCompare(String(b), "vi"));
+// the built-in groups first, in their usual order; groups made by the administrators after them
+const rank = (role) => (ROLE_ORDER.includes(role) ? ROLE_ORDER.indexOf(role) : ROLE_ORDER.length);
 
 export function toggleValue(list, value) {
   return list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
@@ -49,6 +51,61 @@ export const permissionIcons = [["read", "Xem"], ["create", "Thêm"], ["write", 
 export function permissionText(perms) {
   const given = permissionIcons.filter(([key]) => perms?.[key]).map(([, label]) => label);
   return given.length ? given.join(", ") : "Không";
+}
+
+// --- permission groups (the editable matrix) ---------------------------------------------------------------------------
+
+export const MATRIX_COLUMNS = ["read", "create", "write", "delete", "submit", "cancel", "print", "export", "own_only", "sensitive"];
+
+/** A matrix cell after ticking or unticking `key`: any right brings reading; unticking reading takes everything away. */
+export function toggleCell(cell, key, value) {
+  const next = { ...cell, [key]: value };
+  if (key === "read" && !value) return Object.fromEntries(Object.keys(next).map((k) => [k, false]));
+  if (value && key !== "read") next.read = true;
+  if (key === "cancel" && value) next.submit = true;
+  if (key === "submit" && !value) next.cancel = false;
+  return next;
+}
+
+/** {doctype: cell} of a group, to edit without touching what the server sent. */
+export function editableMatrix(group) {
+  const out = {};
+  for (const section of group?.matrix || []) for (const row of section.rows) out[row.doctype] = { ...row.cell };
+  return out;
+}
+
+export const checkedCapabilities = (group) =>
+  (group?.capabilities || []).flatMap((m) => m.items.filter((i) => i.checked).map((i) => i.code));
+
+const sameCell = (a, b) => MATRIX_COLUMNS.every((k) => Boolean(a?.[k]) === Boolean(b?.[k]));
+
+/** Only the rows that changed: what `save_group` needs. */
+export function changedMatrix(original, edited) {
+  const out = {};
+  for (const [doctype, cell] of Object.entries(edited)) if (!sameCell(original[doctype], cell)) out[doctype] = cell;
+  return out;
+}
+
+/** What a save would change, in words, for the confirmation: ["Hồ sơ lưu trữ: thêm Xóa; bỏ In", "Thêm chức năng: …"]. */
+export function describeChanges(group, edited, capabilities, columnLabels = {}) {
+  const lines = [];
+  const original = editableMatrix(group);
+  const labels = {};
+  for (const section of group?.matrix || []) for (const row of section.rows) labels[row.doctype] = row.label;
+  for (const [doctype, cell] of Object.entries(changedMatrix(original, edited))) {
+    const added = MATRIX_COLUMNS.filter((k) => cell[k] && !original[doctype]?.[k]).map((k) => columnLabels[k] || k);
+    const removed = MATRIX_COLUMNS.filter((k) => !cell[k] && original[doctype]?.[k]).map((k) => columnLabels[k] || k);
+    const parts = [added.length && `thêm ${added.join(", ")}`, removed.length && `bỏ ${removed.join(", ")}`].filter(Boolean);
+    lines.push(`${labels[doctype] || doctype}: ${parts.join("; ")}`);
+  }
+  const before = new Set(checkedCapabilities(group));
+  const after = new Set(capabilities);
+  const names = Object.fromEntries((group?.capabilities || []).flatMap((m) => m.items.map((i) => [i.code, i.label])));
+  const plus = [...after].filter((c) => !before.has(c)).map((c) => names[c] || c);
+  const minus = [...before].filter((c) => !after.has(c)).map((c) => names[c] || c);
+  if (plus.length) lines.push(`Thêm chức năng: ${plus.join(", ")}`);
+  if (minus.length) lines.push(`Bỏ chức năng: ${minus.join(", ")}`);
+  return lines;
 }
 
 // --- the system log -------------------------------------------------------------------------------------------------

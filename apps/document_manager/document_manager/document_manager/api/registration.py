@@ -10,11 +10,10 @@ import frappe
 from frappe import _
 from frappe.rate_limiter import rate_limit
 
-from document_manager.document_manager.permissions import assert_roles
+from document_manager.document_manager.permissions import assert_capability
 from document_manager.document_manager.services import registration
 from document_manager.document_manager.services.audit import log_activity
 
-OFFICERS = ("Reading Room Officer", "Document Admin")
 
 
 def _ip():
@@ -45,21 +44,21 @@ def request_password_reset(email, website=None):
 
 @frappe.whitelist()
 def list_registrations(status=None, request_type=None, search=None, start=0, page_length=20):
-    assert_roles(*OFFICERS)
+    assert_capability("readers.registrations")
     return registration.queue(status, request_type, search, start, page_length)
 
 
 @frappe.whitelist()
 def reader_groups():
     """Active reader groups an officer may put a new reader in (the default one first)."""
-    assert_roles(*OFFICERS)
+    assert_capability("readers.registrations")
     return frappe.get_all("Reader Group", filters={"is_active": 1}, fields=["name", "is_default"],
                           order_by="is_default desc, name asc", limit_page_length=0)
 
 
 @frappe.whitelist()
 def pending_registrations():
-    assert_roles(*OFFICERS)
+    assert_capability("readers.registrations")
     return registration.pending_count()
 
 
@@ -68,20 +67,20 @@ def approve_registration(name, reader_group=None):
     """Create the account (registration) or choose a new password link (forgot password).
 
     The response holds the one-time `set_password_path`: give it to the person, it is not stored."""
-    assert_roles(*OFFICERS)
+    assert_capability("readers.registrations")
     return registration.approve(name, reader_group or None)
 
 
 @frappe.whitelist(methods=["POST"])
 def reject_registration(name, reason):
-    assert_roles(*OFFICERS)
+    assert_capability("readers.registrations")
     return registration.reject(name, reason)
 
 
 @frappe.whitelist(methods=["POST"])
 def reissue_link(name):
     """A new one-time link for an approved request (the first one was lost or has expired)."""
-    assert_roles(*OFFICERS)
+    assert_capability("readers.registrations")
     doc = frappe.get_doc("Reader Registration", name)
     if doc.status != "Đã duyệt" or not doc.user:
         frappe.throw(_("Chỉ cấp lại liên kết cho yêu cầu đã duyệt"))
@@ -94,6 +93,6 @@ def reissue_link(name):
 def issue_reader_access(reader):
     """Create the login account of a reader profile that has none (needs the e-mail) and/or hand over a new
     one-time set-password link. The link is returned once and not stored."""
-    assert_roles(*OFFICERS)
+    assert_capability("readers.registrations")
     frappe.get_doc("Reader", reader).check_permission("read")
     return registration.issue_access(reader)

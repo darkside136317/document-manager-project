@@ -17,10 +17,15 @@ from frappe import _
 
 from document_manager.document_manager.policy import (  # noqa: F401  (re-exported for callers)
     STAFF_ROLES,
+    assert_capability,
     assert_feature,
+    capabilities_of,
     fonds_allowed,
+    get_access,
     get_reader_profile,
     get_reader_scope,
+    has_capability,
+    is_admin,
     is_staff,
     scope_fonds_sql,
 )

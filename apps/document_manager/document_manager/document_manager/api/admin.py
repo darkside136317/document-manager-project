@@ -7,16 +7,15 @@ import shutil
 import frappe
 from frappe.utils import add_days, cint, now_datetime
 
-from document_manager.document_manager.permissions import assert_roles
+from document_manager.document_manager.permissions import assert_capability
 from document_manager.document_manager.services.errors import log_exception
 
-ADMIN_ROLES = ("Document Admin", "System Manager")
 
 
 @frappe.whitelist()
 def get_service_health():
     """Status of MongoDB Atlas (file storage) and Meilisearch (search)."""
-    assert_roles(*ADMIN_ROLES)
+    assert_capability("monitor.view")
     from document_manager.document_manager.services.health import check_services
 
     return check_services(fresh=True)
@@ -71,7 +70,7 @@ def private_files_bytes() -> int | None:
 @frappe.whitelist()
 def monitor():
     """Everything the monitoring screen shows in one call: services, search index, jobs, storage, users, log, backups."""
-    assert_roles(*ADMIN_ROLES)
+    assert_capability("monitor.view")
     from document_manager.document_manager.services.health import check_services
     from document_manager.document_manager.services.preservation import backup, filestore
 

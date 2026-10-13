@@ -3,7 +3,7 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 
-from document_manager.document_manager.constants import STAFF_ASSIGNABLE_ROLES
+from document_manager.document_manager.policy import assignable_roles
 
 
 class StaffGroup(Document):
@@ -19,7 +19,7 @@ class StaffGroup(Document):
         self._unique("roles", "role", _("Vai trò"))
         self._unique("members", "user", _("Thành viên"))
         for row in self.get("roles") or []:
-            if row.role not in STAFF_ASSIGNABLE_ROLES:
+            if row.role not in assignable_roles():
                 frappe.throw(_("Vai trò {0} không được cấp qua nhóm cán bộ").format(row.role))
         for row in self.get("members") or []:
             info = frappe.db.get_value("User", row.user, ["user_type", "enabled"], as_dict=True)

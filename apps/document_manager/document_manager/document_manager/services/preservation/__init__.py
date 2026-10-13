@@ -7,25 +7,25 @@
 * `restore`    — restoring documents' files from a backup, and the controlled restore of the database;
 * `runner`     — the Backup / Integrity / Restore jobs: status, progress, cancel, the queue entry points.
 
-Who may use any of it: Document Admin, Preservation Officer and System Manager (`require_preservation`).
+Who may use it: the preservation capabilities (`preservation.backup|check|restore|db_restore`), administrators always.
 """
-
-import os
 
 import frappe
 
-from document_manager.document_manager.permissions import assert_roles
+from document_manager.document_manager.permissions import assert_capability, has_capability
 
-ROLES = ("Document Admin", "Preservation Officer", "System Manager")
+CAPABILITIES = ("preservation.backup", "preservation.check", "preservation.restore", "preservation.db_restore")
+# the kind of job -> the capability that runs it
+KIND_CAPABILITY = {"backup": "preservation.backup", "integrity": "preservation.check", "restore": "preservation.restore"}
 
 
-def require_preservation() -> None:
-    assert_roles(*ROLES)
+def require_preservation(*capabilities: str) -> None:
+    """Any preservation capability by default; the given one(s) when the action needs a particular one."""
+    assert_capability(*(capabilities or CAPABILITIES))
 
 
 def can_preserve(user: str | None = None) -> bool:
-    user = user or frappe.session.user
-    return user == "Administrator" or bool(set(ROLES) & set(frappe.get_roles(user)))
+    return has_capability(*CAPABILITIES, user=user)
 
 
 def backups_dir() -> str:

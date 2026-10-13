@@ -1,17 +1,15 @@
 # -*- coding: utf-8 -*-
-"""Exchange of archival data as XML (module 5): who may use it."""
+"""Exchange of archival data as XML (module 5): who may use it (capabilities exchange.export / exchange.import)."""
 
-import frappe
+from document_manager.document_manager.permissions import assert_capability, has_capability
 
-from document_manager.document_manager.permissions import assert_roles
-
-EXCHANGE_ROLES = ("Document Admin", "System Manager")
+CAPABILITIES = ("exchange.export", "exchange.import")
 
 
 def can_exchange(user: str | None = None) -> bool:
-    user = user or frappe.session.user
-    return user == "Administrator" or bool(set(EXCHANGE_ROLES) & set(frappe.get_roles(user)))
+    return has_capability(*CAPABILITIES, user=user)
 
 
-def require_exchange() -> None:
-    assert_roles(*EXCHANGE_ROLES)
+def require_exchange(*capabilities: str) -> None:
+    """Either exchange capability by default; a single one when the action needs it (export or import)."""
+    assert_capability(*(capabilities or CAPABILITIES))

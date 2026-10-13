@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
+import { useRoute } from "vue-router";
 import ConfirmDialog from "../components/ConfirmDialog.vue";
 import Drawer from "../components/Drawer.vue";
 import EmptyState from "../components/EmptyState.vue";
@@ -19,7 +20,8 @@ import { toast } from "../lib/toast.js";
 const roles = ref([]);
 const groups = ref([]);
 const list = ref({ data: [], total: 0, page: 1, page_size: 20 });
-const filters = ref({ search: "", role: "", group: "", enabled: "" });
+const route = useRoute();
+const filters = ref({ search: "", role: String(route.query.role || ""), group: "", enabled: "" });
 const loading = ref(false);
 const error = ref("");
 

@@ -120,7 +120,7 @@ class TestStaffApi(IntegrationTestCase):
         frappe.set_user(ADMIN)
         data = boot.build_boot()
         groups = {g["group"]: [i["label"] for i in g["items"]] for g in data["nav"]}
-        self.assertEqual(groups["Quản trị"][:4], ["Người dùng", "Phân quyền vai trò", "Nhật ký hệ thống", "Giám sát hệ thống"])
+        self.assertEqual(groups["Quản trị"][:4], ["Người dùng", "Phân quyền", "Nhật ký hệ thống", "Giám sát hệ thống"])
         for label in ("Thông tin đơn vị", "Cơ cấu tổ chức", "Nhóm cán bộ", "Thiết lập hệ thống"):
             self.assertIn(label, groups["Quản trị"])
         self.assertIn("Xuất, nhập XML", groups["Trao đổi dữ liệu"])

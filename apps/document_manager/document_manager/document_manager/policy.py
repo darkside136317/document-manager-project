@@ -37,11 +37,122 @@ FEATURE_LABELS = {
 }
 
 UNLIMITED_PRIORITY = 10**6
+ADMIN_ROLES = frozenset({"Document Admin", "System Manager", "Administrator"})
+
+
+# --- per-request memo ---------------------------------------------------------------------------------------------
+# Only facts that do not depend on the user are kept, and only for the current request (frappe.local is new for every
+# request and job). Saving a permission group clears it, so a test or a request that edits groups sees the change.
+
+def _memo() -> dict:
+    memo = getattr(frappe.local, "dm_policy_memo", None)
+    if memo is None:
+        memo = frappe.local.dm_policy_memo = {}
+    return memo
+
+
+def clear_cache() -> None:
+    frappe.local.dm_policy_memo = {}
+
+
+def _profile_capabilities() -> dict:
+    """{role: frozenset(capabilities)} of every permission group (the built-in defaults before the groups exist)."""
+    memo = _memo()
+    if "profiles" not in memo:
+        from document_manager.document_manager.constants import BUILTIN_CAPABILITIES
+
+        profiles = {role: frozenset(caps) for role, caps in BUILTIN_CAPABILITIES.items()}
+        if frappe.db.table_exists("Staff Role Profile"):
+            rows = frappe.get_all("Staff Role Capability", filters={"parenttype": "Staff Role Profile"},
+                                  fields=["parent", "capability"], limit_page_length=0)
+            granted = {}
+            for row in rows:
+                granted.setdefault(row.parent, set()).add(row.capability)
+            for role in frappe.get_all("Staff Role Profile", pluck="name", limit_page_length=0):
+                profiles[role] = frozenset(granted.get(role, ()))
+        memo["profiles"] = profiles
+    return memo["profiles"]
+
+
+def staff_role_profiles() -> list[dict]:
+    """The permission groups that can be given to a user, the built-in ones first (in their usual order):
+    [{role, label, group, description, is_builtin, is_admin}]."""
+    memo = _memo()
+    if "profile_rows" not in memo:
+        from document_manager.document_manager.constants import ROLE_INFO, STAFF_ASSIGNABLE_ROLES
+
+        rows = []
+        if frappe.db.table_exists("Staff Role Profile"):
+            rows = frappe.get_all("Staff Role Profile", fields=["role", "label", "group_label", "description", "is_builtin", "is_admin"],
+                                  limit_page_length=0)
+        known = {r.role for r in rows}
+        rows += [frappe._dict(role=role, label=info["label"], group_label=info["group"], description=info["description"],
+                              is_builtin=1, is_admin=int(role == "Document Admin"))
+                 for role, info in ROLE_INFO.items() if role not in known]
+        order = {role: i for i, role in enumerate(STAFF_ASSIGNABLE_ROLES)}
+        rows.sort(key=lambda r: (order.get(r.role, len(order)), r.label or r.role))
+        memo["profile_rows"] = [{"role": r.role, "label": r.label or r.role, "group": r.group_label or "Tác nghiệp",
+                                 "description": r.description or "", "is_builtin": bool(r.is_builtin), "is_admin": bool(r.is_admin)}
+                                for r in rows]
+    return memo["profile_rows"]
+
+
+def assignable_roles() -> tuple:
+    """The roles the staff app may give to a user: every permission group (never System Manager / Administrator)."""
+    return tuple(p["role"] for p in staff_role_profiles())
+
+
+def staff_roles() -> frozenset:
+    """Every role that makes its holder a member of the staff: the permission groups and Frappe's administrators."""
+    return STAFF_ROLES | frozenset(_profile_capabilities())
 
 
 def is_staff(user: str | None = None) -> bool:
     """True if `user` (default: session user) has any staff role."""
-    return bool(STAFF_ROLES.intersection(set(frappe.get_roles(user or frappe.session.user))))
+    return bool(staff_roles().intersection(set(frappe.get_roles(user or frappe.session.user))))
+
+
+def is_admin(user: str | None = None) -> bool:
+    """Administrators of the application: every capability, every fonds."""
+    user = user or frappe.session.user
+    return user == "Administrator" or bool(ADMIN_ROLES.intersection(frappe.get_roles(user)))
+
+
+def capabilities_of(user: str | None = None) -> frozenset:
+    """The functions `user` may use: every one for an administrator, else the union of their groups' capabilities."""
+    from document_manager.document_manager.constants import ADMIN_ONLY_CAPABILITIES, CAPABILITY_CODES
+
+    user = user or frappe.session.user
+    if is_admin(user):
+        return CAPABILITY_CODES | ADMIN_ONLY_CAPABILITIES
+    profiles = _profile_capabilities()
+    granted = set()
+    for role in frappe.get_roles(user):
+        granted |= profiles.get(role, frozenset())
+    return frozenset(granted)
+
+
+def has_capability(*codes: str, user: str | None = None) -> bool:
+    """True when `user` may use at least one of `codes`."""
+    return bool(capabilities_of(user).intersection(codes))
+
+
+def assert_capability(*codes: str, user: str | None = None) -> None:
+    """Raise PermissionError unless `user` may use one of `codes` (also enforced while tests run)."""
+    if not has_capability(*codes, user=user):
+        frappe.throw(_("Bạn không có quyền thực hiện thao tác này"), frappe.PermissionError)
+
+
+def users_with_capability(code: str) -> list[str]:
+    """Enabled users whose permission groups grant `code` explicitly (administrators are not listed: they hold
+    every capability implicitly and are not told about every slip)."""
+    roles = [role for role, caps in _profile_capabilities().items() if code in caps]
+    if not roles:
+        return []
+    holders = frappe.get_all("Has Role", filters={"role": ["in", roles], "parenttype": "User"}, pluck="parent", distinct=True)
+    if not holders:
+        return []
+    return frappe.get_all("User", filters={"name": ["in", holders], "enabled": 1}, pluck="name")
 
 
 def get_reader_profile(user: str | None = None) -> str | None:
@@ -93,6 +204,28 @@ def get_reader_scope(user: str | None = None) -> frappe._dict:
     return _scope(user=user, allowed=True, profile=profile.name, group=group_name,
                   max_priority=cint(profile.max_confidentiality_priority) or group_priority or 1,
                   fonds=fonds, **features)
+
+
+def get_access(user: str | None = None) -> frappe._dict:
+    """One answer for every kind of user: what they may read and write, how high, and which functions they may use.
+
+        kind          "admin" | "staff" | "reader" | "guest"
+        read_fonds    None for every fonds, else the list of fonds the user may read
+        write_fonds   None for every fonds, else the list of fonds the user may change ([] for readers and guests)
+        max_priority  highest confidentiality priority the user may read
+        capabilities  frozenset of capability codes (staff); readers use `reader.can_*`
+        reader        the reader scope (`get_reader_scope`) for readers, else None
+    """
+    user = user or frappe.session.user
+    if user == "Guest":
+        return frappe._dict(user=user, kind="guest", read_fonds=[], write_fonds=[], max_priority=0,
+                            capabilities=frozenset(), reader=None)
+    if is_staff(user):
+        return frappe._dict(user=user, kind="admin" if is_admin(user) else "staff", read_fonds=None, write_fonds=None,
+                            max_priority=UNLIMITED_PRIORITY, capabilities=capabilities_of(user), reader=None)
+    scope = get_reader_scope(user)
+    return frappe._dict(user=user, kind="reader", read_fonds=scope.fonds if scope.allowed else [], write_fonds=[],
+                        max_priority=scope.max_priority, capabilities=frozenset(), reader=scope)
 
 
 def assert_feature(feature: str, user: str | None = None) -> frappe._dict:

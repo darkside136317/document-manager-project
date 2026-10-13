@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """API of the XML exchange screen (module 5): search and export, upload and analyse, import (or dry run), history.
 
-Only administrators (`services.exchange.EXCHANGE_ROLES`) may use any of it. Exports and imports run in the
+Who may use it: the capabilities exchange.export / exchange.import (`services.exchange`), administrators always. Exports and imports run in the
 background as the user who started them; this module only creates the Data Exchange Job and reports on it.
 """
 
@@ -60,13 +60,13 @@ def capabilities():
 @frappe.whitelist()
 def preview_export(level, filters=None, include_children=0):
     """How many records of each level the export would contain."""
-    require_exchange()
+    require_exchange("exchange.export")
     return exporter.plan(level, filters, bool(cint(include_children)))
 
 
 @frappe.whitelist(methods=["POST"])
 def start_export(level, filters=None, fields=None, include_children=0):
-    require_exchange()
+    require_exchange("exchange.export")
     options = exporter.validate_request(level, {"filters": filters, "fields": fields, "include_children": include_children})
     plan = exporter.plan(level, options["filters"], bool(options["include_children"]))
     if not plan["counts"][level]:
@@ -94,7 +94,7 @@ def _uploaded_file(file_url: str):
 @frappe.whitelist(methods=["POST"])
 def analyze_import(file_url):
     """Read an uploaded XML file without writing anything: its structure, counts and fields; a Data Exchange Job keeps it."""
-    require_exchange()
+    require_exchange("exchange.import")
     file = _uploaded_file(file_url)
     content = file.get_content()
     content = content.encode("utf-8") if isinstance(content, str) else (content or b"")
@@ -115,7 +115,7 @@ def analyze_import(file_url):
 @frappe.whitelist(methods=["POST"])
 def start_import(job, mode=None, fields=None, dry_run=0, create_masters=0):
     """Run an analysed upload: add (or add and update) the records, with the fields chosen; `dry_run` writes nothing."""
-    require_exchange()
+    require_exchange("exchange.import")
     doc = jobs.get(job)
     if doc.direction != jobs.IMPORT or not doc.analysis_json:
         frappe.throw(_("Lượt này không phải là một tệp nhập đã phân tích"))
