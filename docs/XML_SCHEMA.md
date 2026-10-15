@@ -1,6 +1,6 @@
 # Định dạng trao đổi dữ liệu XML (Phụ lục 03, phân hệ 5)
 
-Màn hình **Trao đổi dữ liệu → Xuất, nhập XML** (`/dashboard/trao-doi-du-lieu`) chỉ dành cho **Document Admin** và **System Manager**.
+Màn hình **Trao đổi dữ liệu → Xuất, nhập XML** (`/dashboard/trao-doi-du-lieu`) dành cho người có chức năng **Xuất dữ liệu XML** hoặc **Nhập dữ liệu XML** (mặc định: Quản trị viên; giao thêm ở Quản trị → Phân quyền).
 Lược đồ XSD chính thức được sinh từ danh sách trường của hệ thống và tải ở `/api/method/document_manager.document_manager.api.exchange.download_schema`
 (nút "Lược đồ XSD" trên màn hình). Tệp nhập được kiểm tra bằng đúng XSD này.
 

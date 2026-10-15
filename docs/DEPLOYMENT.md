@@ -40,10 +40,10 @@ nano .env
 | `FRAPPE_SITE_NAME` | Tên miền thật, ví dụ `luutru.coquan.gov.vn` (nginx dùng làm tên site) |
 | `ADMIN_PASSWORD` | Mật khẩu của `Administrator`: `openssl rand -base64 24` |
 | `MARIADB_ROOT_PASSWORD` | `openssl rand -base64 24` |
-| `MONGODB_ATLAS_URI`, `MONGODB_DATABASE` | Chuỗi kết nối và tên cơ sở dữ liệu GridFS (mặc định `docmanager_files`) |
+| `MONGODB_ATLAS_URI`, `MONGODB_DATABASE` | Chuỗi kết nối và tên cơ sở dữ liệu GridFS (mặc định `docmanager_files`). Không dùng MongoDB: giữ nguyên giá trị mẫu (biến không được để trống) |
 | `MEILISEARCH_MASTER_KEY` | `openssl rand -hex 16`; **bắt buộc đổi**, Meilisearch không công khai ra máy chủ |
 | `GUNICORN_WORKERS` / `GUNICORN_THREADS` | Khoảng `2 × số lõi + 1` tiến trình |
-| `HTTP_PUBLISH_PORT` | Cổng nginx công bố (mặc định `80` ở chế độ production) |
+| `HTTP_PUBLISH_PORT` | Cổng nginx của compose. Có reverse proxy trên cùng máy (mục 6): đặt `127.0.0.1:8080` để chỉ nghe trên máy chủ và không tranh cổng 80 với proxy |
 | `CLIENT_MAX_BODY_SIZE` | Giới hạn tải lên của nginx, đặt `200m`; giới hạn tệp của ứng dụng là 100 MB |
 
 Không đưa `.env` vào git.
@@ -55,8 +55,11 @@ cd /opt/docmanager/docker
 docker compose -f docker-compose.yml -f docker-compose.prod.yml build backend   # có tầng Node: chạy vitest và build giao diện cán bộ
 docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 docker compose logs -f create-site   # chờ xong (2–5 phút): tạo site, cài ERPNext và document_manager
-docker compose ps
+docker compose ps -a
+docker compose exec backend bench --site <tên-site> enable-scheduler   # BẮT BUỘC: site mới của Frappe tắt bộ lập lịch
 ```
+
+Thiếu lệnh `enable-scheduler` thì sao lưu tự động, cờ quá hạn, nhắc hạn và kiểm tra toàn vẹn hằng tuần không chạy.
 
 `create-site` chạy `bench new-site` với `--install-app document_manager`; ứng dụng tự gieo vai trò, mức độ mật, workflow, thông báo, nhóm độc giả
 mặc định và các giá trị mặc định của thiết lập (`setup/install.py`). **Không cần cài ứng dụng hay chạy migrate bằng tay** ở lần đầu.
@@ -65,8 +68,8 @@ Kiểm tra: `https://<tên-miền>/gioi-thieu` (trang công khai) và `https://<
 
 ## 5. Cấu hình sau cài đặt
 
-1. Đăng nhập `Administrator`, vào **Quản trị → Người dùng**, tạo tài khoản cho cán bộ (vai trò: Quản trị tài liệu, Biên mục viên, Cán bộ phòng đọc, Lãnh đạo,
-   Cán bộ bảo quản). Hệ thống đưa một liên kết đặt mật khẩu dùng một lần: gửi cho người dùng, không cần email. Liên kết hết hạn sau 72 giờ.
+1. Đăng nhập `Administrator`, vào **Quản trị → Người dùng**, tạo tài khoản cho cán bộ và gán nhóm quyền (có sẵn: Quản trị viên, Biên mục viên, Cán bộ phòng đọc,
+   Lãnh đạo, Cán bộ bảo quản; sửa hoặc thêm nhóm ở **Quản trị → Phân quyền**). Hệ thống đưa một liên kết đặt mật khẩu dùng một lần: gửi cho người dùng, không cần email. Liên kết hết hạn sau 72 giờ.
 2. **Quản trị → Thông tin đơn vị** và **Cơ cấu tổ chức**: nội dung hiện ở các trang công khai.
 3. **Quản trị → Thiết lập hệ thống**: lịch sao lưu tự động, thời hạn giữ bản sao lưu và nhật ký, chính sách mật khẩu, số lần đăng nhập sai.
 4. **Độc giả → Thiết lập độc giả** và **Nhóm độc giả**: hạn mức phiếu, gia hạn, nhắc hạn, đăng ký tự do hay phải duyệt.
@@ -74,7 +77,8 @@ Kiểm tra: `https://<tên-miền>/gioi-thieu` (trang công khai) và `https://<
 
 ## 6. TLS và reverse proxy
 
-nginx trong compose lắng nghe HTTP. Đặt phía trước một reverse proxy có TLS (Nginx, Traefik hoặc Caddy). Với Nginx ngoài Docker:
+nginx trong compose lắng nghe HTTP. Đặt phía trước một reverse proxy có TLS (Nginx, Traefik hoặc Caddy). Với Nginx ngoài Docker trên cùng máy,
+đặt `HTTP_PUBLISH_PORT=127.0.0.1:8080` trong `.env` rồi:
 
 ```nginx
 server {
@@ -93,7 +97,10 @@ server {
     proxy_read_timeout 300;
 
     location / {
-        proxy_pass http://127.0.0.1:80;      # HTTP_PUBLISH_PORT
+        proxy_pass http://127.0.0.1:8080;    # HTTP_PUBLISH_PORT
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;  # websocket (/socket.io)
+        proxy_set_header Connection "upgrade";
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;

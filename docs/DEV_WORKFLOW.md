@@ -98,10 +98,11 @@ Mẹo trên Windows: Git Bash cần `MSYS_NO_PATHCONV=1` khi chạy `docker comp
 
 ## 4. Kiến trúc mã nguồn trong một trang
 
-- `api/*.py` là lớp mỏng: kiểm quyền (`assert_roles`, `require_staff`), kiểm tra đầu vào, rồi gọi `services/`. Không đặt nghiệp vụ trong `api/`.
+- `api/*.py` là lớp mỏng: kiểm quyền (`assert_capability`, `is_staff`, `assert_feature`), kiểm tra đầu vào, rồi gọi `services/`. Không đặt nghiệp vụ trong `api/`.
 - `services/` chứa nghiệp vụ; công việc nền dài đi qua `frappe.enqueue(..., enqueue_after_commit=True)` và có tiến độ, dừng/chạy tiếp.
-- `constants.py` là danh sách duy nhất những DocType mà giao diện cán bộ được phép mở (`MASTERS`, `ARCHIVE_SCREENS`, `READER_SCREENS`, …) và vai trò cán bộ.
-- `policy.py` quyết định quyền xem của độc giả; `permissions.py` chỉ nối nó vào các hook của Frappe.
+- `constants.py` là danh sách duy nhất những DocType mà giao diện cán bộ được phép mở (`MASTERS`, `ARCHIVE_SCREENS`, `READER_SCREENS`, …), vai trò cán bộ và danh sách chức năng (`CAPABILITIES`).
+- Chi tiết kiến trúc: [TAI_LIEU_KY_THUAT.md](TAI_LIEU_KY_THUAT.md).
+- `policy.py` là điểm quyết định quyền duy nhất (`get_access`: quản trị viên, cán bộ, độc giả; phạm vi phông; chức năng); `permissions.py` chỉ nối nó vào các hook của Frappe.
 - Thêm một màn hình danh mục: thêm DocType, thêm một dòng vào `constants.py`, giao diện tự có danh sách, biểu mẫu, quyền.
 - Giao diện cán bộ: trang ở `frontend/src/pages`, thành phần ở `components`, logic thuần ở `lib` (có vitest). Danh sách phải bỏ qua phản hồi cũ khi bộ lọc đổi (xem `UsersPage.vue`).
 - Jinja của Frappe **không tự thoát HTML**: mọi mẫu trang độc giả phải bọc `{% autoescape true %}`.

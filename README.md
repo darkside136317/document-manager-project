@@ -91,7 +91,7 @@ Trình duyệt ─▶ nginx (frontend) ─▶ gunicorn (backend: Frappe + docume
 
 Nguyên tắc:
 
-- **Một nguồn chính sách cho độc giả** (`policy.get_reader_scope`): dùng chung cho truy vấn SQL, `has_permission`, tìm kiếm, tải tệp và phiếu.
+- **Một điểm quyết định quyền** (`policy.get_access`) cho quản trị viên, cán bộ và độc giả: dùng chung cho truy vấn SQL, `has_permission`, tìm kiếm, báo cáo, tải tệp và phiếu.
 - **API mỏng, nghiệp vụ trong `services/`**: `api/*.py` chỉ kiểm quyền và đầu vào. Màn hình danh mục dùng API chung (`api/crud.py`, `api/meta.py`), chỉ mở các DocType đã đăng ký trong `constants.py` và để Frappe tự kiểm quyền, ràng buộc, liên kết.
 - **Việc dài chạy nền** có tiến độ, dừng và chạy tiếp được: sao lưu, kiểm tra, khôi phục, xuất/nhập.
 - **Mọi thao tác quan trọng được ghi nhật ký** (`services/audit.py`).
@@ -239,6 +239,7 @@ Tài liệu chi tiết bằng tiếng Việt trong thư mục `docs/`:
 
 | Tệp | Nội dung |
 |---|---|
+| [TAI_LIEU_KY_THUAT.md](docs/TAI_LIEU_KY_THUAT.md) | Tài liệu kỹ thuật: kiến trúc, mã nguồn, dữ liệu, phân quyền, luồng xử lý, API, mở rộng |
 | [DEPLOYMENT.md](docs/DEPLOYMENT.md) | Triển khai sản xuất, TLS, cập nhật, xử lý sự cố |
 | [KICH_BAN_DEMO_CHUC_NANG_VA_PHAN_QUYEN.md](docs/KICH_BAN_DEMO_CHUC_NANG_VA_PHAN_QUYEN.md) | Kịch bản demo và danh sách nghiệm thu phân quyền |
 | [UI_CUSTOMIZATION.md](docs/UI_CUSTOMIZATION.md) | Đổi nhận diện giao diện |
