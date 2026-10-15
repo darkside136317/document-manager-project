@@ -637,12 +637,14 @@ Kiểm thử `scripts/e2e/e2e_http.py` gọi từng API bằng từng loại tà
 
 ## 12. Cấu hình
 
-### 12.1. Biến môi trường (`docker/.env`)
+### 12.1. Biến môi trường (`docker/.env.dev` hoặc `docker/.env.prod`)
 
 | Biến | Ý nghĩa |
 |---|---|
 | `ERPNEXT_VERSION` | Thẻ image nền và image của ứng dụng (hiện `v16.26.2`) |
 | `FRAPPE_SITE_NAME`, `ADMIN_PASSWORD` | Tên site (tên miền), mật khẩu `Administrator` |
+| `PUBLIC_URL` | URL đầy đủ của site; production phải dùng HTTPS và tên miền khách hàng |
+| `COMPOSE_PROJECT_NAME`, `DATA_VOLUME_PREFIX` | Tách container, network và volume của từng môi trường hoặc khách hàng |
 | `DB_HOST`, `DB_PORT`, `MARIADB_ROOT_PASSWORD` | MariaDB |
 | `REDIS_CACHE`, `REDIS_QUEUE` | Redis |
 | `GUNICORN_WORKERS`, `GUNICORN_THREADS`, `GUNICORN_TIMEOUT` | Tiến trình web |
@@ -699,17 +701,17 @@ cd document-manager-project/docker
 **Bước 2. Tạo tệp cấu hình.**
 
 ```bash
-cp .env.example .env
+cp .env.dev.example .env.dev
 ```
 
 Sửa ít nhất `ADMIN_PASSWORD`, `MARIADB_ROOT_PASSWORD`, `MEILISEARCH_MASTER_KEY`. Giữ `HTTP_PUBLISH_PORT=8888` hoặc chọn cổng khác còn trống.
 `FRAPPE_SITE_NAME` để nguyên cũng được: nginx luôn gửi tên site này cho backend, nên mở bằng `localhost` vẫn đúng site, không cần sửa tệp `hosts`.
-Không dùng MongoDB thì giữ nguyên giá trị mẫu của `MONGODB_ATLAS_URI` (xem bước 4 ở 13.3).
+Không dùng MongoDB thì để trống `MONGODB_ATLAS_URI`.
 
 **Bước 3. Build image và khởi động.**
 
 ```bash
-C="docker compose -f docker-compose.yml -f docker-compose.dev.yml"
+C="docker compose --env-file .env.dev -f docker-compose.yml -f docker-compose.dev.yml"
 $C build backend          # lần đầu khoảng 5–10 phút: tải image nền, chạy vitest, build giao diện cán bộ
 $C up -d
 $C logs -f create-site    # chờ dòng "*** Scheduler is disabled ***" (2–5 phút), rồi Ctrl+C
@@ -771,33 +773,36 @@ cd /opt/docmanager/docker
 2. *Network Access*: thêm địa chỉ IP của máy chủ (quên bước này là nguyên nhân thường gặp của lỗi *SSL handshake failed*).
 3. Lấy chuỗi kết nối `mongodb+srv://...` ở *Database → Connect → Drivers*.
 
-**Bước 4. Tạo `.env`.**
+**Bước 4. Tạo `.env.prod`.**
 
 ```bash
-cp .env.example .env
-chmod 600 .env
-openssl rand -base64 24     # chạy ba lần: ADMIN_PASSWORD, MARIADB_ROOT_PASSWORD và (với -hex 16) MEILISEARCH_MASTER_KEY
-nano .env
+cp .env.prod.example .env.prod
+chmod 600 .env.prod
+openssl rand -hex 24     # chạy ba lần, cho ba khóa khác nhau
+nano .env.prod
+python3 ../scripts/validate_prod_env.py .env.prod
 ```
 
 | Biến | Giá trị cho sản xuất |
 |---|---|
 | `FRAPPE_SITE_NAME` | Tên miền thật, ví dụ `luutru.coquan.gov.vn`; cũng là tên site |
+| `PUBLIC_URL` | `https://` + tên miền thật |
+| `COMPOSE_PROJECT_NAME`, `DATA_VOLUME_PREFIX` | Tên riêng của khách hàng; giữ nguyên khi cập nhật |
 | `ADMIN_PASSWORD`, `MARIADB_ROOT_PASSWORD` | Chuỗi ngẫu nhiên mạnh |
 | `MEILISEARCH_MASTER_KEY` | Chuỗi ngẫu nhiên (`openssl rand -hex 16`); **bắt buộc đổi** |
-| `MONGODB_ATLAS_URI`, `MONGODB_DATABASE` | Chuỗi kết nối Atlas. Không dùng MongoDB: **giữ nguyên giá trị mẫu** (biến không được để trống; địa chỉ mẫu không tồn tại nên hệ thống nhận ra ngay là không có MongoDB, lưu tệp trên đĩa và màn hình Giám sát ghi "Không kết nối") |
+| `MONGODB_ATLAS_URI`, `MONGODB_DATABASE` | Chuỗi kết nối Atlas; để trống URI nếu lưu tệp trong volume riêng của Frappe |
 | `HTTP_PUBLISH_PORT` | `127.0.0.1:8080` khi có reverse proxy trên cùng máy: nginx của compose chỉ nghe trên máy chủ, không lộ HTTP ra ngoài và không tranh cổng 80 với proxy |
 | `GUNICORN_WORKERS`, `GUNICORN_THREADS` | Khoảng `2 × số lõi + 1` tiến trình, 4 luồng |
 | `CLIENT_MAX_BODY_SIZE`, `PROXY_READ_TIMEOUT` | `200m`, `120` (giới hạn tệp của ứng dụng là 100 MB) |
 
-Không đưa `.env` vào git. Trên máy nhiều RAM, tăng `innodb_buffer_pool_size` trong `docker/mariadb/my_custom.cnf` lên 50–70% RAM dành cho MariaDB.
+Không đưa `.env.prod` vào git. Trên máy nhiều RAM, tăng `innodb_buffer_pool_size` trong `docker/mariadb/my_custom.cnf` lên 50–70% RAM dành cho MariaDB.
 
 **Bước 5. Có image của ứng dụng** (chọn một cách).
 
 *Cách A – build trên máy chủ:*
 
 ```bash
-C="docker compose -f docker-compose.yml -f docker-compose.prod.yml"
+C="docker compose --env-file .env.prod -f docker-compose.yml -f docker-compose.prod.yml"
 $C build backend
 ```
 
@@ -819,7 +824,7 @@ $C ps -a                   # configurator, create-site: Exited (0); các dịch 
 
 `create-site` chạy `bench new-site ... --install-app erpnext --install-app document_manager`. Ứng dụng tự gieo vai trò, nhóm quyền, mức độ mật, workflow,
 thông báo, nhóm độc giả mặc định và giá trị mặc định của thiết lập (13.6): không cần cài ứng dụng hay chạy `migrate` bằng tay ở lần đầu.
-Ở những lần `up -d` sau, `create-site` chạy lại và báo *Site ... already exists* rồi thoát mã 1: đây là bình thường.
+Ở những lần `up -d` sau, `create-site` kiểm tra site cũ rồi bỏ qua, thoát mã 0.
 
 **Bước 7. Bật bộ lập lịch** (bắt buộc: thiếu bước này thì sao lưu tự động, cờ quá hạn, nhắc hạn, nhắc hết cấp phép và kiểm tra toàn vẹn hằng tuần đều không chạy):
 
@@ -934,13 +939,13 @@ $C down -v       # dừng và XÓA toàn bộ dữ liệu: cơ sở dữ liệu,
 
 | Triệu chứng | Cách xử lý |
 |---|---|
-| `required variable ... is missing a value` khi chạy compose | Thiếu biến trong `.env` (kể cả `MONGODB_ATLAS_URI`, `MEILISEARCH_MASTER_KEY`): chép lại từ `.env.example` |
+| `required variable ... is missing a value` khi chạy compose | Thiếu biến trong `.env.dev` hoặc `.env.prod`: chép lại từ mẫu tương ứng |
 | `create-site` dừng ở "Waiting for sites/common_site_config.json" | `configurator` lỗi: `$C logs configurator` |
 | `create-site` quá thời gian hoặc bị kill | Thiếu RAM: cấp thêm cho Docker (Docker Desktop: *Settings → Resources*) |
 | Cổng đã bị dùng | Đổi `HTTP_PUBLISH_PORT` |
 | Trang báo 502 sau khi khởi động lại | `$C up -d` rồi `$C restart frontend` (backend đổi địa chỉ) |
 | Sao lưu tự động, cờ quá hạn không chạy | Bộ lập lịch chưa bật (bước 7), hoặc `scheduler`/`queue-long` không chạy |
-| Meilisearch báo 401 | Khóa trong `.env` khác khóa đã ghi vào site: `$C up -d` để `configurator` ghi lại, rồi khởi động lại `backend` và worker |
+| Meilisearch báo 401 | Khóa trong tệp môi trường khác khóa đã ghi vào site: `$C up -d` để `configurator` ghi lại, rồi khởi động lại `backend` và worker |
 | Giám sát báo MongoDB "Không kết nối" dù đã cấu hình | IP máy chủ chưa có trong *Network Access* của Atlas, hoặc chuỗi kết nối sai |
 
 Các sự cố khi vận hành: [DEPLOYMENT.md](DEPLOYMENT.md#9-xử-lý-sự-cố).
@@ -959,7 +964,7 @@ Các sự cố khi vận hành: [DEPLOYMENT.md](DEPLOYMENT.md#9-xử-lý-sự-c�
 | XML | Không DTD/ENTITY, không truy cập mạng, không cây quá lớn, kiểm XSD; nhập chạy với quyền của người yêu cầu |
 | Dữ liệu mật | `content_text` không bao giờ trả cho người dùng; nhật ký không chép giá trị nhạy cảm; trường nhạy cảm theo permlevel |
 | Thao tác nguy hiểm | Khôi phục CSDL tắt mặc định; dọn nhật ký phải nhập lại số dòng và được ghi lại; sao lưu/khôi phục CSDL cần phạm vi mọi phông |
-| Bí mật | Khóa Meilisearch, mật khẩu DB, URI MongoDB chỉ nằm trong `.env`/`site_config`; màn hình giám sát không lộ thông tin đăng nhập |
+| Bí mật | Khóa Meilisearch, mật khẩu DB, URI MongoDB nằm trong tệp môi trường/site config; màn hình giám sát không lộ thông tin đăng nhập |
 
 ## 15. Hiệu năng
 

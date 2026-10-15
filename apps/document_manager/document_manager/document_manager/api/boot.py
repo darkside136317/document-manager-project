@@ -141,7 +141,8 @@ def build_boot() -> dict:
     return {
         "user": {"name": user, "full_name": display_name(user), "roles": frappe.get_roles(user),
                  "capabilities": sorted(capabilities_of(user))},
-        "org": frappe.db.get_single_value("Organization Info", "org_name") or "Document Manager",
+        "org": frappe.db.get_single_value("Organization Info", "org_name") or "Trung tâm Lưu trữ",
+        "org_configured": bool(frappe.db.get_single_value("Organization Info", "org_name")),
         "nav": nav,
         "legacy": [{"group": g, "items": items} for g, items in legacy.items()],
         "masters": _with_permissions(masters),

@@ -2,7 +2,7 @@
 # Document Manager — Docker Compose
 # =============================================================================
 # Hệ thống Quản lý & Khai thác Hồ sơ Lưu trữ Số hóa
-# Based on frappe_docker pwd.yml, extended with Meilisearch + MinIO
+# Based on frappe_docker pwd.yml, extended with Meilisearch
 # =============================================================================
 
 services:
@@ -25,8 +25,6 @@ services:
     environment:
       DB_HOST: ${DB_HOST:-db}
       DB_PORT: "${DB_PORT:-3306}"
-      MYSQL_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD:?}
-      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD:?}
       GUNICORN_THREADS: ${GUNICORN_THREADS:-4}
       GUNICORN_WORKERS: ${GUNICORN_WORKERS:-2}
       GUNICORN_TIMEOUT: ${GUNICORN_TIMEOUT:-120}
@@ -44,6 +42,7 @@ services:
       - -c
     command:
       - >
+        set -e;
         ls -1 apps > sites/apps.txt;
         bench set-config -g db_host $$DB_HOST;
         bench set-config -gp db_port $$DB_PORT;
@@ -54,6 +53,7 @@ services:
         bench set-config -g meilisearch_master_key "$$MEILISEARCH_MASTER_KEY";
         bench set-config -g mongodb_atlas_uri "$$MONGODB_ATLAS_URI";
         bench set-config -g mongodb_database "$$MONGODB_DATABASE";
+        if [ -n "$$PUBLIC_URL" ]; then bench set-config -g host_name "$$PUBLIC_URL"; fi;
         bench set-config -gp socketio_port $$SOCKETIO_PORT;
     environment:
       DB_HOST: ${DB_HOST:-db}
@@ -62,8 +62,9 @@ services:
       REDIS_QUEUE: ${REDIS_QUEUE:-redis-queue:6379}
       MEILISEARCH_HOST: ${MEILISEARCH_HOST:-http://meilisearch:7700}
       MEILISEARCH_MASTER_KEY: ${MEILISEARCH_MASTER_KEY:?}
-      MONGODB_ATLAS_URI: ${MONGODB_ATLAS_URI:?}
+      MONGODB_ATLAS_URI: ${MONGODB_ATLAS_URI:-}
       MONGODB_DATABASE: ${MONGODB_DATABASE:-docmanager_files}
+      PUBLIC_URL: ${PUBLIC_URL:-}
       SOCKETIO_PORT: "9000"
     volumes:
       - sites:/home/frappe/frappe-bench/sites
@@ -85,6 +86,7 @@ services:
       - -c
     command:
       - >
+        set -e;
         wait-for-it -t 120 db:3306;
         wait-for-it -t 120 redis-cache:6379;
         wait-for-it -t 120 redis-queue:6379;
@@ -101,7 +103,16 @@ services:
           fi
         done;
         echo "sites/common_site_config.json found";
-        bench new-site ${FRAPPE_SITE_NAME:-docmanager.local} --mariadb-user-host-login-scope='%' --admin-password=${ADMIN_PASSWORD:-admin} --db-root-username=root --db-root-password=${MARIADB_ROOT_PASSWORD:?} --install-app erpnext --install-app document_manager --set-default;
+        if [ -f "sites/$$FRAPPE_SITE_NAME/site_config.json" ]; then
+          bench --site "$$FRAPPE_SITE_NAME" list-apps >/dev/null;
+          echo "Site $$FRAPPE_SITE_NAME already exists; skipping creation";
+        else
+          bench new-site "$$FRAPPE_SITE_NAME" --mariadb-user-host-login-scope='%' --admin-password="$$ADMIN_PASSWORD" --db-root-username=root --db-root-password="$$MARIADB_ROOT_PASSWORD" --install-app erpnext --install-app document_manager --set-default;
+        fi;
+    environment:
+      FRAPPE_SITE_NAME: ${FRAPPE_SITE_NAME:?Set FRAPPE_SITE_NAME to the site hostname}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Set ADMIN_PASSWORD}
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD:?Set MARIADB_ROOT_PASSWORD}
     depends_on:
       configurator:
         condition: service_completed_successfully
@@ -142,7 +153,7 @@ services:
       - nginx-entrypoint.sh
     environment:
       BACKEND: backend:8000
-      FRAPPE_SITE_NAME_HEADER: ${FRAPPE_SITE_NAME:-$$host}
+      FRAPPE_SITE_NAME_HEADER: ${FRAPPE_SITE_NAME:?Set FRAPPE_SITE_NAME to the site hostname}
       SOCKETIO: websocket:9000
       UPSTREAM_REAL_IP_ADDRESS: 127.0.0.1
       UPSTREAM_REAL_IP_HEADER: X-Forwarded-For
@@ -152,8 +163,7 @@ services:
     volumes:
       - sites:/home/frappe/frappe-bench/sites
       - logs:/home/frappe/frappe-bench/logs
-    ports:
-      - "${HTTP_PUBLISH_PORT:-8080}:8080"
+    # Dev and production overlays decide where HTTP is published.
 
   # ---------------------------------------------------------------------------
   # WebSocket (Socket.IO for real-time updates)
@@ -281,15 +291,15 @@ services:
 # =============================================================================
 volumes:
   db-data:
-    name: docmanager_db_data
+    name: ${DATA_VOLUME_PREFIX:-docmanager}_db_data
   redis-queue-data:
-    name: docmanager_redis_queue
+    name: ${DATA_VOLUME_PREFIX:-docmanager}_redis_queue
   sites:
-    name: docmanager_sites
+    name: ${DATA_VOLUME_PREFIX:-docmanager}_sites
   logs:
-    name: docmanager_logs
+    name: ${DATA_VOLUME_PREFIX:-docmanager}_logs
   meilisearch-data:
-    name: docmanager_meilisearch
+    name: ${DATA_VOLUME_PREFIX:-docmanager}_meilisearch
 
 
 # =============================================================================
@@ -297,5 +307,5 @@ volumes:
 # =============================================================================
 networks:
   frappe_network:
-    name: docmanager_network
+    name: ${DATA_VOLUME_PREFIX:-docmanager}_network
     driver: bridge

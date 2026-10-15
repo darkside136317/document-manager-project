@@ -238,12 +238,12 @@ describe("loginForm", () => {
     const form = components.loginForm({});
     await form.submit();
     expect(fetch).not.toHaveBeenCalled();
-    expect(form.error).toMatch(/email và mật khẩu/);
+    expect(form.error).toMatch(/email hoặc tên đăng nhập và mật khẩu/);
   });
 
-  it("goes back to where the visitor came from, or to the home page of their role", async () => {
+  it("returns to the requested page, otherwise lets the server choose the role's home", async () => {
     mockFetch(reply({ home_page: "/portal" }), reply({ home_page: "dashboard" }), reply({ home_page: "//evil.example" }));
-    for (const [redirect, expected] of [["/portal/phieu/UR-1", "/portal/phieu/UR-1"], ["", "/dashboard"], ["", "/portal"]]) {
+    for (const [redirect, expected] of [["/portal/phieu/UR-1", "/portal/phieu/UR-1"], ["", "/dang-nhap"], ["", "/dang-nhap"]]) {
       const form = components.loginForm({ redirect });
       form.usr = "a@b.vn";
       form.pwd = "pw";
@@ -258,7 +258,7 @@ describe("loginForm", () => {
     form.usr = "a@b.vn";
     form.pwd = "bad";
     await form.submit();
-    expect(form.error).toMatch(/Email hoặc mật khẩu không đúng/);
+    expect(form.error).toMatch(/Thông tin đăng nhập không đúng/);
     expect(form.busy).toBe(false);
     expect(dm.nav.go).not.toHaveBeenCalled();
   });
@@ -269,7 +269,7 @@ describe("loginForm", () => {
     form.usr = "a@b.vn";
     form.pwd = "pw";
     await form.submit();
-    expect(dm.nav.go).toHaveBeenCalledWith("/portal");
+    expect(dm.nav.go).toHaveBeenCalledWith("/dang-nhap");
   });
 });
 

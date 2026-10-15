@@ -2,7 +2,7 @@
 # Docker Compose DEV override — edit code on the host, see it live
 # =============================================================================
 # Usage (from this folder):
-#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --no-build
+#   docker compose --env-file .env.dev -f docker-compose.yml -f docker-compose.dev.yml up -d --no-build
 #
 # What it does:
 #   * bind-mounts apps/document_manager into backend, workers, scheduler and the watcher
@@ -39,6 +39,8 @@ services:
       - sites:/home/frappe/frappe-bench/sites
       - logs:/home/frappe/frappe-bench/logs
       - ../apps/document_manager:/home/frappe/frappe-bench/apps/document_manager
+    ports:
+      - "${HTTP_PUBLISH_PORT:-8888}:8080"
 
   queue-long:
     volumes: *app-mounts

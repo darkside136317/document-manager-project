@@ -26,8 +26,9 @@ Chạy lại:
 
 ```bash
 # một lần: tạo site thử (xem đầu file scripts/perf/volume_check.py)
-docker compose exec -T -w /home/frappe/frappe-bench/sites backend /home/frappe/frappe-bench/env/bin/python - seed    < scripts/perf/volume_check.py
-docker compose exec -T -w /home/frappe/frappe-bench/sites backend /home/frappe/frappe-bench/env/bin/python - measure < scripts/perf/volume_check.py
+C="docker compose --env-file docker/.env.dev -f docker/docker-compose.yml -f docker/docker-compose.dev.yml"
+$C exec -T -w /home/frappe/frappe-bench/sites backend /home/frappe/frappe-bench/env/bin/python - seed    < scripts/perf/volume_check.py
+$C exec -T -w /home/frappe/frappe-bench/sites backend /home/frappe/frappe-bench/env/bin/python - measure < scripts/perf/volume_check.py
 # DM_PERF_SCALE=0.1 để thử nhanh với 100.000 văn bản; bước "reset" xóa dữ liệu đã gieo
 ```
 

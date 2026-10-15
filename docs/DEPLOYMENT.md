@@ -18,6 +18,9 @@ curl -fsSL https://get.docker.com | sh && sudo usermod -aG docker $USER   # đă
 git clone <địa-chỉ-repo> /opt/docmanager && cd /opt/docmanager
 ```
 
+Khách hàng cần trỏ bản ghi DNS **A** của hostname dùng cho ứng dụng (ví dụ `hoso.abc.com.vn`) tới IP public của máy chủ.
+Tên này phải được chọn trước khi tạo site lần đầu. Trên máy chủ chỉ mở cổng 80/443 cho reverse proxy; cổng SSH nên giới hạn theo IP quản trị.
+
 ### MongoDB Atlas (tùy chọn, khuyến nghị)
 
 MongoDB GridFS giữ tệp gốc và bản xem trước. Không có nó, hệ thống vẫn chạy: tệp nằm ở thư mục riêng của Frappe và việc kiểm tra bản GridFS bị bỏ qua
@@ -27,42 +30,50 @@ MongoDB GridFS giữ tệp gốc và bản xem trước. Không có nó, hệ th
 2. **Network Access**: thêm địa chỉ IP của máy chủ. Quên bước này là nguyên nhân thường gặp của lỗi *SSL handshake failed* khi kết nối.
 3. Lấy chuỗi kết nối `mongodb+srv://…` (Database → Connect → Drivers).
 
-## 3. Cấu hình `.env`
+## 3. Cấu hình môi trường production
 
 ```bash
 cd /opt/docmanager/docker
-cp .env.example .env
-nano .env
+cp .env.prod.example .env.prod
+chmod 600 .env.prod
+nano .env.prod
+cd ..
+python3 scripts/validate_prod_env.py docker/.env.prod
 ```
+
+Dev dùng `.env.dev` (từ `.env.dev.example`); production dùng `.env.prod`. Mọi lệnh Compose production bên dưới đều truyền
+`--env-file .env.prod`. Không chép `.env.dev` từ máy lập trình lên server và không đưa tệp chứa mật khẩu vào Git.
 
 | Biến | Cần làm |
 |---|---|
-| `FRAPPE_SITE_NAME` | Tên miền thật, ví dụ `luutru.coquan.gov.vn` (nginx dùng làm tên site) |
-| `ADMIN_PASSWORD` | Mật khẩu của `Administrator`: `openssl rand -base64 24` |
-| `MARIADB_ROOT_PASSWORD` | `openssl rand -base64 24` |
-| `MONGODB_ATLAS_URI`, `MONGODB_DATABASE` | Chuỗi kết nối và tên cơ sở dữ liệu GridFS (mặc định `docmanager_files`). Không dùng MongoDB: giữ nguyên giá trị mẫu (biến không được để trống) |
-| `MEILISEARCH_MASTER_KEY` | `openssl rand -hex 16`; **bắt buộc đổi**, Meilisearch không công khai ra máy chủ |
+| `FRAPPE_SITE_NAME` | Đúng hostname khách hàng đã trỏ DNS, ví dụ `hoso.abc.com.vn`; cũng là tên site Frappe |
+| `PUBLIC_URL` | `https://` + `FRAPPE_SITE_NAME`, ví dụ `https://hoso.abc.com.vn` |
+| `COMPOSE_PROJECT_NAME`, `DATA_VOLUME_PREFIX` | Tên riêng cho từng khách hàng trên cùng host; thay cả hai giá trị mẫu, tách container, network và volume dữ liệu |
+| `ADMIN_PASSWORD`, `MARIADB_ROOT_PASSWORD`, `MEILISEARCH_MASTER_KEY` | Ba giá trị ngẫu nhiên **khác nhau**, mỗi giá trị có thể tạo bằng `openssl rand -hex 24` |
+| `MONGODB_ATLAS_URI`, `MONGODB_DATABASE` | Chuỗi GridFS nếu dùng Atlas; để trống URI nếu chỉ lưu tệp trong volume riêng của Frappe |
 | `GUNICORN_WORKERS` / `GUNICORN_THREADS` | Khoảng `2 × số lõi + 1` tiến trình |
-| `HTTP_PUBLISH_PORT` | Cổng nginx của compose. Có reverse proxy trên cùng máy (mục 6): đặt `127.0.0.1:8080` để chỉ nghe trên máy chủ và không tranh cổng 80 với proxy |
+| `HTTP_PUBLISH_PORT` | `127.0.0.1:8080`: chỉ reverse proxy trên cùng máy truy cập được, không mở HTTP trực tiếp ra Internet |
 | `CLIENT_MAX_BODY_SIZE` | Giới hạn tải lên của nginx, đặt `200m`; giới hạn tệp của ứng dụng là 100 MB |
 
-Không đưa `.env` vào git.
+Tên volume của dev mặc định là `docmanager_*`. `DATA_VOLUME_PREFIX` production phải khác, và phải giữ nguyên qua các lần cập nhật;
+đổi giá trị này sẽ khiến Compose gắn vào volume trống. Đổi `FRAPPE_SITE_NAME` sau khi tạo site cũng không tự đổi tên site cũ.
 
 ## 4. Build image và khởi động
 
 ```bash
 cd /opt/docmanager/docker
-docker compose -f docker-compose.yml -f docker-compose.prod.yml build backend   # có tầng Node: chạy vitest và build giao diện cán bộ
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
-docker compose logs -f create-site   # chờ xong (2–5 phút): tạo site, cài ERPNext và document_manager
-docker compose ps -a
-docker compose exec backend bench --site <tên-site> enable-scheduler   # BẮT BUỘC: site mới của Frappe tắt bộ lập lịch
+docker compose --env-file .env.prod -f docker-compose.yml -f docker-compose.prod.yml config -q
+docker compose --env-file .env.prod -f docker-compose.yml -f docker-compose.prod.yml build backend
+docker compose --env-file .env.prod -f docker-compose.yml -f docker-compose.prod.yml up -d
+docker compose --env-file .env.prod -f docker-compose.yml -f docker-compose.prod.yml logs -f create-site
+docker compose --env-file .env.prod -f docker-compose.yml -f docker-compose.prod.yml ps -a
+docker compose --env-file .env.prod -f docker-compose.yml -f docker-compose.prod.yml exec backend bench --site <tên-site> enable-scheduler
 ```
 
 Thiếu lệnh `enable-scheduler` thì sao lưu tự động, cờ quá hạn, nhắc hạn và kiểm tra toàn vẹn hằng tuần không chạy.
 
-`create-site` chạy `bench new-site` với `--install-app document_manager`; ứng dụng tự gieo vai trò, mức độ mật, workflow, thông báo, nhóm độc giả
-mặc định và các giá trị mặc định của thiết lập (`setup/install.py`). **Không cần cài ứng dụng hay chạy migrate bằng tay** ở lần đầu.
+`create-site` chỉ chạy `bench new-site` khi site chưa tồn tại; ở lần chạy lại nó kiểm tra site rồi bỏ qua. Ứng dụng tự gieo vai trò,
+mức độ mật, workflow, thông báo, nhóm độc giả mặc định và thiết lập (`setup/install.py`). **Không cần cài ứng dụng hay chạy migrate bằng tay** ở lần đầu.
 
 Kiểm tra: `https://<tên-miền>/gioi-thieu` (trang công khai) và `https://<tên-miền>/dang-nhap`; cán bộ đăng nhập rồi vào `/dashboard`.
 
@@ -77,21 +88,21 @@ Kiểm tra: `https://<tên-miền>/gioi-thieu` (trang công khai) và `https://<
 
 ## 6. TLS và reverse proxy
 
-nginx trong compose lắng nghe HTTP. Đặt phía trước một reverse proxy có TLS (Nginx, Traefik hoặc Caddy). Với Nginx ngoài Docker trên cùng máy,
-đặt `HTTP_PUBLISH_PORT=127.0.0.1:8080` trong `.env` rồi:
+nginx trong compose chỉ lắng nghe trên `127.0.0.1:8080` của host. Đặt reverse proxy có TLS (Nginx, Traefik hoặc Caddy)
+phía trước. Với Nginx ngoài Docker trên cùng máy, thay `hoso.abc.com.vn` dưới đây bằng `FRAPPE_SITE_NAME` thật và cấp chứng chỉ TLS:
 
 ```nginx
 server {
     listen 80;
-    server_name luutru.coquan.gov.vn;
+    server_name hoso.abc.com.vn;
     return 301 https://$server_name$request_uri;
 }
 
 server {
     listen 443 ssl http2;
-    server_name luutru.coquan.gov.vn;
-    ssl_certificate     /etc/letsencrypt/live/luutru.coquan.gov.vn/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/luutru.coquan.gov.vn/privkey.pem;
+    server_name hoso.abc.com.vn;
+    ssl_certificate     /etc/letsencrypt/live/hoso.abc.com.vn/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/hoso.abc.com.vn/privkey.pem;
 
     client_max_body_size 200m;
     proxy_read_timeout 300;
@@ -125,10 +136,10 @@ Vận hành, kiểm tra và khôi phục: xem [SAO_LUU_KHOI_PHUC.md](SAO_LUU_KHO
 ```bash
 cd /opt/docmanager && git pull
 cd docker
-docker compose -f docker-compose.yml -f docker-compose.prod.yml build backend
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
-docker compose exec backend bench --site <tên-site> migrate
-docker compose exec backend bench --site <tên-site> clear-cache
+docker compose --env-file .env.prod -f docker-compose.yml -f docker-compose.prod.yml build backend
+docker compose --env-file .env.prod -f docker-compose.yml -f docker-compose.prod.yml up -d
+docker compose --env-file .env.prod -f docker-compose.yml -f docker-compose.prod.yml exec backend bench --site <tên-site> migrate
+docker compose --env-file .env.prod -f docker-compose.yml -f docker-compose.prod.yml exec backend bench --site <tên-site> clear-cache
 ```
 
 Hoặc kéo image đã phát hành bởi CI (`ghcr.io/<chủ-repo>/docmanager-custom`) và đổi `image:` trong `docker-compose.prod.yml`.
@@ -139,14 +150,17 @@ trực tuyến (vẫn đọc và ghi được), nhưng trên kho cỡ một tri�
 
 ## 9. Xử lý sự cố
 
+Trong các lệnh dưới đây, đặt `C="docker compose --env-file .env.prod -f docker-compose.yml -f docker-compose.prod.yml"`
+khi đang ở thư mục `docker/`.
+
 | Triệu chứng | Nguyên nhân thường gặp và cách xử lý |
 |---|---|
-| `create-site` quá thời gian | Thiếu RAM; xem `docker compose logs create-site` |
+| `create-site` quá thời gian | Thiếu RAM; xem `$C logs create-site` |
 | Giám sát báo MongoDB "Không kết nối" | IP máy chủ chưa có trong Network Access của Atlas, hoặc URI sai; hệ thống vẫn chạy ở chế độ dự phòng |
-| Meilisearch 401 | `MEILISEARCH_MASTER_KEY` ở `.env` và trong site config khác nhau; chạy lại `configurator` |
+| Meilisearch 401 | `MEILISEARCH_MASTER_KEY` ở `.env.prod` và trong site config khác nhau; chạy lại `configurator` |
 | Tìm kiếm chỉ ra kết quả cũ | Chỉ mục chưa kịp cập nhật (khoảng 15 giây sau khi lưu); xem `queue-long` |
-| Sao lưu, kiểm tra không chạy | `scheduler` hoặc `queue-long` không chạy: `docker compose ps`, `docker compose logs queue-long` |
+| Sao lưu, kiểm tra không chạy | `scheduler` hoặc `queue-long` không chạy: `$C ps`, `$C logs queue-long` |
 | Trang trắng sau cập nhật | `bench --site <site> clear-cache`, rồi tải lại bằng Ctrl+F5 |
 | HTTP 500 khi nhiều người cùng ghi | Kiểm tra `docker/mariadb/my_custom.cnf` còn `innodb_snapshot_isolation=OFF` |
-| Redis dừng, trang báo 502 | `docker compose up -d` rồi `docker compose restart frontend` |
+| Redis dừng, trang báo 502 | `$C up -d` rồi `$C restart frontend` |
 | Tìm văn bản báo "mất quá nhiều thời gian" | Meilisearch đang hỏng nên hệ thống tìm bằng cơ sở dữ liệu; sửa Meilisearch hoặc thu hẹp điều kiện tìm |

@@ -318,7 +318,7 @@
       submit: function () {
         var self = this;
         if (!this.usr.trim() || !this.pwd) {
-          this.error = "Vui lòng nhập email và mật khẩu.";
+          this.error = "Vui lòng nhập email hoặc tên đăng nhập và mật khẩu.";
           return Promise.resolve();
         }
         this.busy = true;
@@ -331,10 +331,10 @@
         }).then(function (response) {
           return response.json().catch(function () { return {}; }).then(function (payload) {
             if (response.status === 429) throw new Error("Bạn đăng nhập sai quá nhiều lần. Vui lòng thử lại sau ít phút.");
-            if (!response.ok) throw new Error("Email hoặc mật khẩu không đúng, hoặc tài khoản đã bị khóa.");
-            var home = payload.home_page ? String(payload.home_page) : "";
-            if (home && home.charAt(0) !== "/") home = "/" + home;
-            nav.go(safeRedirect(config.redirect) || safeRedirect(home) || "/portal");
+            if (!response.ok) throw new Error("Thông tin đăng nhập không đúng, hoặc tài khoản đã bị khóa.");
+            // The sign-in page checks the new session and sends staff to /dashboard,
+            // readers to /portal. Frappe's login response does not reliably include home_page.
+            nav.go(safeRedirect(config.redirect) || "/dang-nhap");
           });
         }).catch(function (error) {
           self.error = error.message === "Failed to fetch" ? "Không kết nối được máy chủ." : error.message;

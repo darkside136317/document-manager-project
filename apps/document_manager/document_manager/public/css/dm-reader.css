@@ -244,6 +244,14 @@ main.container { flex: 1; padding-top: 24px; padding-bottom: 48px; }
   counter-increment: step; content: counter(step); position: absolute; left: 20px; top: 16px; display: grid; place-items: center;
   width: 30px; height: 30px; border-radius: 50%; background: var(--r-accent); color: #1a1303; font-weight: 700;
 }
+@media (max-width: 639px) {
+  .steps-grid { gap: 10px; }
+  .step-card { padding-top: 0; padding-left: 48px; }
+  .step-card::before { left: 12px; top: 14px; width: 26px; height: 26px; }
+  .step-card .card-body { padding: 12px; }
+  .step-card h3 { font-size: 0.95rem; }
+  .step-card p { margin: 4px 0 0; }
+}
 
 /* ---- people and units -------------------------------------------------------------------- */
 .leader { display: flex; gap: 16px; align-items: flex-start; }
@@ -373,6 +381,11 @@ main.container { flex: 1; padding-top: 24px; padding-bottom: 48px; }
 .site-footer a:hover { color: #f3d77a; text-decoration: underline; }
 .site-footer ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; }
 .site-footer .legal { grid-column: 1 / -1; padding-top: 14px; border-top: 1px solid rgba(255, 255, 255, 0.12); font-size: 0.8rem; }
+@media (max-width: 639px) {
+  .site-footer .container { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 18px; padding-top: 20px; padding-bottom: 16px; }
+  .site-footer .container > div:first-child { grid-column: 1 / -1; }
+  .site-footer .legal { margin: 0; padding-top: 12px; }
+}
 @media (min-width: 720px) { .site-footer .container { grid-template-columns: 2fr 1fr 1fr; } }
 
 /* ---- notification list ------------------------------------------------------------------- */

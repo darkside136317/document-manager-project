@@ -38,6 +38,11 @@ function setFilter(name, value) {
 }
 
 async function run() {
+  if (!hasCriteria(state)) {
+    ++ticket;
+    Object.assign(result, { rows: [], total: 0, capped: false, engine: "", loading: false, error: "", done: false });
+    return;
+  }
   const mine = ++ticket;
   result.loading = true;
   result.error = "";
@@ -172,12 +177,13 @@ const activeCount = computed(() => Object.keys(state.filters).length);
       </h2>
       <span v-if="result.engine && !result.loading" class="badge" :class="result.engine === 'meilisearch' ? 'badge-success' : 'badge-muted'">{{ engineLabel }}</span>
       <label class="sr-only" for="s-sort">Sắp xếp</label>
-      <select id="s-sort" class="input w-44" :value="state.sort" @change="go({ sort: $event.target.value, page: 1 })">
+      <select v-if="result.done && result.rows.length" id="s-sort" class="input w-44" :value="state.sort" @change="go({ sort: $event.target.value, page: 1 })">
         <option v-for="s in SORTS" :key="s.value" :value="s.value">{{ s.label }}</option>
       </select>
     </div>
     <p v-if="result.error" class="m-4 whitespace-pre-line rounded-md bg-danger-soft px-3 py-2 text-sm text-danger" role="alert">{{ result.error }}</p>
-    <EmptyState v-else-if="result.done && !result.rows.length && !result.loading" icon="search" title="Không có kết quả" text="Thử từ khóa khác, bớt điều kiện lọc, hoặc kiểm tra mức độ mật được phép xem." />
+    <EmptyState v-if="!result.done && !result.loading" icon="search" title="Bắt đầu tìm kiếm" text="Nhập từ khóa hoặc chọn điều kiện nâng cao để tìm hồ sơ, văn bản." />
+    <EmptyState v-else-if="result.done && !result.rows.length && !result.loading && !result.error" icon="search" title="Không có kết quả" text="Thử từ khóa khác, bớt điều kiện lọc, hoặc kiểm tra mức độ mật được phép xem." />
 
     <template v-else-if="state.tab === 'ho-so' && fileMeta && result.rows.length">
       <DataTable :meta="fileMeta" :rows="result.rows" :loading="result.loading" @open="openFile" @sort="() => {}" />

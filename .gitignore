@@ -1,6 +1,8 @@
 # Environment (contains secrets)
 .env
 docker/.env
+docker/.env.dev
+docker/.env.prod
 
 # Frappe sites data (generated at runtime)
 sites/

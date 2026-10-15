@@ -29,8 +29,8 @@ const cards = computed(() => {
     { label: "Hồ sơ", value: s.archival_files, icon: "folder", to: "/bien-muc", tone: "info" },
     { label: "Văn bản, tài liệu", value: s.documents, icon: "file-text", to: "/tim-kiem?tab=van-ban", tone: "success" },
     { label: "Độc giả", value: s.readers, icon: "users", href: "/readers", tone: "info" },
-    { label: "Đã lập chỉ mục tìm kiếm", value: `${s.index_percent}%`, icon: "database", to: "/tim-kiem?tab=van-ban",
-      tone: s.index_percent >= 90 || !s.documents ? "success" : "warning", hint: `${formatNumber(s.indexed_documents)} / ${formatNumber(s.documents)} văn bản` },
+    { label: "Đã lập chỉ mục tìm kiếm", value: s.documents ? `${s.index_percent}%` : "—", icon: "database", to: "/tim-kiem?tab=van-ban",
+      tone: s.index_percent >= 90 || !s.documents ? "success" : "warning", hint: s.documents ? `${formatNumber(s.indexed_documents)} / ${formatNumber(s.documents)} văn bản` : "Chưa có văn bản" },
     { label: "Phiếu chờ duyệt", value: s.pending_usage + s.pending_copy, icon: "clipboard-list", href: "/usage_requests",
       tone: s.pending_usage + s.pending_copy ? "warning" : "success", hint: `${s.pending_usage} sử dụng · ${s.pending_copy} sao chụp` },
     { label: "Lỗi toàn vẹn dữ liệu", value: s.integrity_errors, icon: "shield-check", href: "/integrity_checks", tone: s.integrity_errors ? "danger" : "success" },
@@ -43,17 +43,20 @@ const toneClass = { primary: "bg-primary-soft text-primary", info: "bg-info-soft
   <PageHeader title="Tổng quan" :subtitle="`Xin chào ${boot.user.full_name}. Đây là tình hình hệ thống lưu trữ hôm nay.`" />
 
   <p v-if="error" class="mb-4 rounded-md bg-danger-soft px-3 py-2 text-sm text-danger" role="alert">{{ error }}</p>
+  <div v-if="!boot.org_configured && boot.admin.some((entry) => entry.slug === 'thong-tin-don-vi')" class="mb-4 rounded-md border border-warning/30 bg-warning-soft px-4 py-3 text-sm text-ink" role="status">
+    Trang công khai đang dùng tên đơn vị mặc định. <RouterLink class="font-semibold" to="/quan-tri/thong-tin-don-vi">Cập nhật thông tin đơn vị</RouterLink> để hiển thị tên, địa chỉ và liên hệ của khách hàng.
+  </div>
 
-  <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+  <div class="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
     <template v-if="loading">
       <div v-for="n in 4" :key="n" class="card h-[104px] animate-pulse bg-surface-muted"></div>
     </template>
-    <component :is="card.to ? 'RouterLink' : 'a'" v-for="card in cards" :key="card.label" v-bind="card.to ? { to: card.to } : { href: card.href }" class="card flex items-center gap-4 p-4 text-ink no-underline transition-shadow hover:shadow-pop">
-      <span class="grid h-11 w-11 shrink-0 place-items-center rounded-lg" :class="toneClass[card.tone]"><Icon :name="card.icon" :size="22" /></span>
+    <component :is="card.to ? 'RouterLink' : 'a'" v-for="card in cards" :key="card.label" v-bind="card.to ? { to: card.to } : { href: card.href }" class="card flex min-w-0 flex-col items-start gap-2 p-3 text-ink no-underline transition-shadow hover:shadow-pop sm:flex-row sm:items-center sm:gap-4 sm:p-4">
+      <span class="grid h-9 w-9 shrink-0 place-items-center rounded-lg sm:h-11 sm:w-11" :class="toneClass[card.tone]"><Icon :name="card.icon" :size="22" /></span>
       <span class="min-w-0">
-        <span class="block text-2xl font-semibold leading-tight">{{ typeof card.value === 'number' ? formatNumber(card.value) : card.value }}</span>
-        <span class="block truncate text-sm text-ink-muted">{{ card.label }}</span>
-        <span v-if="card.hint" class="block truncate text-xs text-ink-subtle">{{ card.hint }}</span>
+        <span class="block text-xl font-semibold leading-tight sm:text-2xl">{{ typeof card.value === 'number' ? formatNumber(card.value) : card.value }}</span>
+        <span class="block text-xs leading-snug text-ink-muted sm:truncate sm:text-sm">{{ card.label }}</span>
+        <span v-if="card.hint" class="hidden truncate text-xs text-ink-subtle sm:block">{{ card.hint }}</span>
       </span>
     </component>
   </div>

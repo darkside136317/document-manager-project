@@ -11,8 +11,8 @@
     <form class="stack" @submit.prevent="submit()" novalidate>
       <div class="alert alert-danger" x-show="error" x-cloak role="alert">{{ icon("triangle-alert") }}<span x-text="error"></span></div>
       <div class="field">
-        <label for="usr">Email đăng nhập</label>
-        <input id="usr" class="input" type="email" autocomplete="username" inputmode="email" required x-model="usr" autofocus>
+        <label for="usr">Email hoặc tên đăng nhập</label>
+        <input id="usr" class="input" type="text" autocomplete="username" required x-model="usr" autofocus>
       </div>
       <div class="field">
         <label for="pwd">Mật khẩu</label>

@@ -2,7 +2,8 @@
 const empty = {
   csrf_token: "",
   user: { name: "", full_name: "", roles: [] },
-  org: "Document Manager",
+  org: "Trung tâm Lưu trữ",
+  org_configured: false,
   nav: [],
   legacy: [],
   masters: [],

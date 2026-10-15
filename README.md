@@ -103,9 +103,9 @@ Yêu cầu: Docker Engine 24+ với Compose v2, Docker được cấp ít nhất
 ```bash
 git clone <địa-chỉ-repo> document-manager-project
 cd document-manager-project/docker
-cp .env.example .env      # điền mật khẩu và khóa (xem mục Cấu hình)
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
-docker compose logs -f create-site      # lần đầu: tạo site, cài ứng dụng (vài phút)
+cp .env.dev.example .env.dev      # điền mật khẩu và khóa (xem mục Cấu hình)
+docker compose --env-file .env.dev -f docker-compose.yml -f docker-compose.dev.yml up -d
+docker compose --env-file .env.dev -f docker-compose.yml -f docker-compose.dev.yml logs -f create-site
 ```
 
 Mở **http://localhost:8888** (cổng `HTTP_PUBLISH_PORT`):
@@ -119,7 +119,7 @@ Mở **http://localhost:8888** (cổng `HTTP_PUBLISH_PORT`):
 Một số lệnh hay dùng (chạy trong thư mục `docker/`):
 
 ```bash
-C="docker compose -f docker-compose.yml -f docker-compose.dev.yml"
+C="docker compose --env-file .env.dev -f docker-compose.yml -f docker-compose.dev.yml"
 $C ps                                                  # trạng thái dịch vụ
 $C logs -f dev-watcher                                 # lỗi migrate nếu có
 $C restart queue-long queue-short scheduler            # sau khi thêm tệp Python mới
@@ -132,10 +132,12 @@ Nếu Redis bị dừng và trang báo lỗi 502: `$C up -d` rồi `docker resta
 
 ```bash
 cd docker
-cp .env.example .env    # tên miền thật, mật khẩu mạnh, khóa Meilisearch mới
-docker compose -f docker-compose.yml -f docker-compose.prod.yml build backend
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
-docker compose logs -f create-site
+cp .env.prod.example .env.prod    # tên miền khách hàng, mật khẩu mạnh, khóa Meilisearch mới
+chmod 600 .env.prod
+python3 ../scripts/validate_prod_env.py .env.prod
+docker compose --env-file .env.prod -f docker-compose.yml -f docker-compose.prod.yml build backend
+docker compose --env-file .env.prod -f docker-compose.yml -f docker-compose.prod.yml up -d
+docker compose --env-file .env.prod -f docker-compose.yml -f docker-compose.prod.yml logs -f create-site
 ```
 
 Image có tầng Node: chạy kiểm thử giao diện và build giao diện cán bộ, nên máy chủ không cần cài Node.
@@ -146,11 +148,13 @@ Cập nhật phiên bản: `git pull`, build lại, `up -d`, rồi `bench --site
 
 ## Cấu hình
 
-Biến môi trường trong `docker/.env`:
+Biến môi trường trong `docker/.env.dev` hoặc `docker/.env.prod`:
 
 | Biến | Ý nghĩa |
 |---|---|
 | `FRAPPE_SITE_NAME` | Tên site, cũng là tên miền |
+| `PUBLIC_URL` | URL đầy đủ; production dùng `https://` và hostname khách hàng |
+| `COMPOSE_PROJECT_NAME`, `DATA_VOLUME_PREFIX` | Tên riêng cho từng môi trường và bộ volume dữ liệu |
 | `ADMIN_PASSWORD` | Mật khẩu `Administrator` |
 | `MARIADB_ROOT_PASSWORD` | Mật khẩu root MariaDB |
 | `MONGODB_ATLAS_URI`, `MONGODB_DATABASE` | GridFS cho tệp (tùy chọn) |
@@ -172,7 +176,7 @@ và **Độc giả → Thiết lập độc giả** (hạn mức phiếu, gia h�
 
 | Lớp | Quy mô | Cách chạy |
 |---|---|---|
-| Python (Frappe) | 484 test, 22 module | `docker compose exec backend bench --site <site> run-tests --app document_manager --module document_manager.tests.test_<tên>` |
+| Python (Frappe) | 484 test, 22 module | `$C exec backend bench --site <site> run-tests --app document_manager --module document_manager.tests.test_<tên>` (`C` như ví dụ dev ở trên) |
 | Giao diện cán bộ (vitest) | 191 test | `cd apps/document_manager/frontend && npm test` |
 | HTTP đầu-cuối | 497 kiểm tra, gồm ma trận quyền của mọi API | `DM_E2E_PASSWORD=… python scripts/e2e/e2e_http.py` |
 | Trình duyệt (Playwright) | 8 luồng, 126 bước | `scripts/e2e/ui/<luồng>.mjs` |

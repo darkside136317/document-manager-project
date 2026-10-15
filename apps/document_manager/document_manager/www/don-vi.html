@@ -33,13 +33,19 @@
 
 {% macro contact_cards(org) %}{% autoescape true %}
 <div class="grid grid-3">
+  {% if org.address %}
   <div class="card"><div class="card-body fact">{{ icon("map-pin") }}<div><strong>Địa chỉ</strong>
-    <p>{{ org.address or "Đơn vị chưa cập nhật địa chỉ." }}</p>
+    <p>{{ org.address }}</p>
     {% if org.map_url %}<a class="small" href="{{ org.map_url }}" target="_blank" rel="noopener noreferrer">Xem bản đồ {{ icon("external-link") }}</a>{% endif %}</div></div></div>
+  {% endif %}
+  {% if org.phone %}
   <div class="card"><div class="card-body fact">{{ icon("phone") }}<div><strong>Điện thoại</strong>
-    <p>{{ org.phone or "Chưa cập nhật" }}{% if org.fax %}<br><span class="muted small">Fax: {{ org.fax }}</span>{% endif %}</p></div></div></div>
+    <p>{{ org.phone }}{% if org.fax %}<br><span class="muted small">Fax: {{ org.fax }}</span>{% endif %}</p></div></div></div>
+  {% endif %}
+  {% if org.hours %}
   <div class="card"><div class="card-body fact">{{ icon("clock") }}<div><strong>Giờ mở cửa phòng đọc</strong>
-    {% if org.hours %}<ul class="hours small">{% for line in org.hours %}<li>{{ line }}</li>{% endfor %}</ul>{% else %}<p>Chưa cập nhật</p>{% endif %}</div></div></div>
+    <ul class="hours small">{% for line in org.hours %}<li>{{ line }}</li>{% endfor %}</ul></div></div></div>
+  {% endif %}
 </div>
 {% endautoescape %}{% endmacro %}
 
@@ -63,15 +69,16 @@
   </section>
 
   <div class="stack-lg">
-    {{ contact_cards(org) }}
+    {% if org.address or org.phone or org.hours %}{{ contact_cards(org) }}{% endif %}
 
+    {% if org.introduction %}
     <section class="card" aria-labelledby="intro-title">
       <div class="card-head"><h2 id="intro-title">Giới thiệu đơn vị</h2></div>
       <div class="card-body prose">
-        {% if org.introduction %}{{ org.introduction | safe }}
-        {% else %}<p class="muted">Đơn vị chưa cập nhật phần giới thiệu.</p>{% endif %}
+        {{ org.introduction | safe }}
       </div>
     </section>
+    {% endif %}
 
     <section aria-labelledby="steps-title">
       <div class="page-head"><h2 id="steps-title">Khai thác tài liệu trong bốn bước</h2></div>
@@ -115,13 +122,22 @@
 {% elif section == "lien-he" %}
   <div class="page-head"><div><h1>Liên hệ</h1><p>{{ org.name }}</p></div></div>
   <div class="stack-lg">
-    {{ contact_cards(org) }}
+    {% if org.address or org.phone or org.hours %}{{ contact_cards(org) }}{% endif %}
+    {% if not (org.address or org.phone or org.hours or org.email or org.website) %}
+      <div class="card empty">{{ icon("mail") }}<h2>Thông tin liên hệ</h2><p>Thông tin liên hệ sẽ hiển thị tại đây sau khi đơn vị cập nhật.</p></div>
+    {% endif %}
+    {% if org.email or org.website %}
     <div class="grid grid-2">
+      {% if org.email %}
       <div class="card"><div class="card-body fact">{{ icon("mail") }}<div><strong>Email</strong>
-        <p>{% if org.email %}<a href="mailto:{{ org.email }}">{{ org.email }}</a>{% else %}Chưa cập nhật{% endif %}</p></div></div></div>
+        <p><a href="mailto:{{ org.email }}">{{ org.email }}</a></p></div></div></div>
+      {% endif %}
+      {% if org.website %}
       <div class="card"><div class="card-body fact">{{ icon("globe") }}<div><strong>Website</strong>
-        <p>{% if org.website %}<a href="{{ org.website }}" target="_blank" rel="noopener noreferrer">{{ org.website }}</a>{% else %}Chưa cập nhật{% endif %}</p></div></div></div>
+        <p><a href="{{ org.website }}" target="_blank" rel="noopener noreferrer">{{ org.website }}</a></p></div></div></div>
+      {% endif %}
     </div>
+    {% endif %}
   </div>
 
 {% else %}
