@@ -432,7 +432,8 @@
         return JSON.stringify({
           purpose: this.purpose, notes: this.notes,
           items: this.items.map(function (item) {
-            return { archival_file: item.archival_file, archive_document: item.archive_document, notes: item.notes, copy_count: item.copy_count };
+            return { archival_file: item.archival_file, archive_document: item.archive_document, notes: item.notes, copy_count: item.copy_count,
+              copy_form: item.copy_form, page_range: item.page_range };
           }),
         });
       },

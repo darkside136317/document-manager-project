@@ -9,6 +9,7 @@ class CopyRequest(RequestDocument):
 
     final_state_field = {lc.STATE_COMPLETED: "completed_date"}
     required_feature = "can_request_copy"
+    copy_rule = True  # copies only of fonds and levels that allow them
     state_handlers = {**RequestDocument.state_handlers, lc.STATE_COMPLETED: "_on_completed"}
 
     def _on_completed(self, previous):

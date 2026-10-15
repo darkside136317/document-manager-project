@@ -5,6 +5,7 @@ import frappe
 from frappe import _
 from frappe.utils import cint, flt
 
+from document_manager.document_manager.policy import get_access
 from document_manager.document_manager.services.reports.base import (
     UNKNOWN,
     Report,
@@ -39,7 +40,7 @@ FILE_TYPES = ["PDF", "DOCX", "XLSX", "JPG", "PNG", "TIFF", "Khác"]
 
 def run_fonds(filters, page, page_size):
     page, page_size = page_args(page, page_size)
-    where = Where().equal("fo.archival_agency", filters, "archival_agency").equal("fo.status", filters, "status")
+    where = Where().equal("fo.archival_agency", filters, "archival_agency").equal("fo.status", filters, "status").fonds_scope("fo.name")
     where.like(["fo.fonds_name", "fo.fonds_code"], filters, "q")
     if "year_from" in filters:
         where.add("(fo.end_year IS NULL OR fo.end_year = 0 OR fo.end_year >= %(year_from)s)", year_from=filters["year_from"])
@@ -103,7 +104,7 @@ register(Report(
 
 def run_catalogs(filters, page, page_size):
     page, page_size = page_args(page, page_size)
-    where = Where().equal("c.fonds", filters, "fonds").equal("c.record_group", filters, "record_group")
+    where = Where().equal("c.fonds", filters, "fonds").equal("c.record_group", filters, "record_group").fonds_scope("c.fonds")
     where.like(["c.catalog_title", "c.catalog_number"], filters, "q")
     total = scalar(f"SELECT COUNT(*) FROM `tabCatalog` c WHERE {where.sql}", where.params)
     catalogs = rows(
@@ -163,6 +164,7 @@ def run_files(filters, page, page_size):
         where.equal(f"af.{column}", filters, column)
     where.between("af.start_date", filters, "date_from", "date_to")
     where.like(["af.file_title", "af.file_number"], filters, "q")
+    where.fonds_scope("af.fonds").level_scope("af.confidentiality_level")
     total = scalar(f"SELECT COUNT(*) FROM `tabArchival File` af WHERE {where.sql}", where.params)
     files = rows(
         f"""SELECT af.name, af.file_number, af.file_title, af.start_date, af.end_date, af.total_documents, af.total_pages,
@@ -223,6 +225,7 @@ def run_documents(filters, page, page_size):
     where.like(["ad.author"], filters, "author")
     where.like(["ad.document_title", "ad.document_number", "ad.author"], filters, "q")
     where.between("ad.document_date", filters, "date_from", "date_to")
+    where.fonds_scope("ad.fonds").level_scope("ad.confidentiality_level")
     total = scalar(f"SELECT COUNT(*) FROM `tabArchive Document` ad WHERE {where.sql}", where.params)
     documents = rows(
         f"""SELECT ad.name, ad.document_number, ad.document_title, ad.document_date, ad.author, ad.page_count,
@@ -306,6 +309,7 @@ def _stat_columns(label: str) -> list:
 
 def _stat_where(filters) -> Where:
     where = Where().equal("af.fonds", filters, "fonds").equal("af.status", filters, "status")
+    where.fonds_scope("af.fonds").level_scope("af.confidentiality_level")
     return where.between("af.start_date", filters, "date_from", "date_to")
 
 
@@ -407,8 +411,11 @@ def run_inventory(filters, page, page_size):
     doc = frappe.get_doc("Inventory Check", name)
     doc.check_permission("read")
     fonds_names = dict(frappe.db.sql("SELECT name, fonds_name FROM `tabFonds`"))
+    readable = get_access().read_fonds
     out = []
     for item in doc.items:
+        if readable is not None and item.fonds not in readable:
+            continue  # a staff member with a narrowed scope sees the lines of their fonds only
         out.append({
             "name": item.fonds, "fonds_name": fonds_names.get(item.fonds) or item.fonds,
             **{k: cint(item.get(k)) for k in ("recorded_files", "counted_files", "difference_files", "recorded_documents",

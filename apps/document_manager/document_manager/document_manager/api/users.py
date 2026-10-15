@@ -81,6 +81,66 @@ def _shown(row, roles: dict, groups: dict) -> dict:
 
 
 USER_FIELDS = ["name", "full_name", "first_name", "last_name", "phone", "enabled", "last_login", "creation"]
+ACCESS = "Staff Access"
+DEFAULT_ACCESS = {"read_scope": "Tất cả phông", "write_scope": "Như phạm vi xem", "read_fonds": [], "write_fonds": [],
+                  "max_confidentiality_priority": 0}
+
+
+def _fonds_rows(names) -> list[dict]:
+    labels = dict(frappe.get_all("Fonds", filters={"name": ["in", list(names) or [""]]}, fields=["name", "fonds_name"], as_list=True))
+    return [{"fonds": n, "fonds_name": labels.get(n) or n} for n in names]
+
+
+def _access_of(user: str) -> dict:
+    """The person's own scope (as the form edits it) and what they may really do (with their groups and roles)."""
+    from document_manager.document_manager.constants import CAPABILITIES
+    from document_manager.document_manager.policy import UNLIMITED_PRIORITY, get_access
+
+    own = dict(DEFAULT_ACCESS)
+    if frappe.db.exists(ACCESS, user):
+        doc = frappe.get_doc(ACCESS, user)
+        own = {"read_scope": doc.read_scope, "write_scope": doc.write_scope,
+               "read_fonds": _fonds_rows([r.fonds for r in doc.read_fonds]), "write_fonds": _fonds_rows([r.fonds for r in doc.write_fonds]),
+               "max_confidentiality_priority": cint(doc.max_confidentiality_priority)}
+    access = get_access(user)
+    labels = {code: label for code, label, _module in CAPABILITIES}
+    effective = {
+        "kind": access.kind,
+        "read_fonds": None if access.read_fonds is None else _fonds_rows(access.read_fonds),
+        "write_fonds": None if access.write_fonds is None else _fonds_rows(access.write_fonds),
+        "max_priority": None if access.max_priority >= UNLIMITED_PRIORITY else access.max_priority,
+        "capabilities": sorted(labels[c] for c in access.capabilities if c in labels),
+    }
+    return {**own, "effective": effective}
+
+
+def _save_access(user: str, values: dict) -> bool:
+    """Write the person's scope; the default scope (every fonds, every level) is no record at all. True when it changed."""
+    wanted = {**DEFAULT_ACCESS, **{k: values[k] for k in DEFAULT_ACCESS if k in values}}
+    wanted["read_fonds"] = [r["fonds"] if isinstance(r, dict) else r for r in wanted["read_fonds"] or []]
+    wanted["write_fonds"] = [r["fonds"] if isinstance(r, dict) else r for r in wanted["write_fonds"] or []]
+    wanted["max_confidentiality_priority"] = max(0, cint(wanted["max_confidentiality_priority"]))
+    is_default = (wanted["read_scope"] == DEFAULT_ACCESS["read_scope"] and wanted["write_scope"] == DEFAULT_ACCESS["write_scope"]
+                  and not wanted["max_confidentiality_priority"])
+    exists = frappe.db.exists(ACCESS, user)
+    if is_default:
+        if exists:
+            frappe.delete_doc(ACCESS, user, ignore_permissions=True, force=True)
+            return True
+        return False
+    doc = frappe.get_doc(ACCESS, user) if exists else frappe.new_doc(ACCESS)
+    before = (doc.read_scope, doc.write_scope, sorted(r.fonds for r in doc.get("read_fonds") or []),
+              sorted(r.fonds for r in doc.get("write_fonds") or []), cint(doc.max_confidentiality_priority)) if exists else None
+    doc.update({"user": user, "read_scope": wanted["read_scope"], "write_scope": wanted["write_scope"],
+                "max_confidentiality_priority": wanted["max_confidentiality_priority"]})
+    doc.set("read_fonds", [{"fonds": f} for f in wanted["read_fonds"]])
+    doc.set("write_fonds", [{"fonds": f} for f in wanted["write_fonds"]])
+    doc.flags.ignore_permissions = True
+    doc.save()
+    after = (doc.read_scope, doc.write_scope, sorted(r.fonds for r in doc.read_fonds), sorted(r.fonds for r in doc.write_fonds),
+             cint(doc.max_confidentiality_priority))
+    return before != after
+
 
 
 @frappe.whitelist()
@@ -117,7 +177,9 @@ def list_users(search=None, role=None, group=None, enabled=None, page=1, page_si
                           start=(page - 1) * size, page_length=size)
     users = [r.name for r in rows]
     roles, groups = _roles_of(users), _groups_of(users)
-    return {"data": [_shown(r, roles, groups) for r in rows], "total": total, "page": page, "page_size": size}
+    scoped = set(frappe.get_all(ACCESS, filters={"name": ["in", users or [""]]}, pluck="name")) if users else set()
+    return {"data": [{**_shown(r, roles, groups), "scoped": r.name in scoped} for r in rows], "total": total, "page": page,
+            "page_size": size}
 
 
 @frappe.whitelist()
@@ -127,7 +189,7 @@ def get_user(name):
     if not row or name in RESERVED:
         frappe.throw(_("Không tìm thấy người dùng {0}").format(name), frappe.DoesNotExistError)
     row["name"] = name
-    return _shown(row, _roles_of([name]), _groups_of([name]))
+    return {**_shown(row, _roles_of([name]), _groups_of([name])), "access": _access_of(name)}
 
 
 def _admins_left(excluding: str | None, becoming_enabled_admin: bool = False) -> int:
@@ -217,10 +279,15 @@ def save_user(values, name=None):
     user.flags.ignore_permissions = True
     user.save() if name else user.insert()
     _sync_groups(user.name, values.get("groups"))
+    scope_changed = False
+    if isinstance(values.get("access"), dict):
+        if user.name == frappe.session.user:
+            frappe.throw(_("Không tự thay đổi phạm vi truy cập của chính mình"))
+        scope_changed = _save_access(user.name, values["access"])
     if not name:
         link = _staff_link(user)
     log_activity("Quản lý người dùng", "User", user.name, f"{'Sửa' if name else 'Tạo'} tài khoản cán bộ {user.name}: "
-                 f"vai trò {', '.join(roles) if roles is not None else 'giữ nguyên'}")
+                 f"vai trò {', '.join(roles) if roles is not None else 'giữ nguyên'}" + ("; đổi phạm vi phông" if scope_changed else ""))
     out = get_user(user.name)
     if link:
         out["set_password_path"] = link

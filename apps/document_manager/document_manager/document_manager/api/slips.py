@@ -165,7 +165,8 @@ def _item(row) -> dict:
         "row": row.name, "kind": "Văn bản" if is_doc else "Hồ sơ", "archival_file": row.archival_file,
         "archive_document": row.archive_document, "title": title or row.archive_document or row.archival_file,
         "number": number or "", "parent_title": parent or "", "level": level or "", "location": _storage(row.archival_file),
-        "copy_count": cint(row.get("copy_count")) or 1, "notes": row.notes or "", "item_status": row.get("item_status") or lc.ITEM_PENDING,
+        "copy_count": cint(row.get("copy_count")) or 1, "copy_form": row.get("copy_form") or "", "page_range": row.get("page_range") or "",
+        "notes": row.notes or "", "item_status": row.get("item_status") or lc.ITEM_PENDING,
         "decision_note": row.get("decision_note") or "", "issued_on": row.get("issued_on"), "returned_on": row.get("returned_on"),
         "return_condition": row.get("return_condition") or "",
     }

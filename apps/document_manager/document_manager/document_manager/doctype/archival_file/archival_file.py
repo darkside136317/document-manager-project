@@ -7,6 +7,7 @@ from document_manager.document_manager.services.archive.counters import (
     refresh_file_document_count,
     refresh_fonds_file_count,
 )
+from document_manager.document_manager.services.archive.locks import assert_move_allowed, assert_unlocked
 
 
 def on_doctype_update():
@@ -18,6 +19,8 @@ class ArchivalFile(Document):
     """Hồ sơ lưu trữ — Tầng 4, đơn vị nghiệp vụ chính."""
 
     def validate(self):
+        assert_unlocked(self)
+        assert_move_allowed(self)
         if self.start_date and self.end_date and self.start_date > self.end_date:
             frappe.throw("Ngày bắt đầu không thể sau ngày kết thúc")
 
@@ -39,6 +42,9 @@ class ArchivalFile(Document):
         """Kept for callers outside the controller."""
         refresh_file_document_count(self.name)
 
+
+    def on_trash(self):
+        assert_unlocked(self, "delete")
 
 def check_retention_periods():
     """Scheduler (daily): flag Archival Files whose retention period has elapsed.

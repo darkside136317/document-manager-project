@@ -263,7 +263,7 @@ try {
     await dialog().locator("input[type=text]").first().fill(`${TAG} Tra cứu`);
     await dialog().locator("select").last().selectOption({ label: "Biên mục viên" });
     await dialog().getByRole("button", { name: "Tạo", exact: true }).click();
-    await visible(page.getByText("Đã tạo nhóm quyền"));
+    await visible(page.getByText("Đã tạo nhóm quyền"), 30000); // copying a group writes many rules
     await visible(groups.getByRole("button", { name: new RegExp(`${TAG} Tra cứu`) }));
     expect(await page.getByRole("checkbox", { name: new RegExp(`^${FILE_LABEL}: Xóa$`) }).isChecked(), "the copy did not take the rights of the source group");
     await page.getByRole("button", { name: "Xóa", exact: true }).click();

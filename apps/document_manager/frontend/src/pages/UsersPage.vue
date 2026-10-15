@@ -4,13 +4,14 @@ import { useRoute } from "vue-router";
 import ConfirmDialog from "../components/ConfirmDialog.vue";
 import Drawer from "../components/Drawer.vue";
 import EmptyState from "../components/EmptyState.vue";
+import FondsPicker from "../components/FondsPicker.vue";
 import Icon from "../components/Icon.vue";
 import OneTimeLinkDialog from "../components/OneTimeLinkDialog.vue";
 import PageHeader from "../components/PageHeader.vue";
 import PaginationBar from "../components/PaginationBar.vue";
 import StatusBadge from "../components/StatusBadge.vue";
 import { api } from "../lib/api.js";
-import { blankUser, canEditUser, changedValues, sortRoles, toggleValue, userProblem, userToForm } from "../lib/admin.js";
+import { CHOSEN, blankUser, canEditUser, changedValues, sortRoles, toggleValue, userProblem, userToForm } from "../lib/admin.js";
 import { boot } from "../lib/boot.js";
 import { debounce, formatDateTime } from "../lib/format.js";
 import { absoluteLink } from "../lib/registrations.js";
@@ -19,6 +20,7 @@ import { toast } from "../lib/toast.js";
 // Staff accounts: search and filter, create, edit roles and groups, lock, hand over a set-password link, delete.
 const roles = ref([]);
 const groups = ref([]);
+const levels = ref([]); // confidentiality levels, for the highest level a staff member may read
 const list = ref({ data: [], total: 0, page: 1, page_size: 20 });
 const route = useRoute();
 const filters = ref({ search: "", role: String(route.query.role || ""), group: "", enabled: "" });
@@ -37,6 +39,10 @@ const roleLabel = (role) => roles.value.find((r) => r.role === role)?.label || r
 const creating = computed(() => !editing.value);
 const locked = computed(() => !creating.value && !canEditUser(editing.value, boot.user));
 const problem = computed(() => userProblem(form.value, creating.value));
+const isAdminForm = computed(() => form.value.roles.some((r) => roles.value.find((x) => x.role === r)?.is_admin));
+const scopeEditable = computed(() => !locked.value && !isAdminForm.value && !(editing.value && editing.value.is_me));
+const effective = computed(() => editing.value?.access?.effective || null);
+const levelLabel = (priority) => levels.value.find((l) => Number(l.priority) === Number(priority))?.level_name || `mức ${priority}`;
 const dirty = computed(() => (creating.value ? true : Object.keys(changedValues(userToForm(editing.value), form.value)).length > 0));
 
 let ticket = 0;
@@ -61,7 +67,10 @@ watch(() => [filters.value.role, filters.value.group, filters.value.enabled], ()
 
 onMounted(async () => {
   try {
-    [roles.value, groups.value] = await Promise.all([api.users.roles(), api.list("Staff Group", { page_size: 100 }).then((r) => r.data)]);
+    [roles.value, groups.value, levels.value] = await Promise.all([
+      api.users.roles(), api.list("Staff Group", { page_size: 100 }).then((r) => r.data),
+      api.list("Confidentiality Level", { page_size: 50, order_by: "priority asc" }).then((r) => r.data).catch(() => []),
+    ]);
   } catch (e) {
     error.value = e.message;
   }
@@ -74,11 +83,20 @@ function openNew() {
   formError.value = "";
   drawer.value = true;
 }
-function openUser(user) {
+async function openUser(user) {
   editing.value = user;
   form.value = userToForm(user);
   formError.value = "";
   drawer.value = true;
+  try { // the list does not carry the scope: read the whole account
+    const full = await api.users.get(user.name);
+    if (editing.value?.name === user.name) {
+      editing.value = full;
+      form.value = userToForm(full);
+    }
+  } catch (e) {
+    formError.value = e.message;
+  }
 }
 async function save() {
   if (problem.value) {
@@ -169,6 +187,7 @@ async function remove() {
             <td>
               <span v-for="r in sortRoles(user.roles)" :key="r" class="badge badge-muted mr-1">{{ roleLabel(r) }}</span>
               <span v-if="user.protected" class="badge badge-warning" title="Có quyền quản trị toàn hệ thống">Quản trị hệ thống</span>
+              <span v-if="user.scoped" class="badge badge-info" title="Chỉ được xem hoặc sửa một số phông, hoặc giới hạn mức mật">Phạm vi riêng</span>
             </td>
             <td class="text-sm text-ink-soft">{{ user.groups.join(", ") }}</td>
             <td><StatusBadge :value="user.enabled ? 'Hoàn thành' : 'Đã hủy'" /><span class="sr-only">{{ user.enabled ? "Đang hoạt động" : "Đã khóa" }}</span><span class="ml-2 text-xs text-ink-muted">{{ user.enabled ? "Hoạt động" : "Đã khóa" }}</span></td>
@@ -205,6 +224,33 @@ async function remove() {
         <label v-for="g in groups" :key="g.name" class="mr-4 inline-flex cursor-pointer items-center gap-2 text-sm">
           <input type="checkbox" class="h-4 w-4 accent-[var(--dm-primary)]" :checked="form.groups.includes(g.name)" @change="form.groups = toggleValue(form.groups, g.name)" /> {{ g.group_name || g.name }}
         </label>
+      </fieldset>
+
+      <fieldset class="space-y-3 rounded-md border border-line p-3" :disabled="!scopeEditable">
+        <legend class="label px-1">Phạm vi truy cập</legend>
+        <p v-if="isAdminForm" class="m-0 text-sm text-ink-muted">Quản trị viên luôn xem và sửa được mọi phông, mọi mức mật.</p>
+        <p v-else-if="editing && editing.is_me" class="m-0 text-sm text-ink-muted">Không tự thay đổi phạm vi của chính mình.</p>
+        <template v-else>
+          <label class="block text-sm"><span class="label">Phông được xem</span>
+            <select v-model="form.access.read_scope" class="input"><option>Tất cả phông</option><option>{{ CHOSEN }}</option></select></label>
+          <FondsPicker v-if="form.access.read_scope === CHOSEN" v-model="form.access.read_fonds" label="Các phông được xem" />
+          <label class="block text-sm"><span class="label">Phông được sửa</span>
+            <select v-model="form.access.write_scope" class="input"><option>Như phạm vi xem</option><option>{{ CHOSEN }}</option></select></label>
+          <FondsPicker v-if="form.access.write_scope === CHOSEN" v-model="form.access.write_fonds" label="Các phông được sửa" />
+          <label class="block text-sm"><span class="label">Mức mật cao nhất được xem</span>
+            <select v-model.number="form.access.max_confidentiality_priority" class="input">
+              <option :value="0">Không giới hạn</option>
+              <option v-for="l in levels" :key="l.name" :value="Number(l.priority)">{{ l.level_name || l.name }}</option>
+            </select></label>
+          <p class="m-0 text-xs text-ink-muted">Nhóm quyền quyết định được làm gì; phạm vi quyết định trên phông nào. Nhóm cán bộ có thể cấp thêm phông.</p>
+        </template>
+        <div v-if="effective && !creating" class="rounded-md bg-surface-muted px-3 py-2 text-sm" aria-live="polite">
+          <p class="m-0 font-medium">Quyền thực tế (theo dữ liệu đã lưu)</p>
+          <p class="m-0">Xem: {{ effective.read_fonds === null ? "mọi phông" : effective.read_fonds.map((r) => r.fonds_name).join(", ") || "không phông nào" }}</p>
+          <p class="m-0">Sửa: {{ effective.write_fonds === null ? "mọi phông" : effective.write_fonds.map((r) => r.fonds_name).join(", ") || "không phông nào" }}</p>
+          <p class="m-0">Mức mật: {{ effective.max_priority === null ? "không giới hạn" : `đến ${levelLabel(effective.max_priority)}` }}</p>
+          <p class="m-0">Chức năng: {{ effective.capabilities.join(", ") || "không có" }}</p>
+        </div>
       </fieldset>
 
       <label v-if="!creating && !locked" class="flex cursor-pointer items-center gap-2 text-sm font-medium">

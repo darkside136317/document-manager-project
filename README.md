@@ -11,7 +11,7 @@ Phần mềm đáp ứng đủ tám phân hệ của *Phụ lục 03 – Danh s�
 
 - [Hai giao diện](#hai-giao-diện)
 - [Chức năng theo phân hệ](#chức-năng-theo-phân-hệ)
-- [Vai trò người dùng](#vai-trò-người-dùng)
+- [Phân quyền](#phân-quyền)
 - [Kiến trúc](#kiến-trúc)
 - [Chạy thử trên máy](#chạy-thử-trên-máy)
 - [Triển khai sản xuất](#triển-khai-sản-xuất)
@@ -44,23 +44,37 @@ Cả hai dùng chung một bộ màu (`public/css/theme-tokens.css`), có giao d
 | 3 | **Danh mục** | Cơ quan lưu trữ, phông, loại hình, nhóm tài liệu, kho/phòng/giá/hộp, mức độ mật, khung phân loại, từ điển nhập nhanh một cấp và nhiều cấp | `/dashboard/danh-muc/...` |
 | 4 | **Thống kê, báo cáo** | 11 báo cáo (phông, mục lục, hồ sơ, văn bản, thống kê theo phông/loại hình/kho, độc giả, phiếu, quá hạn…); tải CSV, XLSX; in có đầu đề đơn vị, PDF; tổng kiểm kê phông | `/dashboard/bao-cao`, `/dashboard/kiem-ke` |
 | 5 | **Xuất, nhập XML** | Xuất theo bộ lọc với trường chọn theo từng cấp; nhập có phân tích, chạy thử, nhật ký từng dòng; lược đồ XSD tải được; chống tệp độc hại | `/dashboard/trao-doi-du-lieu` |
-| 6 | **Quản lý độc giả** | Độc giả và nhóm quyền (mức mật, phạm vi phông, tính năng, hạn mức); hàng đợi phiếu; quyết định từng mục; lãnh đạo duyệt tài liệu mật; giao, nhận trả, gia hạn, quá hạn; mẫu phiếu và mẫu đăng ký; in phiếu, thẻ độc giả | `/dashboard/doc-gia/...` |
+| 6 | **Quản lý độc giả** | Độc giả và nhóm độc giả (mức mật, cấp phép phông có thời hạn, tính năng, hạn mức); hàng đợi phiếu; quyết định từng mục; lãnh đạo duyệt tài liệu mật; giao, nhận trả, gia hạn, quá hạn; mẫu phiếu và mẫu đăng ký; in phiếu, thẻ độc giả | `/dashboard/doc-gia/...` |
 | 7 | **Bảo quản** | Sao lưu cơ sở dữ liệu và tệp (tăng dần, mã SHA-256, theo lịch); kiểm tra toàn vẹn cơ sở dữ liệu, siêu dữ liệu và từng tệp; khôi phục tệp theo đợt từ kết quả kiểm tra; khôi phục cơ sở dữ liệu có kiểm soát | `/dashboard/bao-quan/sao-luu`, `kiem-tra`, `khoi-phuc` |
-| 8 | **Quản trị** | Người dùng (liên kết đặt mật khẩu dùng một lần), nhóm cán bộ, ma trận phân quyền, nhật ký (lọc, CSV, dọn có kiểm soát), giám sát hệ thống, thiết lập hệ thống, thông tin đơn vị | `/dashboard/quan-tri/...` |
+| 8 | **Quản trị** | Người dùng (liên kết đặt mật khẩu dùng một lần, phạm vi phông), nhóm cán bộ, nhóm quyền sửa được (ma trận dữ liệu × thao tác và chức năng), nhật ký (lọc, CSV, dọn có kiểm soát), giám sát hệ thống, thiết lập hệ thống, thông tin đơn vị | `/dashboard/quan-tri/...` |
 
-## Vai trò người dùng
+## Phân quyền
 
-| Vai trò | Làm được gì |
+Quyền của **cán bộ** gồm ba lớp:
+
+| Lớp | Quyết định gì | Ở đâu |
+|---|---|---|
+| **Nhóm quyền** | Được làm gì với từng loại dữ liệu (xem, thêm, sửa, xóa, duyệt, in, xuất, chỉ bản ghi của mình, trường nhạy cảm) và dùng chức năng nào (duyệt phiếu, cấp phép phông, sao lưu, xuất/nhập XML, nhật ký…) | Quản trị → Phân quyền |
+| **Phạm vi phông** | Phông nào được xem, phông nào được sửa (tách riêng), mức mật cao nhất | Quản trị → Người dùng, hoặc Nhóm cán bộ |
+| **Khóa theo trạng thái** | Hồ sơ, phông *Đã đóng* và hồ sơ *Đã tiêu hủy* chỉ người có chức năng "Sửa hồ sơ, phông đã hoàn thành hoặc đã đóng" sửa được | Tự động |
+
+Nhóm quyền có sẵn (sửa được, có nút khôi phục mặc định; quản trị viên tạo thêm được nhóm mới):
+
+| Nhóm quyền | Mặc định làm được gì |
 |---|---|
-| **Quản trị tài liệu** (`Document Admin`) | Mọi nghiệp vụ, người dùng, thiết lập, xuất/nhập XML, sao lưu, nhật ký |
-| **Biên mục viên** (`Cataloger`) | Danh mục, biên mục, tổng kiểm kê; báo cáo về kho tài liệu |
-| **Cán bộ phòng đọc** (`Reading Room Officer`) | Độc giả, đăng ký, phiếu sử dụng và sao chụp, góp ý; báo cáo độc giả |
+| **Quản trị viên** (`Document Admin`) | Mọi quyền, mọi phông; duy nhất được sửa nhóm quyền, người dùng và phạm vi. Nhóm này không sửa được |
+| **Biên mục viên** (`Cataloger`) | Danh mục, biên mục, trường nhạy cảm, tổng kiểm kê; báo cáo về kho tài liệu |
+| **Cán bộ phòng đọc** (`Reading Room Officer`) | Độc giả, đăng ký, cấp phép phông cho độc giả, phiếu sử dụng và sao chụp, góp ý; báo cáo độc giả |
 | **Lãnh đạo** (`Archive Leader`) | Xem toàn bộ dữ liệu và báo cáo; duyệt phiếu có tài liệu cần lãnh đạo duyệt |
 | **Cán bộ bảo quản** (`Preservation Officer`) | Sao lưu, kiểm tra toàn vẹn, khôi phục |
-| **Độc giả** (`Reader`) | Tra cứu trong phạm vi nhóm quyền, gửi phiếu, góp ý |
+
+**Độc giả** (`Reader`) khai thác theo nhóm độc giả (mức mật, tính năng) và theo **chế độ của phông**: phông *Công khai* mở cho mọi độc giả; phông
+*Theo cấp phép* (mặc định cho phông mới) chỉ mở cho nhóm hoặc người được cán bộ cấp phép, có thời hạn; phông *Nội bộ* không bao giờ mở cho độc giả.
+Độc giả chỉ thấy tài liệu đã công bố (không "Nháp", không "Đã tiêu hủy"). Mỗi mục của phiếu sử dụng và phiếu sao chụp được kiểm theo quyền của độc
+giả của phiếu khi gửi, khi duyệt và khi giao; hạn trả không vượt hạn cấp phép; phiếu sao chụp theo cờ *Cho phép sao chụp* của phông và mức mật.
 
 Bảo vệ: quản trị viên không tạo được tài khoản System Manager, không tự khóa hay tự hạ quyền mình, và hệ thống luôn giữ ít nhất một quản trị viên.
-Độc giả chỉ thấy tài liệu đã công bố (không "Nháp", không "Đã tiêu hủy"), không vượt mức mật và phạm vi phông của nhóm.
+Mọi thay đổi nhóm quyền, phạm vi và cấp phép đều ghi nhật ký. Chi tiết: [docs/PHAN_QUYEN_DOC_GIA.md](docs/PHAN_QUYEN_DOC_GIA.md).
 
 ## Kiến trúc
 
@@ -158,8 +172,8 @@ và **Độc giả → Thiết lập độc giả** (hạn mức phiếu, gia h�
 
 | Lớp | Quy mô | Cách chạy |
 |---|---|---|
-| Python (Frappe) | 426 test, 19 module | `docker compose exec backend bench --site <site> run-tests --app document_manager --module document_manager.tests.test_<tên>` |
-| Giao diện cán bộ (vitest) | 185 test | `cd apps/document_manager/frontend && npm test` |
+| Python (Frappe) | 484 test, 22 module | `docker compose exec backend bench --site <site> run-tests --app document_manager --module document_manager.tests.test_<tên>` |
+| Giao diện cán bộ (vitest) | 191 test | `cd apps/document_manager/frontend && npm test` |
 | HTTP đầu-cuối | 497 kiểm tra, gồm ma trận quyền của mọi API | `DM_E2E_PASSWORD=… python scripts/e2e/e2e_http.py` |
 | Trình duyệt (Playwright) | 8 luồng, 126 bước | `scripts/e2e/ui/<luồng>.mjs` |
 | Hiệu năng | 1 triệu văn bản | `scripts/perf/volume_check.py` trên một site thử riêng |
@@ -167,7 +181,7 @@ và **Độc giả → Thiết lập độc giả** (hạn mức phiếu, gia h�
 Kiểm thử đầu-cuối cần tài khoản thử: `scripts/e2e/accounts.py up` trước, `down` sau (xem đầu tệp).
 
 CI (`.github/workflows/ci.yml`): kiểm tra tĩnh (biên dịch, ruff, JSON, cú pháp JS, compose) → vitest và build giao diện →
-build image, tạo site mới sạch, `migrate`, chạy toàn bộ 19 module Python → phát hành image lên GHCR.
+build image, tạo site mới sạch, `migrate`, chạy toàn bộ 22 module Python → phát hành image lên GHCR.
 
 ## Hiệu năng
 
@@ -232,5 +246,5 @@ Tài liệu chi tiết bằng tiếng Việt trong thư mục `docs/`:
 | [SAO_LUU_KHOI_PHUC.md](docs/SAO_LUU_KHOI_PHUC.md) | Vận hành sao lưu, kiểm tra toàn vẹn, khôi phục |
 | [HIEU_NANG.md](docs/HIEU_NANG.md) | Cách đo và kết quả ở một triệu văn bản |
 | [DEV_WORKFLOW.md](docs/DEV_WORKFLOW.md) | Quy trình phát triển và CI/CD |
-| [PHAN_QUYEN_DOC_GIA.md](docs/PHAN_QUYEN_DOC_GIA.md), [XML_SCHEMA.md](docs/XML_SCHEMA.md) | Phân quyền độc giả; lược đồ XML |
+| [PHAN_QUYEN_DOC_GIA.md](docs/PHAN_QUYEN_DOC_GIA.md), [XML_SCHEMA.md](docs/XML_SCHEMA.md) | Phân quyền độc giả và cán bộ; lược đồ XML |
 | [BAO_CAO_REFACTOR.md](docs/BAO_CAO_REFACTOR.md) | Báo cáo quá trình tái cấu trúc |

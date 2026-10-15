@@ -5,6 +5,7 @@ from frappe.model.document import Document
 
 from document_manager.document_manager.services.archive.counters import refresh_file_document_count
 from document_manager.document_manager.services.mongodb_storage import enqueue_delete_gridfs_files
+from document_manager.document_manager.services.archive.locks import assert_move_allowed, assert_unlocked
 
 
 def on_doctype_update():
@@ -20,6 +21,8 @@ class ArchiveDocument(Document):
     """
 
     def validate(self):
+        assert_unlocked(self)
+        assert_move_allowed(self)
         self._detect_file_type()
 
     def on_update(self):
@@ -52,3 +55,5 @@ class ArchiveDocument(Document):
             }
             self.file_type = type_map.get(ext, "Khác")
 
+    def on_trash(self):
+        assert_unlocked(self, "delete")

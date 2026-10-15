@@ -69,7 +69,7 @@ async function make(doctype, values) {
   return name;
 }
 const agency = await make("Archival Agency", { agency_name: `${TAG} Cơ quan` });
-const fonds = await make("Fonds", { fonds_name: `${TAG} Phông`, archival_agency: agency });
+const fonds = await make("Fonds", { fonds_name: `${TAG} Phông`, archival_agency: agency, access_mode: "Công khai" }); // readers use it without a grant
 const group = await make("Record Group", { group_title: `${TAG} Khối`, fonds });
 const catalog = await make("Catalog", { catalog_title: `${TAG} Mục lục`, record_group: group, fonds });
 const file = await make("Archival File", {

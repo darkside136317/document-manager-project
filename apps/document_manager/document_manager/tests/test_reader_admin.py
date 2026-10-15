@@ -170,15 +170,18 @@ class TestReaderAdmin(IntegrationTestCase):
         info = meta.get_doctype_ui("Reader Group")
         table = next(f for f in info["fields"] if f["fieldname"] == "fonds_scopes")
         self.assertEqual(table["fieldtype"], "Table")
-        self.assertEqual([c["fieldname"] for c in table["table"]["columns"]], ["fonds", "fonds_name"])
+        columns = [c["fieldname"] for c in table["table"]["columns"]]
+        self.assertEqual(columns[:5], ["fonds", "fonds_name", "valid_from", "valid_until", "note"])
+        self.assertTrue(next(c for c in table["table"]["columns"] if c["fieldname"] == "granted_by")["read_only"])  # stamped, not typed
         self.assertTrue(next(c for c in table["table"]["columns"] if c["fieldname"] == "fonds_name")["read_only"])  # fetched, not typed
 
     def test_table_rows_are_saved_replaced_and_read_back(self):
         frappe.set_user(ADMIN)
-        saved = crud.save("Reader Group", {"group_name": f"RA nhóm {TAG}", "fonds_scope": "Chỉ các phông được chọn",
-                                           "fonds_scopes": [{"fonds": self.fonds, "junk": "ignored"}]})
+        saved = crud.save("Reader Group", {"group_name": f"RA nhóm {TAG}",
+                                           "fonds_scopes": [{"fonds": self.fonds, "junk": "ignored", "granted_by": "x@y"}]})
         self.assertEqual([r["fonds"] for r in saved["fonds_scopes"]], [self.fonds])
-        again = crud.save("Reader Group", {"fonds_scopes": [], "fonds_scope": "Tất cả phông", "modified": saved["modified"]}, name=saved["name"])
+        self.assertEqual(saved["fonds_scopes"][0]["granted_by"], ADMIN)  # who granted it is recorded, never typed
+        again = crud.save("Reader Group", {"fonds_scopes": [], "modified": saved["modified"]}, name=saved["name"])
         self.assertEqual(again["fonds_scopes"], [])
         with self.assertRaises(frappe.ValidationError):
             crud.save("Reader Group", {"fonds_scopes": "not a list"}, name=saved["name"])

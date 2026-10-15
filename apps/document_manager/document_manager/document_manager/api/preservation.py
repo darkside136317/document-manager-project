@@ -11,6 +11,7 @@ import frappe
 from frappe import _
 from frappe.utils import cint
 
+from document_manager.document_manager.policy import assert_all_fonds, assert_fonds_writable, fonds_in, get_access
 from document_manager.document_manager.services.audit import log_activity
 from document_manager.document_manager.services.preservation import (
     backup,
@@ -142,6 +143,7 @@ def get_job(kind, name):
 @frappe.whitelist(methods=["POST"])
 def start_backup(backup_type="Cả hai", fonds=None, notes=""):
     require_preservation("preservation.backup")
+    assert_all_fonds()
     if backup_type not in ("Cơ sở dữ liệu", "Tệp tài liệu", "Cả hai"):
         frappe.throw(_("Loại sao lưu không hợp lệ"))
     if runner.is_active("Backup Batch"):
@@ -155,6 +157,11 @@ def start_backup(backup_type="Cả hai", fonds=None, notes=""):
 @frappe.whitelist(methods=["POST"])
 def start_check(check_type="Toàn bộ", fonds=None):
     require_preservation("preservation.check")
+    if fonds:
+        if not fonds_in(get_access().read_fonds, fonds):
+            frappe.throw(_("Bạn không được giao phông {0}").format(fonds), frappe.PermissionError)
+    else:
+        assert_all_fonds()  # a check of the whole archive reports on every fonds
     if check_type not in integrity.PHASES:
         frappe.throw(_("Loại kiểm tra không hợp lệ"))
     if runner.is_active("Integrity Check"):
@@ -170,6 +177,15 @@ def start_restore(documents=None, source_backup=None, check=None):
     """Restore the files of documents (a list of names) or of every restorable finding of an integrity check."""
     require_preservation("preservation.restore")
     if check:
+        check_fonds = frappe.db.get_value("Integrity Check", check, "fonds")
+        if check_fonds:
+            assert_fonds_writable(check_fonds)
+        else:
+            assert_all_fonds()
+    else:
+        names = frappe.parse_json(documents) if isinstance(documents, str) else (documents or [])
+        assert_fonds_writable(*{f for f in frappe.get_all("Archive Document", filters={"name": ["in", names or [""]]}, pluck="fonds") if f})
+    if check:
         batch = restore.create_from_check(check, source_backup)
     else:
         batch = restore.create_files_restore(frappe.parse_json(documents) if isinstance(documents, str) else (documents or []), source_backup)
@@ -182,6 +198,7 @@ def start_restore(documents=None, source_backup=None, check=None):
 def prepare_db_restore(source_backup):
     """Check a database dump and make the restore batch for it (nothing runs yet): returns the verification and the runbook."""
     require_preservation("preservation.db_restore")
+    assert_all_fonds()
     check = restore.verify_db_backup(source_backup)
     batch = restore.create_db_restore(source_backup) if check["ok"] else None
     return {"verification": check, "batch": _job("restore", frappe.get_doc("Restore Batch", batch.name)) if batch else None,
@@ -236,6 +253,8 @@ def resume(kind, name):
 @frappe.whitelist(methods=["POST"])
 def delete_job(kind, name):
     require_preservation(KIND_CAPABILITY.get(kind, "preservation.backup"))
+    if kind == "backup":
+        assert_all_fonds()
     doctype, item, link = _kind(kind)
     if kind == "backup":
         result = backup.delete_batch(name)
@@ -255,6 +274,7 @@ def delete_job(kind, name):
 @frappe.whitelist()
 def verify_backup(name):
     require_preservation("preservation.backup")
+    assert_all_fonds()
     return restore.verify_db_backup(name)
 
 
@@ -262,6 +282,7 @@ def verify_backup(name):
 def download_backup(name, which="database"):
     """The database dump of a backup batch (a .sql.gz) or its manifest; the download is logged."""
     require_preservation("preservation.backup")
+    assert_all_fonds()
     batch = frappe.get_doc("Backup Batch", name)
     if which == "manifest":
         path = filestore.manifest_path(name)
@@ -284,6 +305,7 @@ def download_backup(name, which="database"):
 def fix_counters():
     """Recompute the counters of files per fonds and documents per file (what the COUNTER_* findings are about)."""
     require_preservation("preservation.check")
+    assert_all_fonds()
     result = integrity.fix_counters()
     log_activity("Kiểm tra", "Integrity Check", "", f"Sửa bộ đếm: {result['fonds']} phông, {result['files']} hồ sơ")
     return result
@@ -313,6 +335,7 @@ def list_findings(check, status=None, severity=None, code=None, page=1, page_siz
 def run_retention():
     """Delete the backups older than the retention period now (the daily job does the same)."""
     require_preservation("preservation.backup")
+    assert_all_fonds()
     removed = backup.apply_retention()
     log_activity("Xóa", "Backup Batch", "", f"Dọn bản sao lưu cũ: {len(removed)} đợt")
     return {"removed": removed}

@@ -3,25 +3,18 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 
+from document_manager.document_manager.services.fonds_access import validate_grants
+
 
 class ReaderGroup(Document):
-    """Nhóm độc giả — gom phạm vi khai thác (mức mật, phông) và chức năng được dùng.
+    """Nhóm độc giả — gom phạm vi khai thác (mức mật, phông được cấp phép) và chức năng được dùng.
 
     Quyền thực tế của từng độc giả do `policy.get_reader_scope` tính từ nhóm này.
     """
 
     def validate(self):
         self.max_confidentiality_priority = max(1, int(self.max_confidentiality_priority or 1))
-        if self.fonds_scope == "Chỉ các phông được chọn":
-            if not self.fonds_scopes:
-                frappe.throw(_("Hãy chọn ít nhất một phông, hoặc chuyển sang \"Tất cả phông\""))
-            seen = set()
-            for row in self.fonds_scopes:
-                if row.fonds in seen:
-                    frappe.throw(_("Dòng {0}: phông {1} bị trùng").format(row.idx, row.fonds))
-                seen.add(row.fonds)
-        else:
-            self.set("fonds_scopes", [])
+        validate_grants(self, "fonds_scopes")  # the fonds granted to the whole group (public fonds need none)
         if self.is_default and not self.is_active:
             frappe.throw(_("Nhóm mặc định phải đang hoạt động"))
 

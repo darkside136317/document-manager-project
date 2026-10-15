@@ -3,6 +3,7 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 
+from document_manager.document_manager.doctype.staff_access.staff_access import validate_scope
 from document_manager.document_manager.policy import assignable_roles
 
 
@@ -21,6 +22,11 @@ class StaffGroup(Document):
         for row in self.get("roles") or []:
             if row.role not in assignable_roles():
                 frappe.throw(_("Vai trò {0} không được cấp qua nhóm cán bộ").format(row.role))
+        if self.apply_scope:
+            validate_scope(self)
+        else:
+            self.set("read_fonds", [])
+            self.set("write_fonds", [])
         for row in self.get("members") or []:
             info = frappe.db.get_value("User", row.user, ["user_type", "enabled"], as_dict=True)
             if not info or info.user_type != "System User":
@@ -37,6 +43,9 @@ class StaffGroup(Document):
             seen.add(value)
 
     def on_update(self):
+        from document_manager.document_manager.policy import clear_cache
+
+        clear_cache()  # members' fonds scopes may have changed
         roles = [row.role for row in self.get("roles") or []]
         if not roles:
             return
@@ -46,3 +55,8 @@ class StaffGroup(Document):
             if missing:
                 user.flags.ignore_permissions = True
                 user.add_roles(*missing)
+
+    def on_trash(self):
+        from document_manager.document_manager.policy import clear_cache
+
+        clear_cache()

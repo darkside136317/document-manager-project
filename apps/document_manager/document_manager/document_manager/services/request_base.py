@@ -12,7 +12,14 @@ from frappe import _
 from frappe.model.document import Document
 from frappe.utils import now_datetime
 
-from document_manager.document_manager.permissions import assert_feature, get_reader_profile, is_staff
+from document_manager.document_manager.permissions import (
+    assert_feature,
+    get_reader_profile,
+    is_staff,
+    reader_reads_document,
+    reader_reads_file,
+)
+from document_manager.document_manager.policy import reader_scope_of
 from document_manager.document_manager.services import lifecycle as lc
 from document_manager.document_manager.services import templates
 
@@ -96,7 +103,8 @@ class RequestDocument(Document):
 
     # -- items
     def _validate_items(self):
-        check_user = frappe.db.get_value("Reader", self.reader, "user") or frappe.session.user
+        # the reader's rights decide, whoever files the slip (staff filing for a reader without an account included)
+        scope = reader_scope_of(self.reader) if self.reader else None
         for row in self.items:
             if row.archive_document:
                 parent_file = frappe.db.get_value("Archive Document", row.archive_document, "archival_file")
@@ -106,15 +114,40 @@ class RequestDocument(Document):
                 row.archival_file = row.archival_file or parent_file
             if not row.archival_file:
                 frappe.throw(_("Dòng {0}: phải chọn hồ sơ hoặc văn bản").format(row.idx))
-            self._check_readable(row, "Archival File", row.archival_file, check_user)
-            if row.archive_document:
-                self._check_readable(row, "Archive Document", row.archive_document, check_user)
+            problem = self._item_problem(row, scope)
+            if problem:
+                frappe.throw(_("Dòng {0}: {1}").format(row.idx, problem), frappe.PermissionError)
 
-    @staticmethod
-    def _check_readable(row, doctype, name, user):
-        if not frappe.has_permission(doctype, "read", doc=name, user=user):
-            frappe.throw(_("Dòng {0}: không có quyền khai thác {1} {2}").format(row.idx, doctype, name),
-                         frappe.PermissionError)
+    # what may make a row unusable for the reader of the slip
+    copy_rule = False  # Copy Request: the fonds and the level must allow copies
+
+    def _item_problem(self, row, scope) -> str | None:
+        file = frappe.db.get_value("Archival File", row.archival_file, ["name", "fonds", "status", "disposal_status",
+                                                                         "confidentiality_level"], as_dict=True)
+        if not file or not reader_reads_file(scope, file):
+            return _("độc giả không được khai thác hồ sơ {0}").format(row.archival_file)
+        level = file.confidentiality_level
+        if row.archive_document:
+            document = frappe.db.get_value("Archive Document", row.archive_document, ["name", "fonds", "archival_file",
+                                                                                      "confidentiality_level"], as_dict=True)
+            if not document or not reader_reads_document(scope, document):
+                return _("độc giả không được khai thác văn bản {0}").format(row.archive_document)
+            level = document.confidentiality_level or level
+        if self.copy_rule:
+            if not frappe.db.get_value("Fonds", file.fonds, "allow_copy"):
+                return _("phông {0} không cho phép sao chụp").format(file.fonds)
+            if level and not frappe.db.get_value("Confidentiality Level", level, "allow_copy"):
+                return _("tài liệu mức {0} không được sao chụp").format(level)
+        return None
+
+    def assert_items_still_usable(self, rows) -> None:
+        """At a decision (approve, hand over): the reader may still use every one of `rows` (a grant may have ended
+        or been taken back since the slip was sent)."""
+        scope = reader_scope_of(self.reader)
+        problems = [_("Dòng {0}: {1}").format(row.idx, problem) for row in rows if (problem := self._item_problem(row, scope))]
+        if problems:
+            frappe.throw(_("Không duyệt hoặc giao được vì quyền khai thác của độc giả đã thay đổi "
+                           "(cấp phép phông hết hạn hoặc bị thu hồi):") + "\n" + "\n".join(problems), frappe.PermissionError)
 
     def _rows(self, *statuses):
         return [row for row in self.items if row.item_status in statuses]
@@ -160,6 +193,7 @@ class RequestDocument(Document):
             row.item_status = lc.ITEM_APPROVED  # items nobody turned down are approved with the slip
         if not self._rows(lc.ITEM_APPROVED):
             frappe.throw(_("Phải duyệt ít nhất một hồ sơ/văn bản trong phiếu (hoặc từ chối cả phiếu)"))
+        self.assert_items_still_usable(self._rows(lc.ITEM_APPROVED))
         if previous == lc.STATE_LEADER:
             self.leader = frappe.session.user
 

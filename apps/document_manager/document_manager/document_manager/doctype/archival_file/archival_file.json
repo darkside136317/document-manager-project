@@ -115,7 +115,8 @@
       "in_list_view": 1,
       "in_standard_filter": 1,
       "default": "Thường",
-      "search_index": 1
+      "search_index": 1,
+      "permlevel": 1
     },
     {
       "fieldname": "document_type_category",
@@ -193,7 +194,8 @@
       "fieldtype": "Int",
       "label": "Thời hạn bảo quản (Năm)",
       "default": "0",
-      "description": "Số năm bảo quản kể từ ngày kết thúc hồ sơ"
+      "description": "Số năm bảo quản kể từ ngày kết thúc hồ sơ",
+      "permlevel": 1
     },
     {
       "fieldname": "column_break_disposal",
@@ -205,7 +207,8 @@
       "label": "Trạng thái",
       "options": "Bình thường\nCảnh báo tiêu hủy\nĐã tiêu hủy",
       "default": "Bình thường",
-      "search_index": 1
+      "search_index": 1,
+      "permlevel": 1
     },
     {
       "fieldname": "section_notes",
@@ -250,7 +253,37 @@
       "role": "Reader",
       "read": 1
     },
-    {"role": "Archive Leader", "read": 1}
+    {
+      "role": "Archive Leader",
+      "read": 1
+    },
+    {
+      "role": "Document Admin",
+      "permlevel": 1,
+      "read": 1,
+      "write": 1
+    },
+    {
+      "role": "Cataloger",
+      "permlevel": 1,
+      "read": 1,
+      "write": 1
+    },
+    {
+      "role": "Reading Room Officer",
+      "permlevel": 1,
+      "read": 1
+    },
+    {
+      "role": "Reader",
+      "permlevel": 1,
+      "read": 1
+    },
+    {
+      "role": "Archive Leader",
+      "permlevel": 1,
+      "read": 1
+    }
   ],
   "sort_field": "modified",
   "sort_order": "DESC",

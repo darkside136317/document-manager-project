@@ -14,6 +14,9 @@
 {% elif not can_search %}
   <div class="alert alert-warning">{{ icon("triangle-alert") }}<div>Nhóm độc giả của bạn không được phép tìm kiếm tài liệu. Vui lòng <a href="/lien-he">liên hệ cán bộ phòng đọc</a>.</div></div>
 {% else %}
+{% if not is_staff and not fonds %}
+  <div class="alert alert-info" style="margin-bottom: 16px">{{ icon("info") }}<div>Bạn chưa được cấp phép khai thác phông nào nên chưa tìm thấy tài liệu. Vui lòng <a href="/lien-he">liên hệ phòng đọc</a> để được cấp phép.</div></div>
+{% endif %}
 {% if is_staff and not has_profile %}
   <div class="alert alert-info" style="margin-bottom: 16px">{{ icon("info") }}<div>Bạn đang xem với tư cách cán bộ: thấy toàn bộ tài liệu nhưng tài khoản này không có hồ sơ độc giả nên không lập phiếu được.</div></div>
 {% endif %}

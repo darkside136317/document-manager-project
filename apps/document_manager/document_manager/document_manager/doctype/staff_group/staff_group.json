@@ -39,6 +39,47 @@
       "description": "Khi lưu nhóm, các vai trò này được cấp thêm cho mọi thành viên. Bỏ một thành viên khỏi nhóm không tự thu hồi vai trò: chỉnh ở màn hình người dùng."
     },
     {
+      "fieldname": "section_scope",
+      "fieldtype": "Section Break",
+      "label": "Phạm vi phông của nhóm"
+    },
+    {
+      "fieldname": "apply_scope",
+      "fieldtype": "Check",
+      "label": "Nhóm này cấp phạm vi phông",
+      "description": "Khi bật, các thành viên khai thác các phông dưới đây. Người nào còn có phạm vi riêng (màn hình Người dùng) thì hai phạm vi cộng dồn; thuộc nhiều nhóm thì cộng dồn các nhóm."
+    },
+    {
+      "fieldname": "read_scope",
+      "fieldtype": "Select",
+      "label": "Phông được xem",
+      "options": "Tất cả phông\nChỉ các phông được chọn",
+      "default": "Tất cả phông",
+      "depends_on": "apply_scope"
+    },
+    {
+      "fieldname": "read_fonds",
+      "fieldtype": "Table",
+      "label": "Các phông được xem",
+      "options": "Staff Access Fonds",
+      "depends_on": "eval:doc.apply_scope && doc.read_scope=='Chỉ các phông được chọn'"
+    },
+    {
+      "fieldname": "write_scope",
+      "fieldtype": "Select",
+      "label": "Phông được sửa",
+      "options": "Như phạm vi xem\nChỉ các phông được chọn",
+      "default": "Như phạm vi xem",
+      "depends_on": "apply_scope"
+    },
+    {
+      "fieldname": "write_fonds",
+      "fieldtype": "Table",
+      "label": "Các phông được sửa",
+      "options": "Staff Access Fonds",
+      "depends_on": "eval:doc.apply_scope && doc.write_scope=='Chỉ các phông được chọn'"
+    },
+    {
       "fieldname": "section_members",
       "fieldtype": "Section Break",
       "label": "Thành viên"

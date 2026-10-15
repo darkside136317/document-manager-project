@@ -67,7 +67,8 @@
       "options": "Confidentiality Level",
       "fetch_from": "archival_file.confidentiality_level",
       "in_standard_filter": 1,
-      "search_index": 1
+      "search_index": 1,
+      "permlevel": 1
     },
     {
       "fieldname": "section_file",
@@ -251,7 +252,37 @@
       "role": "Reader",
       "read": 1
     },
-    {"role": "Archive Leader", "read": 1}
+    {
+      "role": "Archive Leader",
+      "read": 1
+    },
+    {
+      "role": "Document Admin",
+      "permlevel": 1,
+      "read": 1,
+      "write": 1
+    },
+    {
+      "role": "Cataloger",
+      "permlevel": 1,
+      "read": 1,
+      "write": 1
+    },
+    {
+      "role": "Reading Room Officer",
+      "permlevel": 1,
+      "read": 1
+    },
+    {
+      "role": "Reader",
+      "permlevel": 1,
+      "read": 1
+    },
+    {
+      "role": "Archive Leader",
+      "permlevel": 1,
+      "read": 1
+    }
   ],
   "sort_field": "modified",
   "sort_order": "DESC",

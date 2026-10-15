@@ -117,7 +117,7 @@ class TestArchiveApi(IntegrationTestCase):
         info = archive.get_file_overview(self.file_a)
         self.assertEqual([a["doctype"] for a in info["ancestors"]], ["Fonds", "Record Group", "Catalog"])
         self.assertEqual(info["stats"], {"documents": 1, "size_kb": 120.5, "indexed": 1, "failed": 0})
-        self.assertEqual(info["permissions"], {"write": True, "delete": True, "add_documents": True})
+        self.assertEqual(info["permissions"], {"write": True, "delete": True, "add_documents": True, "locked": ""})
         self.assertEqual(set(info["print"]), {"standard", "contents"})
         self.assertIn("format=Archival%20File%20Contents", info["print"]["contents"]["view"])
         self.assertIn("download_print_pdf", info["print"]["contents"]["pdf"])
@@ -126,7 +126,7 @@ class TestArchiveApi(IntegrationTestCase):
     def test_an_officer_may_look_but_not_change(self):
         frappe.set_user(OFFICER)
         info = archive.get_file_overview(self.file_a)
-        self.assertEqual(info["permissions"], {"write": False, "delete": False, "add_documents": False})
+        self.assertEqual(info["permissions"], {"write": False, "delete": False, "add_documents": False, "locked": ""})
         self.assertTrue(info["print"])  # printing is allowed
 
     def test_document_overview_describes_the_stored_file(self):

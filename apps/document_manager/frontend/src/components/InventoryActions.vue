@@ -23,7 +23,7 @@ const confirm = ref(false);
 const done = computed(() => props.record.status === "Hoàn thành");
 const started = computed(() => props.record.status === "Đang kiểm kê");
 const canWrite = props.meta.permissions.write;
-const isAdmin = boot.user.roles.includes("Document Admin") || boot.user.roles.includes("System Manager");
+const isAdmin = (boot.user.capabilities || []).includes("inventory.reopen"); // reopening a completed check
 const report = computed(() => ({ inventory_check: props.record.name }));
 
 async function act(kind, action, message) {

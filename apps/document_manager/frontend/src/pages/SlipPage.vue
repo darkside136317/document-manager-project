@@ -259,7 +259,7 @@ const reviewLabel = computed(() => (slip.value?.state === "Chờ lãnh đạo du
               </td>
               <td><span v-if="item.level" class="badge badge-muted">{{ item.level }}</span></td>
               <td class="text-sm text-ink-soft">{{ item.location || "—" }}</td>
-              <td v-if="kind === 'copy'">{{ item.copy_count }}</td>
+              <td v-if="kind === 'copy'">{{ item.copy_count }}<div class="text-xs text-ink-muted">{{ [item.copy_form, item.page_range ? `trang ${item.page_range}` : ""].filter(Boolean).join(" · ") }}</div></td>
               <td class="min-w-[220px]">
                 <div v-if="canDecide" class="space-y-1">
                   <div class="inline-flex gap-1" role="group" :aria-label="`Quyết định cho ${item.title}`">

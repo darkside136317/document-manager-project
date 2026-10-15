@@ -76,6 +76,7 @@ def _item_rows(doc) -> list[dict]:
             "parent_title": _title("Archival File", row.archival_file, "file_title") if is_doc else "",
             "href": f"/portal/van-ban/{row.archive_document}" if is_doc else f"/portal/ho-so/{row.archival_file}",
             "copy_count": cint(row.get("copy_count")) or 1, "notes": row.notes or "",
+            "copy_form": row.get("copy_form") or "Bản giấy", "page_range": row.get("page_range") or "",
         })
     return rows
 

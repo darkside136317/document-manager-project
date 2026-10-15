@@ -1,0 +1,86 @@
+{
+  "name": "Staff Access",
+  "module": "Document Manager",
+  "doctype": "DocType",
+  "document_type": "Setup",
+  "engine": "InnoDB",
+  "naming_rule": "By fieldname",
+  "autoname": "field:user",
+  "allow_rename": 0,
+  "quick_entry": 0,
+  "track_changes": 1,
+  "title_field": "user",
+  "fields": [
+    {
+      "fieldname": "user",
+      "fieldtype": "Link",
+      "label": "Cán bộ",
+      "options": "User",
+      "reqd": 1,
+      "unique": 1,
+      "set_only_once": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "read_scope",
+      "fieldtype": "Select",
+      "label": "Phông được xem",
+      "options": "Tất cả phông\nChỉ các phông được chọn",
+      "default": "Tất cả phông",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "read_fonds",
+      "fieldtype": "Table",
+      "label": "Các phông được xem",
+      "options": "Staff Access Fonds",
+      "depends_on": "eval:doc.read_scope=='Chỉ các phông được chọn'"
+    },
+    {
+      "fieldname": "write_scope",
+      "fieldtype": "Select",
+      "label": "Phông được sửa",
+      "options": "Như phạm vi xem\nChỉ các phông được chọn",
+      "default": "Như phạm vi xem",
+      "in_list_view": 1,
+      "description": "Được sửa dữ liệu của phông nào (trong các phông được xem; nhóm quyền vẫn quyết định được thêm, sửa, xóa gì)"
+    },
+    {
+      "fieldname": "write_fonds",
+      "fieldtype": "Table",
+      "label": "Các phông được sửa",
+      "options": "Staff Access Fonds",
+      "depends_on": "eval:doc.write_scope=='Chỉ các phông được chọn'"
+    },
+    {
+      "fieldname": "max_confidentiality_priority",
+      "fieldtype": "Int",
+      "label": "Mức mật cao nhất được xem",
+      "default": "0",
+      "description": "Theo độ ưu tiên của mức mật (1 = Thường); 0 là không giới hạn"
+    },
+    {
+      "fieldname": "note",
+      "fieldtype": "Small Text",
+      "label": "Ghi chú"
+    }
+  ],
+  "permissions": [
+    {
+      "role": "Document Admin",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "delete": 1
+    },
+    {
+      "role": "System Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "delete": 1
+    }
+  ],
+  "sort_field": "modified",
+  "sort_order": "DESC"
+}

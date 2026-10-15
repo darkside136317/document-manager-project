@@ -21,11 +21,12 @@ class UsageRequest(RequestDocument):
         approved = self._rows(lc.ITEM_APPROVED)
         if not approved:
             frappe.throw(_("Phiếu không có hồ sơ, văn bản nào được duyệt để giao"))
+        self.assert_items_still_usable(approved)  # the reader's grant may have ended since the approval
         now = now_datetime()
         for row in approved:
             row.item_status, row.issued_on = lc.ITEM_ISSUED, now
         self.issued_on, self.issued_by = now, frappe.session.user
-        self.due_date = lc.due_date_for(self.reader)
+        self.due_date = lc.due_date_for(self.reader, doc=self)
         self.renewal_count, self.is_overdue = 0, 0
 
     def _on_returned(self, previous):

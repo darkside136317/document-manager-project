@@ -44,6 +44,13 @@
       "description": "Phiếu có hồ sơ, văn bản thuộc mức này được chuyển lãnh đạo duyệt (nhóm độc giả đặt cách duyệt \"Theo mức mật\")"
     },
     {
+      "fieldname": "allow_copy",
+      "fieldtype": "Check",
+      "label": "Cho phép sao chụp",
+      "default": "1",
+      "description": "Độc giả được lập phiếu sao chụp tài liệu ở mức độ mật này."
+    },
+    {
       "fieldname": "description",
       "fieldtype": "Small Text",
       "label": "Mô tả"

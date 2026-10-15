@@ -62,6 +62,30 @@ Thời gian của một lời gọi API hoặc dịch vụ (đã gồm phân quy
 | Phông lưu trữ (đếm và cộng dung lượng toàn bộ văn bản) | 4–5 s | quét cả bảng văn bản |
 | Văn bản, **không lọc** (sắp xếp 947.000 dòng theo tên phông) | 9 s | nên chọn phông hoặc năm |
 
+### Phạm vi phông hẹp (phân quyền v2)
+
+Đo lại ngày 13/10/2026 trên cùng dữ liệu. Mọi phông ở chế độ *Theo cấp phép*; nhóm độc giả mặc định được cấp phép cả 20 phông (như sau khi nâng cấp);
+một độc giả khác và một biên mục viên chỉ có 3 phông (khoảng 150.000 văn bản). Các số của quản trị viên ở trên không đổi đáng kể (danh sách văn bản trang 1:
+0,31 s; trang 5.000: 0,61 s; tổng quan 0,86 s).
+
+| Thao tác | Độc giả, 20 phông | Độc giả, 3 phông | Biên mục viên, 3 phông |
+|---|---|---|---|
+| Tìm văn bản theo phông | 0,30 s | 0,15 s | – |
+| Tìm văn bản theo tác giả và khoảng ngày | 1,33 s | 1,12 s | – |
+| Tìm hồ sơ theo tên | 0,78 s | 0,77 s | 0,80 s |
+| Hồ sơ của một mục lục | 19 ms | 12 ms | 5 ms |
+| Danh sách văn bản mới nhất, trang 1 (có đếm) | – | – | 0,55 s |
+| Danh sách văn bản của một hồ sơ, một mục lục | – | – | 6–8 ms |
+| Cây biên mục: phông | – | – | 25 ms |
+| Tổng quan (9 số đếm) | – | – | 1,2 s |
+| Báo cáo văn bản / phông / hồ sơ, không lọc | – | – | 1,8 / 0,55 / 0,47 s |
+| Danh sách văn bản, trang 5.000 (phân trang sâu) | – | – | **3,0 s** |
+
+Điều kiện phông (`fonds IN (…)`) làm báo cáo và cây biên mục **nhanh hơn** vì ít dòng hơn. Hai chỗ chậm hơn của cán bộ có phạm vi: số đếm (tổng quan, tổng của
+danh sách) quét theo điều kiện phông thay vì đếm thẳng chỉ mục, thêm 0,2–0,4 s; và phân trang rất sâu phải đi qua chỉ mục `modified` rồi lọc phông, 3 s ở trang
+5.000. Người dùng thực tế lọc theo hồ sơ, mục lục hoặc năm trước khi đi xa như vậy, nên chưa thêm chỉ mục kép `(fonds, modified)`. Tìm chữ bằng cơ sở dữ liệu
+(đường dự phòng) vẫn 4–8 s hoặc bị cắt ở 8 s như mục 3, có phạm vi hay không.
+
 ### Kiểm tra toàn vẹn (công việc nền)
 
 Hai mươi bảy phép kiểm tra cơ sở dữ liệu và siêu dữ liệu cộng lại khoảng **15 giây**; mỗi phép từ 1 ms đến 2 s. (Phần kiểm tra từng tệp chạy theo trang và tỉ lệ với số tệp.)

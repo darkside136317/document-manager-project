@@ -16,6 +16,8 @@ from frappe.utils import cint
 
 from document_manager.document_manager.constants import UPLOAD_EXTENSIONS, UPLOAD_MAX_MB
 from document_manager.document_manager.permissions import is_staff
+from document_manager.document_manager.policy import assert_fonds_writable
+from document_manager.document_manager.services.archive.locks import assert_unlocked
 from document_manager.document_manager.services.errors import retry_on_deadlock
 
 PRINT_FORMATS = {
@@ -140,14 +142,26 @@ def get_file_overview(name):
             "indexed": by_status.get("Đã index", 0),
             "failed": by_status.get("Lỗi", 0),
         },
-        "permissions": {
-            "write": bool(frappe.has_permission("Archival File", "write", doc=name)),
-            "delete": bool(frappe.has_permission("Archival File", "delete", doc=name)),
-            "add_documents": bool(frappe.has_permission("Archive Document", "create")),
-        },
+        "permissions": _record_rights("Archival File", doc, add_documents=True),
         "print": print_urls("Archival File", name),
         "upload": _upload_rules(),
     }
+
+
+def _record_rights(doctype: str, doc, add_documents: bool = False) -> dict:
+    """What the user may do with this record: Frappe's rights (fonds scope included), and nothing that changes a sealed
+    record unless they may change sealed records; `locked` says why it is sealed."""
+    from document_manager.document_manager.permissions import has_capability
+    from document_manager.document_manager.services.archive.locks import CAPABILITY, lock_reason
+
+    reason = lock_reason(doc)
+    sealed = bool(reason) and not has_capability(CAPABILITY)
+    rights = {"write": not sealed and bool(frappe.has_permission(doctype, "write", doc=doc)),
+              "delete": not sealed and bool(frappe.has_permission(doctype, "delete", doc=doc)), "locked": reason or ""}
+    if add_documents:  # a new document lands in this file: the right to create documents within the file's fonds
+        rights["add_documents"] = (not sealed and bool(frappe.has_permission("Archive Document", "create"))
+                                   and bool(frappe.has_permission("Archival File", "write", doc=doc)))
+    return rights
 
 
 @frappe.whitelist()
@@ -177,10 +191,7 @@ def get_document_overview(name):
             "last_accessed": doc.last_accessed,
             "has_text": bool(doc.content_text),
         },
-        "permissions": {
-            "write": bool(frappe.has_permission("Archive Document", "write", doc=name)),
-            "delete": bool(frappe.has_permission("Archive Document", "delete", doc=name)),
-        },
+        "permissions": _record_rights("Archive Document", doc),
         "print": print_urls("Archive Document", name),
         "upload": _upload_rules(),
     }
@@ -234,9 +245,13 @@ def add_document_from_file(archival_file, file_url, title=None):
     in the background (document hooks).
     """
     _require_staff()
-    frappe.get_doc("Archival File", archival_file).check_permission("read")
+    parent = frappe.get_doc("Archival File", archival_file)
+    parent.check_permission("read")
     if not frappe.has_permission("Archive Document", "create"):
         frappe.throw(_("Bạn không có quyền thêm văn bản"), frappe.PermissionError)
+    # refused before the upload is claimed: a file outside the user's fonds, or a sealed one
+    assert_fonds_writable(parent.fonds)
+    assert_unlocked(frappe.get_doc({"doctype": "Archive Document", "archival_file": archival_file, "fonds": parent.fonds}))
     file = _claim_upload(file_url)
 
     def create():

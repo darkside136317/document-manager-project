@@ -3,13 +3,48 @@ import { formatNumber } from "./format.js";
 
 export const ROLE_ORDER = ["Document Admin", "Archive Leader", "Cataloger", "Reading Room Officer", "Preservation Officer"];
 
+export const READ_ALL = "Tất cả phông";
+export const CHOSEN = "Chỉ các phông được chọn";
+export const WRITE_SAME = "Như phạm vi xem";
+
+/** The scope of a user who has none of their own: every fonds, every level. */
+export function blankAccess() {
+  return { read_scope: READ_ALL, write_scope: WRITE_SAME, read_fonds: [], write_fonds: [], max_confidentiality_priority: 0 };
+}
+
+function accessToForm(access) {
+  const a = access || blankAccess();
+  return { read_scope: a.read_scope || READ_ALL, write_scope: a.write_scope || WRITE_SAME, read_fonds: [...(a.read_fonds || [])],
+    write_fonds: [...(a.write_fonds || [])], max_confidentiality_priority: Number(a.max_confidentiality_priority) || 0 };
+}
+
 /** Initial values of the user form; the staff roles it may give come from the server. */
 export function blankUser() {
-  return { email: "", first_name: "", last_name: "", phone: "", enabled: 1, roles: [], groups: [] };
+  return { email: "", first_name: "", last_name: "", phone: "", enabled: 1, roles: [], groups: [], access: blankAccess() };
 }
 
 export function userToForm(user) {
-  return { email: user.name, first_name: user.first_name, last_name: user.last_name, phone: user.phone, enabled: user.enabled, roles: [...user.roles], groups: [...user.groups] };
+  return { email: user.name, first_name: user.first_name, last_name: user.last_name, phone: user.phone, enabled: user.enabled, roles: [...user.roles],
+    groups: [...user.groups], access: accessToForm(user.access) };
+}
+
+/** The scope as the server stores it (only what decides it: fonds codes, not their names). */
+export function accessKey(access) {
+  const a = accessToForm(access);
+  return JSON.stringify([a.read_scope, a.write_scope, a.read_scope === CHOSEN ? a.read_fonds.map((r) => r.fonds).sort() : [],
+    a.write_scope === CHOSEN ? a.write_fonds.map((r) => r.fonds).sort() : [], a.max_confidentiality_priority]);
+}
+
+/** Why a scope cannot be saved yet ("" when it can). */
+export function accessProblem(access) {
+  const a = accessToForm(access);
+  if (a.read_scope === CHOSEN && !a.read_fonds.length) return "Chọn ít nhất một phông được xem (hoặc cho xem tất cả phông)";
+  if (a.read_scope === CHOSEN && a.write_scope === CHOSEN) {
+    const readable = new Set(a.read_fonds.map((r) => r.fonds));
+    const outside = a.write_fonds.filter((r) => !readable.has(r.fonds)).map((r) => r.fonds_name || r.fonds);
+    if (outside.length) return `Phông được sửa phải nằm trong các phông được xem: ${outside.join(", ")}`;
+  }
+  return "";
 }
 
 /** Roles in the order the screen shows them, whatever order the user holds them in. */
@@ -28,6 +63,7 @@ export function changedValues(original, form) {
   for (const key of ["roles", "groups"]) {
     if (JSON.stringify(sortRoles(form[key])) !== JSON.stringify(sortRoles(original[key]))) out[key] = form[key];
   }
+  if (form.access && accessKey(form.access) !== accessKey(original.access)) out.access = form.access;
   return out;
 }
 
@@ -35,7 +71,7 @@ export function changedValues(original, form) {
 export function userProblem(form, creating) {
   if (creating && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(form.email).trim())) return "Nhập địa chỉ email hợp lệ";
   if (!String(form.first_name).trim()) return "Nhập tên";
-  return "";
+  return form.access ? accessProblem(form.access) : "";
 }
 
 /** Can the current user change this account in the screen at all? (the server enforces the same rules) */

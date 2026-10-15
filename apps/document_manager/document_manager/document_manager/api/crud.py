@@ -125,7 +125,19 @@ def get(doctype, name):
     info = describe(doctype)
     doc = frappe.get_doc(doctype, name)
     doc.check_permission("read")
-    return _record(doc, info)
+    return {**_record(doc, info), "_rights": _rights(doc)}
+
+
+def _rights(doc) -> dict:
+    """What the user may do with this very record: Frappe's rights for it (fonds scope included) and, for a sealed record
+    of the archive, nothing unless they may change sealed records; `locked` says why it is sealed."""
+    from document_manager.document_manager.permissions import has_capability
+    from document_manager.document_manager.services.archive.locks import CAPABILITY, lock_reason
+
+    reason = lock_reason(doc) or ""
+    sealed = bool(reason) and not has_capability(CAPABILITY)
+    return {"write": not sealed and bool(doc.has_permission("write")), "delete": not sealed and bool(doc.has_permission("delete")),
+            "locked": reason}
 
 
 @frappe.whitelist(methods=["POST"])
@@ -162,7 +174,8 @@ def _save(doctype, values, name):
                 continue
             doc.set(field, _table_rows(tables[field], values[field]) if field in tables else values[field])
     doc.save() if name else doc.insert()
-    return _record(frappe.get_doc(doctype, doc.name), info)
+    saved = frappe.get_doc(doctype, doc.name)
+    return {**_record(saved, info), "_rights": _rights(saved)}
 
 
 @frappe.whitelist(methods=["POST"])

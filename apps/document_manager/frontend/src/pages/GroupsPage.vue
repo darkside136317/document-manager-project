@@ -3,10 +3,11 @@ import { computed, onMounted, ref } from "vue";
 import ConfirmDialog from "../components/ConfirmDialog.vue";
 import Drawer from "../components/Drawer.vue";
 import EmptyState from "../components/EmptyState.vue";
+import FondsPicker from "../components/FondsPicker.vue";
 import Icon from "../components/Icon.vue";
 import PageHeader from "../components/PageHeader.vue";
 import { api } from "../lib/api.js";
-import { toggleValue } from "../lib/admin.js";
+import { CHOSEN, READ_ALL, WRITE_SAME, toggleValue } from "../lib/admin.js";
 import { toast } from "../lib/toast.js";
 
 // Staff groups: a name, the roles every member gets, and who the members are. (The generic form cannot pick users or roles.)
@@ -16,7 +17,8 @@ const staff = ref([]);
 const loading = ref(true);
 const error = ref("");
 const drawer = ref(false);
-const form = ref({ name: "", group_name: "", description: "", roles: [], members: [], modified: "" });
+const blankScope = () => ({ apply_scope: 0, read_scope: READ_ALL, write_scope: WRITE_SAME, read_fonds: [], write_fonds: [] });
+const form = ref({ name: "", group_name: "", description: "", roles: [], members: [], modified: "", ...blankScope() });
 const saving = ref(false);
 const formError = ref("");
 const confirm = ref(false);
@@ -49,8 +51,10 @@ onMounted(async () => {
 
 function openGroup(group) {
   form.value = group
-    ? { name: group.name, group_name: group.group_name, description: group.description || "", roles: group.roles.map((r) => r.role), members: group.members.map((m) => m.user), modified: group.modified }
-    : { name: "", group_name: "", description: "", roles: [], members: [], modified: "" };
+    ? { name: group.name, group_name: group.group_name, description: group.description || "", roles: group.roles.map((r) => r.role), members: group.members.map((m) => m.user), modified: group.modified,
+        apply_scope: group.apply_scope ? 1 : 0, read_scope: group.read_scope || READ_ALL, write_scope: group.write_scope || WRITE_SAME,
+        read_fonds: (group.read_fonds || []).map((r) => ({ ...r })), write_fonds: (group.write_fonds || []).map((r) => ({ ...r })) }
+    : { name: "", group_name: "", description: "", roles: [], members: [], modified: "", ...blankScope() };
   formError.value = "";
   filter.value = "";
   drawer.value = true;
@@ -63,7 +67,10 @@ async function save() {
   saving.value = true;
   formError.value = "";
   try {
-    const values = { group_name: form.value.group_name.trim(), description: form.value.description, roles: form.value.roles.map((role) => ({ role })), members: form.value.members.map((user) => ({ user })) };
+    const f = form.value;
+    const values = { group_name: f.group_name.trim(), description: f.description, roles: f.roles.map((role) => ({ role })), members: f.members.map((user) => ({ user })),
+      apply_scope: f.apply_scope ? 1 : 0, read_scope: f.read_scope, write_scope: f.write_scope,
+      read_fonds: f.read_fonds.map((r) => ({ fonds: r.fonds })), write_fonds: f.write_fonds.map((r) => ({ fonds: r.fonds })) };
     await api.save("Staff Group", creating.value ? values : { ...values, modified: form.value.modified }, form.value.name || null);
     toast(creating.value ? "Đã tạo nhóm" : "Đã lưu nhóm");
     drawer.value = false;
@@ -106,7 +113,7 @@ async function remove() {
           <tr v-for="group in groups" :key="group.name" class="is-clickable" tabindex="0" @click="openGroup(group)" @keydown.enter="openGroup(group)">
             <td><span class="block font-medium">{{ group.group_name }}</span><span class="block text-xs text-ink-muted">{{ group.description }}</span></td>
             <td><span v-for="r in group.roles" :key="r.role" class="badge badge-muted mr-1">{{ roleLabel(r.role) }}</span></td>
-            <td class="text-sm text-ink-soft">{{ group.members.length }} người</td>
+            <td class="text-sm text-ink-soft">{{ group.members.length }} người<span v-if="group.apply_scope" class="badge badge-info ml-2">Cấp phông</span></td>
           </tr>
         </tbody>
       </table>
@@ -124,6 +131,21 @@ async function remove() {
           <input type="checkbox" class="mt-0.5 h-4 w-4 accent-[var(--dm-primary)]" :checked="form.roles.includes(r.role)" @change="form.roles = toggleValue(form.roles, r.role)" />
           <span><strong>{{ r.label }}</strong><span class="block text-xs text-ink-muted">{{ r.description }}</span></span>
         </label>
+      </fieldset>
+      <fieldset class="space-y-3 rounded-md border border-line p-3">
+        <legend class="label px-1">Phạm vi phông của nhóm</legend>
+        <label class="flex cursor-pointer items-start gap-2 text-sm">
+          <input v-model="form.apply_scope" type="checkbox" class="mt-0.5 h-4 w-4 accent-[var(--dm-primary)]" :true-value="1" :false-value="0" />
+          <span>Nhóm này cấp phạm vi phông<span class="block text-xs text-ink-muted">Thành viên khai thác các phông dưới đây; ai còn có phạm vi riêng hoặc thuộc nhiều nhóm thì các phạm vi cộng dồn.</span></span>
+        </label>
+        <template v-if="form.apply_scope">
+          <label class="block text-sm"><span class="label">Phông được xem</span>
+            <select v-model="form.read_scope" class="input"><option>{{ READ_ALL }}</option><option>{{ CHOSEN }}</option></select></label>
+          <FondsPicker v-if="form.read_scope === CHOSEN" v-model="form.read_fonds" label="Các phông được xem" />
+          <label class="block text-sm"><span class="label">Phông được sửa</span>
+            <select v-model="form.write_scope" class="input"><option>{{ WRITE_SAME }}</option><option>{{ CHOSEN }}</option></select></label>
+          <FondsPicker v-if="form.write_scope === CHOSEN" v-model="form.write_fonds" label="Các phông được sửa" />
+        </template>
       </fieldset>
       <fieldset class="space-y-2">
         <legend class="label">Thành viên ({{ form.members.length }})</legend>

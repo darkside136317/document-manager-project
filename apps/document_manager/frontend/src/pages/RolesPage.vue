@@ -27,6 +27,7 @@ const confirm = ref(""); // "save" | "remove" | "reset" | "leave"
 const pendingRole = ref("");
 const creating = ref(null); // {label, description, group, copy_from}
 const createError = ref("");
+const createBusy = ref(false);
 
 const TABS = [["data", "Quyền trên dữ liệu", "database"], ["functions", "Chức năng", "shield-check"], ["members", "Thành viên", "users"]];
 const locked = computed(() => Boolean(group.value?.locked));
@@ -129,6 +130,7 @@ function startCreate(copyFrom = "") {
 
 async function create() {
   createError.value = "";
+  createBusy.value = true;
   try {
     const data = await api.permissions.create({ ...creating.value, copy_from: creating.value.copy_from || null });
     creating.value = null;
@@ -138,6 +140,8 @@ async function create() {
     toast("Đã tạo nhóm quyền");
   } catch (e) {
     createError.value = e.message;
+  } finally {
+    createBusy.value = false;
   }
 }
 
@@ -291,7 +295,7 @@ function leave() {
     </form>
     <template #footer>
       <button class="btn" type="button" @click="creating = null">Hủy</button>
-      <button class="btn btn-primary" type="button" :disabled="!creating?.label?.trim()" @click="create"><Icon name="plus" :size="16" /> Tạo</button>
+      <button class="btn btn-primary" type="button" :disabled="!creating?.label?.trim() || createBusy" @click="create"><Icon :name="createBusy ? 'loader' : 'plus'" :size="16" :spin="createBusy" /> {{ createBusy ? "Đang tạo…" : "Tạo" }}</button>
     </template>
   </Drawer>
 </template>

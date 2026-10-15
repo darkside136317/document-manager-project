@@ -111,13 +111,15 @@
         <a class="btn btn-sm" href="/portal">{{ icon("plus") }} Thêm tài liệu</a></div>
       <div class="table-wrap" style="border: 0; border-radius: 0" x-show="items.length">
         <table class="table">
-          <thead><tr><th scope="col">Loại</th><th scope="col">Tài liệu</th>{% if cfg.copies %}<th scope="col">Số bản</th>{% endif %}<th scope="col"><span class="sr-only">Bỏ</span></th></tr></thead>
+          <thead><tr><th scope="col">Loại</th><th scope="col">Tài liệu</th>{% if cfg.copies %}<th scope="col">Số bản</th><th scope="col">Hình thức</th><th scope="col">Trang</th>{% endif %}<th scope="col"><span class="sr-only">Bỏ</span></th></tr></thead>
           <tbody>
             <template x-for="item in items" :key="item.row">
               <tr>
                 <td class="nowrap" x-text="item.kind"></td>
                 <td><a :href="item.href" x-text="item.title"></a><div class="muted small" x-show="item.parent_title" x-text="'Thuộc hồ sơ: ' + item.parent_title"></div></td>
-                {% if cfg.copies %}<td style="width: 110px"><input class="input" type="number" min="1" max="999" x-model.number="item.copy_count" :aria-label="'Số bản của ' + item.title"></td>{% endif %}
+                {% if cfg.copies %}<td style="width: 110px"><input class="input" type="number" min="1" max="999" x-model.number="item.copy_count" :aria-label="'Số bản của ' + item.title"></td>
+                <td style="width: 130px"><select class="input" x-model="item.copy_form" :aria-label="'Hình thức sao của ' + item.title"><option>Bản giấy</option><option>Bản số</option></select></td>
+                <td style="width: 140px"><input class="input" type="text" maxlength="60" placeholder="Toàn bộ" x-model="item.page_range" :aria-label="'Trang cần sao của ' + item.title"></td>{% endif %}
                 <td class="right"><button class="btn btn-sm btn-danger" type="button" @click="removeItem(item)" :disabled="busy" :aria-label="'Bỏ ' + item.title">{{ icon("trash-2") }}</button></td>
               </tr>
             </template>
@@ -154,13 +156,13 @@
     <div class="card-head"><h2>Hồ sơ, văn bản trong phiếu <span class="badge badge-muted">{{ items | length }}</span></h2></div>
     <div class="table-wrap" style="border: 0; border-radius: 0">
       <table class="table">
-        <thead><tr><th scope="col">Loại</th><th scope="col">Tài liệu</th>{% if cfg.copies %}<th scope="col">Số bản</th>{% endif %}<th scope="col">Kết quả</th></tr></thead>
+        <thead><tr><th scope="col">Loại</th><th scope="col">Tài liệu</th>{% if cfg.copies %}<th scope="col">Số bản</th><th scope="col">Hình thức</th><th scope="col">Trang</th>{% endif %}<th scope="col">Kết quả</th></tr></thead>
         <tbody>
         {% for item in items %}
           <tr>
             <td class="nowrap">{{ item.kind }}</td>
             <td><a href="{{ item.href }}">{{ item.title }}</a>{% if item.parent_title %}<div class="muted small">Thuộc hồ sơ: {{ item.parent_title }}</div>{% endif %}</td>
-            {% if cfg.copies %}<td>{{ item.copy_count }}</td>{% endif %}
+            {% if cfg.copies %}<td>{{ item.copy_count }}</td><td>{{ item.copy_form }}</td><td>{{ item.page_range or "Toàn bộ" }}</td>{% endif %}
             <td>{{ state_badge(item.item_status) }}{% if item.decision_note %}<div class="muted small">{{ item.decision_note }}</div>{% endif %}</td>
           </tr>
         {% endfor %}

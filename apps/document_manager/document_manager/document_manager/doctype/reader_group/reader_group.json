@@ -11,40 +11,187 @@
   "quick_entry": 1,
   "track_changes": 1,
   "fields": [
-    {"fieldname": "group_name", "fieldtype": "Data", "label": "Tên nhóm", "reqd": 1, "unique": 1, "in_list_view": 1},
-    {"fieldname": "is_default", "fieldtype": "Check", "label": "Nhóm mặc định", "description": "Độc giả chưa có nhóm sẽ thuộc nhóm này (chỉ một nhóm)", "in_list_view": 1},
-    {"fieldname": "is_active", "fieldtype": "Check", "label": "Đang hoạt động", "default": "1", "description": "Nhóm bị khóa: độc giả của nhóm không khai thác được", "in_list_view": 1},
-    {"fieldname": "description", "fieldtype": "Small Text", "label": "Mô tả"},
-
-    {"fieldname": "section_scope", "fieldtype": "Section Break", "label": "Phạm vi khai thác"},
-    {"fieldname": "max_confidentiality_priority", "fieldtype": "Int", "label": "Mức mật tối đa được xem", "default": "1", "description": "So với thứ tự ưu tiên của Mức độ mật (1 = Thường)", "in_list_view": 1},
-    {"fieldname": "fonds_scope", "fieldtype": "Select", "label": "Phông được khai thác", "options": "Tất cả phông\nChỉ các phông được chọn", "default": "Tất cả phông"},
-    {"fieldname": "fonds_scopes", "fieldtype": "Table", "label": "Danh sách phông", "options": "Reader Group Scope", "depends_on": "eval:doc.fonds_scope=='Chỉ các phông được chọn'"},
-
-    {"fieldname": "section_features", "fieldtype": "Section Break", "label": "Chức năng được dùng"},
-    {"fieldname": "can_search", "fieldtype": "Check", "label": "Tìm kiếm", "default": "1"},
-    {"fieldname": "can_preview", "fieldtype": "Check", "label": "Xem trước tài liệu", "default": "1"},
-    {"fieldname": "can_download", "fieldtype": "Check", "label": "Tải tệp gốc", "default": "1"},
-    {"fieldname": "column_break_features", "fieldtype": "Column Break"},
-    {"fieldname": "can_request_usage", "fieldtype": "Check", "label": "Lập phiếu yêu cầu sử dụng", "default": "1"},
-    {"fieldname": "can_request_copy", "fieldtype": "Check", "label": "Lập phiếu sao chụp", "default": "1"},
-    {"fieldname": "can_feedback", "fieldtype": "Check", "label": "Gửi góp ý", "default": "1"},
-    {"fieldname": "section_approval", "fieldtype": "Section Break", "label": "Duyệt phiếu"},
-    {"fieldname": "approval_mode", "fieldtype": "Select", "label": "Cách duyệt phiếu", "options": "Theo mức mật\nLuôn qua lãnh đạo\nChỉ phòng đọc duyệt", "default": "Theo mức mật", "description": "Theo mức mật: phiếu có hồ sơ, văn bản thuộc mức độ mật yêu cầu lãnh đạo duyệt thì chuyển lãnh đạo"},
-    {"fieldname": "section_limits", "fieldtype": "Section Break", "label": "Hạn mức riêng của nhóm", "collapsible": 1, "description": "0 = theo Thiết lập độc giả chung"},
-    {"fieldname": "max_requests_per_day", "fieldtype": "Int", "label": "Phiếu yêu cầu sử dụng tối đa/ngày", "default": "0"},
-    {"fieldname": "max_copy_requests_per_day", "fieldtype": "Int", "label": "Phiếu sao chụp tối đa/ngày", "default": "0"},
-    {"fieldname": "max_items_per_request", "fieldtype": "Int", "label": "Hồ sơ/văn bản tối đa mỗi phiếu", "default": "0"},
-    {"fieldname": "column_break_limits", "fieldtype": "Column Break"},
-    {"fieldname": "max_open_requests", "fieldtype": "Int", "label": "Phiếu đang xử lý tối đa", "default": "0"},
-    {"fieldname": "hold_days", "fieldtype": "Int", "label": "Thời gian giữ tài liệu (ngày)", "default": "0"},
-    {"fieldname": "max_renewals", "fieldtype": "Int", "label": "Số lần gia hạn tối đa", "default": "0"}
+    {
+      "fieldname": "group_name",
+      "fieldtype": "Data",
+      "label": "Tên nhóm",
+      "reqd": 1,
+      "unique": 1,
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "is_default",
+      "fieldtype": "Check",
+      "label": "Nhóm mặc định",
+      "description": "Độc giả chưa có nhóm sẽ thuộc nhóm này (chỉ một nhóm)",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "is_active",
+      "fieldtype": "Check",
+      "label": "Đang hoạt động",
+      "default": "1",
+      "description": "Nhóm bị khóa: độc giả của nhóm không khai thác được",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "description",
+      "fieldtype": "Small Text",
+      "label": "Mô tả"
+    },
+    {
+      "fieldname": "section_scope",
+      "fieldtype": "Section Break",
+      "label": "Phạm vi khai thác"
+    },
+    {
+      "fieldname": "max_confidentiality_priority",
+      "fieldtype": "Int",
+      "label": "Mức mật tối đa được xem",
+      "default": "1",
+      "description": "So với thứ tự ưu tiên của Mức độ mật (1 = Thường)",
+      "in_list_view": 1
+    },
+    {
+      "fieldname": "fonds_scopes",
+      "fieldtype": "Table",
+      "label": "Phông được cấp phép cho cả nhóm",
+      "options": "Reader Group Scope",
+      "description": "Ngoài các phông công khai, thành viên của nhóm chỉ khai thác được các phông được cấp ở đây (hoặc cấp riêng cho từng độc giả). Phông nội bộ không bao giờ mở cho độc giả."
+    },
+    {
+      "fieldname": "section_features",
+      "fieldtype": "Section Break",
+      "label": "Chức năng được dùng"
+    },
+    {
+      "fieldname": "can_search",
+      "fieldtype": "Check",
+      "label": "Tìm kiếm",
+      "default": "1"
+    },
+    {
+      "fieldname": "can_preview",
+      "fieldtype": "Check",
+      "label": "Xem trước tài liệu",
+      "default": "1"
+    },
+    {
+      "fieldname": "can_download",
+      "fieldtype": "Check",
+      "label": "Tải tệp gốc",
+      "default": "1"
+    },
+    {
+      "fieldname": "column_break_features",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "can_request_usage",
+      "fieldtype": "Check",
+      "label": "Lập phiếu yêu cầu sử dụng",
+      "default": "1"
+    },
+    {
+      "fieldname": "can_request_copy",
+      "fieldtype": "Check",
+      "label": "Lập phiếu sao chụp",
+      "default": "1"
+    },
+    {
+      "fieldname": "can_feedback",
+      "fieldtype": "Check",
+      "label": "Gửi góp ý",
+      "default": "1"
+    },
+    {
+      "fieldname": "section_approval",
+      "fieldtype": "Section Break",
+      "label": "Duyệt phiếu"
+    },
+    {
+      "fieldname": "approval_mode",
+      "fieldtype": "Select",
+      "label": "Cách duyệt phiếu",
+      "options": "Theo mức mật\nLuôn qua lãnh đạo\nChỉ phòng đọc duyệt",
+      "default": "Theo mức mật",
+      "description": "Theo mức mật: phiếu có hồ sơ, văn bản thuộc mức độ mật yêu cầu lãnh đạo duyệt thì chuyển lãnh đạo"
+    },
+    {
+      "fieldname": "section_limits",
+      "fieldtype": "Section Break",
+      "label": "Hạn mức riêng của nhóm",
+      "collapsible": 1,
+      "description": "0 = theo Thiết lập độc giả chung"
+    },
+    {
+      "fieldname": "max_requests_per_day",
+      "fieldtype": "Int",
+      "label": "Phiếu yêu cầu sử dụng tối đa/ngày",
+      "default": "0"
+    },
+    {
+      "fieldname": "max_copy_requests_per_day",
+      "fieldtype": "Int",
+      "label": "Phiếu sao chụp tối đa/ngày",
+      "default": "0"
+    },
+    {
+      "fieldname": "max_items_per_request",
+      "fieldtype": "Int",
+      "label": "Hồ sơ/văn bản tối đa mỗi phiếu",
+      "default": "0"
+    },
+    {
+      "fieldname": "column_break_limits",
+      "fieldtype": "Column Break"
+    },
+    {
+      "fieldname": "max_open_requests",
+      "fieldtype": "Int",
+      "label": "Phiếu đang xử lý tối đa",
+      "default": "0"
+    },
+    {
+      "fieldname": "hold_days",
+      "fieldtype": "Int",
+      "label": "Thời gian giữ tài liệu (ngày)",
+      "default": "0"
+    },
+    {
+      "fieldname": "max_renewals",
+      "fieldtype": "Int",
+      "label": "Số lần gia hạn tối đa",
+      "default": "0"
+    }
   ],
   "permissions": [
-    {"role": "Document Admin", "read": 1, "write": 1, "create": 1, "delete": 1, "print": 1, "export": 1, "report": 1, "share": 1},
-    {"role": "Reading Room Officer", "read": 1},
-    {"role": "System Manager", "read": 1, "write": 1, "create": 1, "delete": 1},
-    {"role": "Archive Leader", "read": 1}
+    {
+      "role": "Document Admin",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "delete": 1,
+      "print": 1,
+      "export": 1,
+      "report": 1,
+      "share": 1
+    },
+    {
+      "role": "Reading Room Officer",
+      "read": 1
+    },
+    {
+      "role": "System Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "delete": 1
+    },
+    {
+      "role": "Archive Leader",
+      "read": 1
+    }
   ],
   "sort_field": "group_name",
   "sort_order": "ASC"

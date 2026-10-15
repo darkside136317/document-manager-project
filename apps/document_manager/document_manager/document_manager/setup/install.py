@@ -84,7 +84,8 @@ def ensure_confidentiality_levels():
         if not frappe.db.exists("Confidentiality Level", name):
             frappe.get_doc({"doctype": "Confidentiality Level", "level_name": name, "level_code": code,
                             "priority": priority, "description": description,
-                            "requires_leader_approval": 1 if priority >= 2 else 0}
+                            "requires_leader_approval": 1 if priority >= 2 else 0,
+                            "allow_copy": 0 if priority >= 2 else 1}
                            ).insert(ignore_permissions=True)
 
 

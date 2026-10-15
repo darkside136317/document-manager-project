@@ -20,7 +20,10 @@ from document_manager.document_manager.policy import (  # noqa: F401  (re-export
     assert_capability,
     assert_feature,
     capabilities_of,
+    UNLIMITED_PRIORITY,
     fonds_allowed,
+    fonds_in,
+    fonds_sql,
     get_access,
     get_reader_profile,
     get_reader_scope,
@@ -133,88 +136,114 @@ def _and(*conditions: str) -> str:
 
 # === Permission Query Conditions ===
 # These return SQL WHERE clause snippets that are appended to all queries.
+# Administrators: nothing. Staff: the fonds they may read and, when narrowed, the levels they may read (drafts included).
+# Readers: their group's levels and fonds, and only published files.
+
+def _staff_level_sql(access, column: str) -> str:
+    if access.max_priority >= UNLIMITED_PRIORITY:
+        return ""
+    return f"{column} IN ({_levels_allowed_sql(access)})"
+
+
+def _archive_query(user, table: str, fonds_column: str, level: bool, reader_extra):
+    access = get_access(user)
+    if access.kind == "admin":
+        return ""
+    if access.kind == "staff":
+        return _and(fonds_sql(access.read_fonds, f"`{table}`.`{fonds_column}`"),
+                    _staff_level_sql(access, f"`{table}`.`confidentiality_level`") if level else "")
+    scope = access.reader
+    if not scope or not scope.allowed:
+        return "1=0"
+    return reader_extra(scope)
+
 
 def archival_file_query(user):
-    """Archival File: confidentiality level, fonds scope and published state."""
-    scope = get_reader_scope(user)
-    if scope.is_staff:
-        return ""
-    if not scope.allowed:
-        return "1=0"
-    return _and(
+    """Archival File: confidentiality level, fonds scope and (readers) published state."""
+    return _archive_query(user, "tabArchival File", "fonds", True, lambda scope: _and(
         f"`tabArchival File`.`confidentiality_level` IN ({_levels_allowed_sql(scope)})",
         scope_fonds_sql(scope, "`tabArchival File`.`fonds`"),
         _PUBLISHED_FILE_SQL.format(t="tabArchival File"),
-    )
+    ))
 
 
 def archive_document_query(user):
-    """Archive Document: confidentiality level, fonds scope and parent file published."""
-    scope = get_reader_scope(user)
-    if scope.is_staff:
-        return ""
-    if not scope.allowed:
-        return "1=0"
-    return _and(
+    """Archive Document: confidentiality level, fonds scope and (readers) parent file published."""
+    return _archive_query(user, "tabArchive Document", "fonds", True, lambda scope: _and(
         f"`tabArchive Document`.`confidentiality_level` IN ({_levels_allowed_sql(scope)})",
         scope_fonds_sql(scope, "`tabArchive Document`.`fonds`"),
         "`tabArchive Document`.`archival_file` IN (SELECT `pf`.`name` FROM `tabArchival File` `pf` WHERE "
         + _PUBLISHED_FILE_SQL.format(t="pf") + ")",
-    )
+    ))
 
 
 def fonds_query(user):
-    scope = get_reader_scope(user)
-    if scope.is_staff:
-        return ""
-    if not scope.allowed:
-        return "1=0"
-    return scope_fonds_sql(scope, "`tabFonds`.`name`")
+    return _archive_query(user, "tabFonds", "name", False, lambda scope: scope_fonds_sql(scope, "`tabFonds`.`name`"))
 
 
 def record_group_query(user):
-    scope = get_reader_scope(user)
-    if scope.is_staff:
-        return ""
-    if not scope.allowed:
-        return "1=0"
-    return scope_fonds_sql(scope, "`tabRecord Group`.`fonds`")
+    return _archive_query(user, "tabRecord Group", "fonds", False, lambda scope: scope_fonds_sql(scope, "`tabRecord Group`.`fonds`"))
 
 
 def catalog_query(user):
-    scope = get_reader_scope(user)
-    if scope.is_staff:
-        return ""
-    if not scope.allowed:
-        return "1=0"
-    return scope_fonds_sql(scope, "`tabCatalog`.`fonds`")
+    return _archive_query(user, "tabCatalog", "fonds", False, lambda scope: scope_fonds_sql(scope, "`tabCatalog`.`fonds`"))
 
 
 # === Has Permission ===
 # Frappe v16: a falsy hook result (including None) DENIES; return True to defer to DocPerm.
 
-def _reader_scope_for(doc, user, ptype):
-    """(decision, scope): decision is True/False when settled, None when the caller must still
-    check the document itself against the scope."""
+READ_LIKE = frozenset({"read", "print", "export", "report", "email", "share", "select"})
+# where the fonds of a record comes from when the record does not carry it yet (a new record before validation)
+PARENT_OF = {"Catalog": ("Record Group", "record_group"), "Archival File": ("Catalog", "catalog"),
+             "Archive Document": ("Archival File", "archival_file")}
+
+
+def fonds_of(doc) -> str | None:
+    """The fonds a record of the archive belongs to (None for a fonds not created yet)."""
+    if doc.doctype == "Fonds":
+        return None if doc.is_new() else doc.name
+    if doc.get("fonds"):
+        return doc.fonds
+    parent = PARENT_OF.get(doc.doctype)
+    if parent and doc.get(parent[1]):
+        return frappe.db.get_value(parent[0], doc.get(parent[1]), "fonds")
+    return None
+
+
+def _staff_permission(doc, access, ptype, level_field: str | None) -> bool:
+    """A staff member reads within their read scope and changes within their write scope; DocPerm decides the rest."""
+    allowed = access.read_fonds if ptype in READ_LIKE else access.write_fonds
+    if allowed is not None and not fonds_in(allowed, fonds_of(doc)):
+        return False
+    if level_field and access.max_priority < UNLIMITED_PRIORITY:
+        level = doc.get(level_field)
+        if not level:
+            return ptype not in READ_LIKE  # a new record gets its level on validation; lists never show records without one
+        if int(_level_priority(level) or 1) > access.max_priority:
+            return False
+    return True
+
+
+def _archive_permission(doc, user, ptype, level_field, reader_check):
     user = user or frappe.session.user
     if user == "Guest":
-        return False, None
+        return False
+    access = get_access(user)
+    if access.kind == "admin":
+        return True
+    if access.kind == "staff":
+        return _staff_permission(doc, access, ptype, level_field)
     if ptype != "read":
-        return True, None  # defer to standard Role Permissions
-    scope = get_reader_scope(user)
-    if scope.is_staff:
-        return True, scope
-    if not scope.allowed:
-        return False, scope
-    return None, scope
+        return True  # defer to standard Role Permissions (readers have no write rights there)
+    scope = access.reader
+    if not scope or not scope.allowed:
+        return False
+    return reader_check(scope)
 
 
-def has_archival_file_permission(doc, ptype="read", user=None):
-    """Check if user has permission to access this Archival File."""
-    decision, scope = _reader_scope_for(doc, user, ptype)
-    if decision is not None:
-        return decision
-    if not doc.confidentiality_level:
+def reader_reads_file(scope, doc) -> bool:
+    """May a reader with this scope read this Archival File (published, in their fonds, up to their level)?"""
+    if not scope or not scope.allowed or not doc.get("confidentiality_level"):
         return False  # the query condition excludes NULL levels too
     if not is_file_published(doc.get("status"), doc.get("disposal_status")):
         return False
@@ -223,13 +252,10 @@ def has_archival_file_permission(doc, ptype="read", user=None):
     return int(_level_priority(doc.confidentiality_level) or 1) <= scope.max_priority
 
 
-def has_archive_document_permission(doc, ptype="read", user=None):
-    """Check if user has permission to access this Archive Document."""
-    decision, scope = _reader_scope_for(doc, user, ptype)
-    if decision is not None:
-        return decision
-    if not doc.confidentiality_level:
-        return False  # the query condition excludes NULL levels too
+def reader_reads_document(scope, doc) -> bool:
+    """May a reader with this scope read this Archive Document (its file published, in their fonds, up to their level)?"""
+    if not scope or not scope.allowed or not doc.get("confidentiality_level"):
+        return False
     parent = frappe.db.get_value(
         "Archival File", doc.get("archival_file"), ["status", "disposal_status"], as_dict=True
     ) if doc.get("archival_file") else None
@@ -240,19 +266,26 @@ def has_archive_document_permission(doc, ptype="read", user=None):
     return int(_level_priority(doc.confidentiality_level) or 1) <= scope.max_priority
 
 
+def has_archival_file_permission(doc, ptype="read", user=None):
+    """Check if user has permission to access this Archival File."""
+    return _archive_permission(doc, user, ptype, "confidentiality_level", lambda scope: reader_reads_file(scope, doc))
+
+
+def has_archive_document_permission(doc, ptype="read", user=None):
+    """Check if user has permission to access this Archive Document."""
+    return _archive_permission(doc, user, ptype, "confidentiality_level", lambda scope: reader_reads_document(scope, doc))
+
+
 def has_fonds_permission(doc, ptype="read", user=None):
-    decision, scope = _reader_scope_for(doc, user, ptype)
-    return decision if decision is not None else fonds_allowed(scope, doc.name)
+    return _archive_permission(doc, user, ptype, None, lambda scope: fonds_allowed(scope, doc.name))
 
 
 def has_record_group_permission(doc, ptype="read", user=None):
-    decision, scope = _reader_scope_for(doc, user, ptype)
-    return decision if decision is not None else fonds_allowed(scope, doc.get("fonds"))
+    return _archive_permission(doc, user, ptype, None, lambda scope: fonds_allowed(scope, doc.get("fonds")))
 
 
 def has_catalog_permission(doc, ptype="read", user=None):
-    decision, scope = _reader_scope_for(doc, user, ptype)
-    return decision if decision is not None else fonds_allowed(scope, doc.get("fonds"))
+    return _archive_permission(doc, user, ptype, None, lambda scope: fonds_allowed(scope, doc.get("fonds")))
 
 
 # === Reader-owned records (Usage Request, Copy Request, Reader Feedback, Reader) ===

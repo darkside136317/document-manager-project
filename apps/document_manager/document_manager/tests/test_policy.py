@@ -17,8 +17,8 @@ from document_manager.document_manager.setup import install
 from document_manager.tests.test_request_workflow import _names, _reader, _seed_archive, _user
 
 TAG = "pol"
-READER_OPEN = f"{TAG}.open@example.com"          # default group
-READER_CAPPED = f"{TAG}.capped@example.com"      # group with no features and a single fonds
+READER_OPEN = f"{TAG}.open@example.com"          # default group, both fonds granted personally
+READER_CAPPED = f"{TAG}.capped@example.com"      # group with few features, granted a single fonds
 READER_OVERRIDE = f"{TAG}.override@example.com"  # personal clearance above the group's
 READER_NOGROUPFLAGS = f"{TAG}.nogroup@example.com"
 OFFICER = f"{TAG}.officer@example.com"
@@ -50,9 +50,9 @@ class TestPolicy(IntegrationTestCase):
             frappe.get_doc({"doctype": "Confidentiality Level", "level_name": LEVEL, "priority": 8}
                            ).insert(ignore_permissions=True)
 
-        # two separate trees = two fonds
-        cls._seed_a = _seed_archive(2)
-        cls._seed_b = _seed_archive(1)
+        # two separate trees = two fonds, open by licence only
+        cls._seed_a = _seed_archive(2, access_mode="Theo cấp phép")
+        cls._seed_b = _seed_archive(1, access_mode="Theo cấp phép")
         cls.fonds_a = _names(cls._seed_a, "Fonds")[0]
         cls.fonds_b = _names(cls._seed_b, "Fonds")[0]
         cls.files_a = _names(cls._seed_a, "Archival File")
@@ -62,7 +62,7 @@ class TestPolicy(IntegrationTestCase):
 
         frappe.get_doc({
             "doctype": "Reader Group", "group_name": GROUP_CAPPED, "max_confidentiality_priority": 1,
-            "fonds_scope": "Chỉ các phông được chọn", "fonds_scopes": [{"fonds": cls.fonds_a}],
+            "fonds_scopes": [{"fonds": cls.fonds_a}],
             "can_search": 1, "can_preview": 1, "can_download": 0,
             "can_request_usage": 0, "can_request_copy": 1, "can_feedback": 0,
         }).insert(ignore_permissions=True)
@@ -76,6 +76,10 @@ class TestPolicy(IntegrationTestCase):
             STAFF_PROFILE: _reader(STAFF_PROFILE, "POL Staff"),
         }
         frappe.db.set_value("Reader", cls.profiles[READER_OPEN], {"reader_group": None, "max_confidentiality_priority": 0})
+        opened = frappe.get_doc("Reader", cls.profiles[READER_OPEN])
+        for fonds in (cls.fonds_a, cls.fonds_b):
+            opened.append("fonds_grants", {"fonds": fonds})
+        opened.save(ignore_permissions=True)
         frappe.db.set_value("Reader", cls.profiles[READER_CAPPED], {"reader_group": GROUP_CAPPED,
                                                                     "max_confidentiality_priority": 0})
         frappe.db.set_value("Reader", cls.profiles[READER_OVERRIDE], {"reader_group": GROUP_CAPPED,
@@ -129,13 +133,15 @@ class TestPolicy(IntegrationTestCase):
         scope = get_reader_scope(READER_OPEN)
         self.assertTrue(scope.allowed)
         self.assertEqual(scope.group, frappe.db.get_value("Reader Group", {"is_default": 1}, "name"))
-        self.assertEqual((scope.max_priority, scope.fonds), (1, None))
+        self.assertEqual(scope.max_priority, 1)
+        self.assertTrue({self.fonds_a, self.fonds_b} <= set(scope.fonds))  # granted to them personally
         self.assertTrue(scope.can_search and scope.can_download)
 
     def test_group_defines_features_and_fonds(self):
         scope = get_reader_scope(READER_CAPPED)
         self.assertEqual(scope.group, GROUP_CAPPED)
-        self.assertEqual(scope.fonds, [self.fonds_a])
+        self.assertIn(self.fonds_a, scope.fonds)
+        self.assertNotIn(self.fonds_b, scope.fonds)
         self.assertTrue(scope.can_search and scope.can_request_copy)
         self.assertFalse(scope.can_download or scope.can_request_usage or scope.can_feedback)
 
@@ -156,9 +162,9 @@ class TestPolicy(IntegrationTestCase):
             frappe.db.set_value("Reader", self.profiles[READER_OPEN], "is_active", 1)
 
     def test_group_validation_and_single_default(self):
-        with self.assertRaises(frappe.ValidationError):  # fonds scope without any fonds
+        with self.assertRaises(frappe.ValidationError):  # the same fonds granted twice
             frappe.get_doc({"doctype": "Reader Group", "group_name": "POL Bad",
-                            "fonds_scope": "Chỉ các phông được chọn"}).insert(ignore_permissions=True)
+                            "fonds_scopes": [{"fonds": self.fonds_a}, {"fonds": self.fonds_a}]}).insert(ignore_permissions=True)
         default = frappe.db.get_value("Reader Group", {"is_default": 1}, "name")
         wide = frappe.get_doc("Reader Group", GROUP_WIDE)
         wide.is_default = 1
@@ -203,7 +209,8 @@ class TestPolicy(IntegrationTestCase):
             flt = index.search.call_args[0][1]["filter"]
             self.assertIn("is_published = true", flt)
             self.assertIn("confidentiality_priority <= 1", flt)
-            self.assertIn(f'fonds IN ["{self.fonds_a}"]', flt)
+            self.assertIn(f'"{self.fonds_a}"', flt)
+            self.assertNotIn(f'"{self.fonds_b}"', flt)
 
             frappe.set_user(READER_OVERRIDE)
             search_index.search("x")

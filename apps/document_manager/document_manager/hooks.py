@@ -143,6 +143,7 @@ scheduler_events = {
         "document_manager.document_manager.doctype.archival_file.archival_file.check_retention_periods",
         "document_manager.document_manager.services.overdue.mark_overdue_and_remind",
         "document_manager.document_manager.services.preservation.backup.run_scheduled",
+        "document_manager.document_manager.services.fonds_access.remind_expiring",
     ],
     "cron": {
         # Integrity check every Sunday at 2 AM

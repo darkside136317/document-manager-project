@@ -15,7 +15,7 @@ ALL_DOCTYPES = (*REQUEST_DOCTYPES, "Reader Feedback")
 REQUEST_FIELDS = ("purpose", "notes")
 ITEM_FIELDS = {
     "Usage Request": ("archival_file", "archive_document", "notes"),
-    "Copy Request": ("archival_file", "archive_document", "notes", "copy_count"),
+    "Copy Request": ("archival_file", "archive_document", "notes", "copy_count", "copy_form", "page_range"),
 }
 
 

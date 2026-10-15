@@ -35,7 +35,18 @@ def get_account():
         "is_active": bool(reader.is_active),
         "group": scope.group,
         "features": [{"feature": f, "label": FEATURE_LABELS[f], "allowed": bool(scope.get(f))} for f in FEATURES],
+        "fonds": _fonds_of(scope),
     }
+
+
+def _fonds_of(scope) -> list:
+    """The fonds the reader may use, with the day their access ends (None: no end), by name."""
+    until = scope.get("fonds_until") or {}
+    if not until:
+        return []
+    names = dict(frappe.get_all("Fonds", filters={"name": ["in", list(until)]}, fields=["name", "fonds_name"], as_list=True))
+    rows = [{"fonds": f, "name": names.get(f) or f, "until": until[f]} for f in until]
+    return sorted(rows, key=lambda r: r["name"])
 
 
 @frappe.whitelist(methods=["POST"])

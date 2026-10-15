@@ -216,6 +216,7 @@ def run_top_items(filters, page, page_size):
         where.add("(t.archive_document IS NULL OR t.archive_document = '')")
     elif level == LEVEL_DOCS:
         where.add("(t.archive_document IS NOT NULL AND t.archive_document <> '')")
+    where.fonds_scope("COALESCE(ad.fonds, af.fonds)")  # the titles of fonds outside a narrowed scope stay hidden
     found = rows(
         f"""SELECT t.archive_document, t.archival_file, COUNT(*) AS times, COUNT(DISTINCT t.reader) AS readers,
                    ad.document_title, ad.document_number, af.file_title, af.file_number, fo.fonds_name

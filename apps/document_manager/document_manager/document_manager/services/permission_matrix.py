@@ -115,11 +115,41 @@ def _sanitise(doctype: str) -> None:
 
 
 def _clear(doctype: str) -> None:
-    """Frappe keeps permissions in its caches and, within a request, in `frappe.local.role_permissions`."""
-    from frappe.core.doctype.doctype.doctype import clear_permissions_cache
+    """Frappe keeps permissions in the DocType's cached meta, per user and, within a request, in
+    `frappe.local.role_permissions`. Inside `batch()` the clearing waits for the end (rebuilding the meta after every
+    single rule made copying a group take seconds)."""
+    pending = getattr(frappe.local, "dm_matrix_pending", None)
+    if pending is not None:
+        pending.add(doctype)
+        return
+    clear_now([doctype])
 
-    clear_permissions_cache(doctype)
+
+def clear_now(doctypes) -> None:
+    from frappe.cache_manager import clear_user_cache
+
+    for doctype in doctypes:
+        frappe.clear_cache(doctype=doctype)
+    clear_user_cache()
     frappe.local.role_permissions = {}
+
+
+class batch:
+    """`with permission_matrix.batch(): ...` writes many rules and clears Frappe's caches once, at the end."""
+
+    def __enter__(self):
+        self.outer = getattr(frappe.local, "dm_matrix_pending", None)
+        if self.outer is None:
+            frappe.local.dm_matrix_pending = set()
+        return self
+
+    def __exit__(self, *exc):
+        if self.outer is None:
+            pending = frappe.local.dm_matrix_pending
+            frappe.local.dm_matrix_pending = None
+            if pending:
+                clear_now(pending)
+        return False
 
 
 def _insert(doctype: str, role: str, permlevel: int, if_owner: int = 0, **flags) -> None:
@@ -144,10 +174,11 @@ def matrix(role: str) -> list:
 def remove_role(role: str) -> None:
     """Take a role out of every customised rule set (before the role itself is deleted)."""
     _assert_editable(MATRIX_DOCTYPES[0], role)
-    for doctype in frappe.get_all("Custom DocPerm", filters={"role": role}, pluck="parent", distinct=True):
-        for name in frappe.get_all("Custom DocPerm", filters={"parent": doctype, "role": role}, pluck="name"):
-            frappe.delete_doc("Custom DocPerm", name, ignore_permissions=True, force=True)
-        _clear(doctype)
+    with batch():
+        for doctype in frappe.get_all("Custom DocPerm", filters={"role": role}, pluck="parent", distinct=True):
+            for name in frappe.get_all("Custom DocPerm", filters={"parent": doctype, "role": role}, pluck="name"):
+                frappe.delete_doc("Custom DocPerm", name, ignore_permissions=True, force=True)
+            _clear(doctype)
 
 
 def reset_role(role: str) -> int:
@@ -155,6 +186,12 @@ def reset_role(role: str) -> int:
 
     A DocType whose customised rules become identical to the standard ones goes back to the standard set entirely,
     so it follows future versions of the application again."""
+    with batch():
+        changed = _reset_role(role)
+    return changed
+
+
+def _reset_role(role: str) -> int:
     from frappe.permissions import reset_perms
 
     changed = 0
@@ -187,8 +224,9 @@ def _same_as_standard(doctype: str) -> bool:
 
 def copy_role(source: str, target: str) -> None:
     """Give `target` the same rules as `source` on every DocType of the matrix (a new group made from another)."""
-    for doctype in MATRIX_DOCTYPES:
-        if frappe.db.exists("DocType", doctype):
-            values = cell(doctype, source)
-            if values["read"]:
-                set_cell(doctype, target, values)
+    with batch():
+        for doctype in MATRIX_DOCTYPES:
+            if frappe.db.exists("DocType", doctype):
+                values = cell(doctype, source)
+                if values["read"]:
+                    set_cell(doctype, target, values)

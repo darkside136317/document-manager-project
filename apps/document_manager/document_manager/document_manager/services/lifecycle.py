@@ -97,8 +97,33 @@ def check_quota(doc) -> None:
         frappe.throw(_("Bạn còn tài liệu quá hạn chưa trả. Vui lòng trả tài liệu trước khi lập phiếu mới."))
 
 
-def due_date_for(profile: str, start=None):
-    return add_days(getdate(start or nowdate()), get_limits(profile).hold_days)
+def due_date_for(profile: str, start=None, doc=None):
+    """Due date of documents handed over today; never after the reader's access to the fonds of the items ends."""
+    due = add_days(getdate(start or nowdate()), get_limits(profile).hold_days)
+    end = access_end(doc) if doc is not None else None
+    return min(due, end) if end else due
+
+
+def access_end(doc):
+    """The last day the reader may use every item of the slip (a grant with an end date), or None when no item's fonds
+    has an end for them."""
+    from document_manager.document_manager.policy import reader_scope_of
+
+    until = reader_scope_of(doc.reader).fonds_until or {}
+    ends = []
+    for row in doc.items:
+        fonds = item_fonds(row)
+        if fonds and until.get(fonds):
+            ends.append(getdate(until[fonds]))
+    return min(ends) if ends else None
+
+
+def item_fonds(row) -> str | None:
+    if row.get("archive_document"):
+        fonds = frappe.db.get_value("Archive Document", row.archive_document, "fonds")
+        if fonds:
+            return fonds
+    return frappe.db.get_value("Archival File", row.archival_file, "fonds") if row.get("archival_file") else None
 
 
 def can_renew(doc) -> tuple[bool, str]:
@@ -115,4 +140,8 @@ def next_due_date(doc):
     """Renewal adds days to the later of the current due date and today (an overdue slip is not
     extended into the past)."""
     base = max(getdate(doc.due_date or nowdate()), getdate(nowdate()))
-    return add_days(base, get_limits(doc.reader).renewal_days)
+    due = add_days(base, get_limits(doc.reader).renewal_days)
+    end = access_end(doc)
+    if end and end <= getdate(doc.due_date or nowdate()):
+        frappe.throw(_("Quyền khai thác phông của độc giả hết hạn ngày {0}: không gia hạn thêm được").format(end.strftime("%d/%m/%Y")))
+    return min(due, end) if end else due

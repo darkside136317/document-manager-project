@@ -60,7 +60,7 @@ async function make(doctype, values) {
   return name;
 }
 const agency = await make("Archival Agency", { agency_name: `${TAG} Cơ quan` });
-const fonds = await make("Fonds", { fonds_name: `${TAG} Phông`, archival_agency: agency });
+const fonds = await make("Fonds", { fonds_name: `${TAG} Phông`, archival_agency: agency, access_mode: "Công khai" }); // readers use it without a grant
 const group = await make("Record Group", { group_title: `${TAG} Khối`, fonds });
 const catalog = await make("Catalog", { catalog_title: `${TAG} Mục lục`, record_group: group, fonds });
 const level = await make("Confidentiality Level", { level_name: `${TAG} Mật`, priority: 2, requires_leader_approval: 1 });
@@ -295,13 +295,12 @@ try {
     await visible(page.getByRole("link", { name: /In thẻ độc giả/ }));
   });
 
-  await run("a reader group takes its fonds from a grid", async () => {
+  await run("a reader group is granted its fonds in a grid", async () => {
     await page.goto(`${BASE}/dashboard/doc-gia/nhom-doc-gia`, { waitUntil: "networkidle" });
     await page.getByRole("button", { name: "Thêm mới" }).click();
     await page.locator("#f-group_name").fill(`${TAG} Nhóm`);
-    await page.locator("#f-fonds_scope").selectOption("Chỉ các phông được chọn");
     await page.getByRole("button", { name: "Thêm dòng" }).click();
-    await page.locator("table input[role=combobox]").last().fill(TAG);
+    await page.locator("table input[role=combobox]:not([disabled])").last().fill(TAG); // the granted-by column is read-only
     await page.getByRole("option", { name: new RegExp(`${TAG} Phông`) }).click();
     await page.screenshot({ path: `${OUT}/slips_group_grid.png` });
     await page.getByRole("button", { name: "Lưu" }).click();

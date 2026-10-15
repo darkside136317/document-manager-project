@@ -156,6 +156,25 @@ class Where:
             self.add(f"{column} <= %({end})s", **{end: filters[end]})
         return self
 
+    def fonds_scope(self, column: str) -> "Where":
+        """Only the fonds the user may read (staff with a narrowed scope); nothing to add for everybody else."""
+        from document_manager.document_manager.policy import get_access
+
+        allowed = get_access().read_fonds
+        if allowed is not None:
+            self.add(f"{column} IN %(dm_scope_fonds)s", dm_scope_fonds=tuple(allowed) or ("",))
+        return self
+
+    def level_scope(self, column: str) -> "Where":
+        """Only the confidentiality levels the user may read, when their scope narrows them."""
+        from document_manager.document_manager.policy import UNLIMITED_PRIORITY, get_access
+
+        access = get_access()
+        if access.max_priority < UNLIMITED_PRIORITY:
+            levels = frappe.get_all("Confidentiality Level", filters={"priority": ["<=", access.max_priority]}, pluck="name")
+            self.add(f"{column} IN %(dm_scope_levels)s", dm_scope_levels=tuple(levels) or ("",))
+        return self
+
     @property
     def sql(self) -> str:
         return " AND ".join(self.clauses) or "1=1"

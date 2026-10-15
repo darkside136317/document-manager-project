@@ -162,6 +162,9 @@ const downloadUrl = computed(() => preview.value?.download_url);
 
   <template v-else-if="meta && overview">
     <Breadcrumbs :items="overview.ancestors" />
+    <p v-if="overview.permissions.locked" class="mb-4 flex items-center gap-2 rounded-md bg-warning-soft px-3 py-2 text-sm text-warning" role="status">
+      <Icon name="lock-keyhole" :size="16" /> {{ overview.permissions.locked }}{{ overview.permissions.write ? "" : ": chỉ xem, không sửa được." }}
+    </p>
     <header class="mb-5 flex flex-wrap items-start justify-between gap-3">
       <div class="min-w-0">
         <h1 class="m-0 text-xl font-semibold tracking-tight">{{ record.document_title }}</h1>

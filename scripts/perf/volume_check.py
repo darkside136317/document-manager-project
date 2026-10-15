@@ -106,6 +106,8 @@ TABLES = {
                           f"'{lc.STATE_RETURNED}')",
         "purpose": "'Nghiên cứu'", "due_date": "date_add(curdate(), interval seq mod 30 day)", "is_overdue": "if(seq mod 50 = 0, 1, 0)"}),
 }
+SAMPLE_CATALOG, SAMPLE_GROUP, SAMPLE_FONDS = "CT-00001234", "RG-00000077", "PF-00000005"
+NARROW_STAFF, NARROW_READER = "perf.cataloger@example.com", "perf.reader3@example.com"
 NAME = {"Fonds": "PF-", "Record Group": "RG-", "Catalog": "CT-", "Archival File": "AF-", "Archive Document": "AD-",
         "Business Activity Log": "LG-", "Reader": "RD-", "Usage Request": "UR-"}
 CHUNK = 100_000
@@ -142,10 +144,47 @@ def seed() -> None:
     if not frappe.db.exists("Reader", {"user": "perf.reader@example.com"}):
         frappe.get_doc({"doctype": "Reader", "full_name": "Perf Reader", "user": "perf.reader@example.com",
                         "email": "perf.reader@example.com", "is_active": 1}).insert(ignore_permissions=True)
+    seed_scopes()
     frappe.db.commit()
     for doctype in TABLES:
         frappe.db.sql(f"analyze table `tab{doctype}`")
     print("analysed", flush=True)
+
+
+def narrow_fonds() -> list:
+    """The three fonds of the narrow scopes: those holding the sample catalog and group, and the sample fonds."""
+    return sorted({frappe.db.get_value("Catalog", SAMPLE_CATALOG, "fonds"), frappe.db.get_value("Record Group", SAMPLE_GROUP, "fonds"),
+                   SAMPLE_FONDS})
+
+
+def seed_scopes() -> None:
+    """Every fonds licensed; the default reader group granted all of them (what the upgrade does for a group that saw every
+    fonds), a second reader granted three fonds only, and a cataloguer who reads and changes those three fonds."""
+    frappe.db.sql("update `tabFonds` set access_mode = 'Theo cấp phép' where ifnull(access_mode, '') = ''")
+    every = frappe.get_all("Fonds", pluck="name", order_by="name asc")
+    default = frappe.get_doc("Reader Group", frappe.db.get_value("Reader Group", {"is_default": 1}))
+    granted = {r.fonds for r in default.fonds_scopes}
+    for fonds in every:
+        if fonds not in granted:
+            default.append("fonds_scopes", {"fonds": fonds})
+    default.save(ignore_permissions=True)
+    three = narrow_fonds()
+    if not frappe.db.exists("User", NARROW_READER):
+        user = frappe.get_doc({"doctype": "User", "email": NARROW_READER, "first_name": "perf.reader3", "send_welcome_email": 0,
+                               "user_type": "Website User", "roles": [{"role": "Reader"}]}).insert(ignore_permissions=True)
+        user.db_set("enabled", 1)
+    if not frappe.db.exists("Reader Group", "Perf chưa cấp phép"):
+        frappe.get_doc({"doctype": "Reader Group", "group_name": "Perf chưa cấp phép", "is_active": 1, "max_confidentiality_priority": 1,
+                        "can_search": 1, "can_preview": 1}).insert(ignore_permissions=True)
+    if not frappe.db.exists("Reader", {"user": NARROW_READER}):
+        frappe.get_doc({"doctype": "Reader", "full_name": "Perf Reader 3", "user": NARROW_READER, "email": NARROW_READER, "is_active": 1,
+                        "reader_group": "Perf chưa cấp phép",
+                        "fonds_grants": [{"fonds": f} for f in three]}).insert(ignore_permissions=True)
+    if not frappe.db.exists("Staff Access", {"user": NARROW_STAFF}):
+        frappe.get_doc({"doctype": "Staff Access", "user": NARROW_STAFF, "read_scope": "Chỉ các phông được chọn",
+                        "read_fonds": [{"fonds": f} for f in three], "write_scope": "Như phạm vi xem"}).insert(ignore_permissions=True)
+    print(f"scopes: readers of the default group licensed {len(every)} fonds; {NARROW_READER} and {NARROW_STAFF}: {', '.join(three)}",
+          flush=True)
 
 
 # --- measuring ------------------------------------------------------------------------------------------------------------
@@ -213,7 +252,7 @@ def measure() -> None:
     def case(label, fn):
         results.append(timed(label, fn))
 
-    sample_catalog, sample_group, sample_fonds = "CT-00001234", "RG-00000077", "PF-00000005"
+    sample_catalog, sample_group, sample_fonds = SAMPLE_CATALOG, SAMPLE_GROUP, SAMPLE_FONDS
 
     print(f"\n== staff ({DOCS:,} documents, {FILES:,} files, {LOGS:,} log rows)\n")
     frappe.set_user("Administrator")
@@ -253,14 +292,37 @@ def measure() -> None:
     case("report van-ban, one fonds (the way it is used)", lambda: reports.run("van-ban", {"fonds": sample_fonds}, 1, 20))
     case("report ho-so, one fonds", lambda: reports.run("ho-so", {"fonds": sample_fonds}, 1, 20))
 
-    print("\n== readers (policy conditions in every query)\n")
+    def reader_cases(who):
+        case(f"{who}: search documents 'quyết định 5000' (database)", lambda: search_service._search_documents_db({"query": "quyết định 5000"}, 1, 20))
+        case(f"{who}: search documents of one fonds", lambda: search_service.search_documents({"fonds": sample_fonds}, page=2))
+        case(f"{who}: search documents, author + date range", lambda: search_service.search_documents(
+            {"author": "cấp 12", "date_from": "2005-01-01", "date_to": "2006-01-01"}))
+        case(f"{who}: search files, title", lambda: search_service.search_files({"file_title": "kế hoạch số 123"}))
+        case(f"{who}: search files of one catalog", lambda: search_service.search_files({"catalog": sample_catalog}))
+
+    print("\n== readers (policy conditions in every query; the default group is licensed every fonds)\n")
     frappe.set_user("perf.reader@example.com")
-    case("reader: search documents 'quyết định 5000' (database)", lambda: search_service._search_documents_db({"query": "quyết định 5000"}, 1, 20))
-    case("reader: search documents of one fonds", lambda: search_service.search_documents({"fonds": sample_fonds}, page=2))
-    case("reader: search documents, author + date range", lambda: search_service.search_documents(
-        {"author": "cấp 12", "date_from": "2005-01-01", "date_to": "2006-01-01"}))
-    case("reader: search files, title", lambda: search_service.search_files({"file_title": "kế hoạch số 123"}))
-    case("reader: search files of one catalog", lambda: search_service.search_files({"catalog": sample_catalog}))
+    reader_cases("reader")
+    print(f"\n== a reader licensed three fonds ({', '.join(narrow_fonds())})\n")
+    frappe.set_user(NARROW_READER)
+    reader_cases("reader, 3 fonds")
+
+    print("\n== a cataloguer who reads and changes three fonds\n")
+    frappe.set_user(NARROW_STAFF)
+    scoped_file = frappe.db.get_value("Archival File", {"catalog": sample_catalog}, "name")
+    case("3 fonds: crud list: documents, newest, page 1", lambda: crud.get_list("Archive Document", page=1))
+    case("3 fonds: crud list: documents, page 5000 (deep paging)", lambda: crud.get_list("Archive Document", page=5000, page_size=20))
+    case("3 fonds: crud list: documents of one file", lambda: crud.get_list("Archive Document", filters={"archival_file": scoped_file}))
+    case("3 fonds: crud list: documents of one catalog, page 3", lambda: crud.get_list("Archive Document", filters={"catalog": sample_catalog}, page=3))
+    case("3 fonds: crud list: documents, text search", lambda: crud.get_list("Archive Document", search="Quyết định số 5000"))
+    case("3 fonds: crud list: files of one catalog", lambda: crud.get_list("Archival File", filters={"catalog": sample_catalog}))
+    case("3 fonds: crud list: files, text search", lambda: crud.get_list("Archival File", search="kế hoạch số 777"))
+    case("3 fonds: tree: fonds", lambda: archive.get_tree())
+    case("3 fonds: overview (dashboard counters)", lambda: dashboard.get_workspace_summary())
+    case("3 fonds: search documents (database fallback)", lambda: search_service._search_documents_db({"query": "quyết định 5000"}, 1, 20))
+    case("3 fonds: search files: title", lambda: search_service.search_files({"file_title": "kế hoạch số 123"}))
+    for report in reports.visible():
+        case(f"3 fonds: report {report.slug}", lambda slug=report.slug: reports.run(slug, {}, 1, 20))
     frappe.set_user("Administrator")
 
     print("\n== integrity checks (background job)\n")

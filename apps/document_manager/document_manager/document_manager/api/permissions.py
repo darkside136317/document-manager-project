@@ -99,9 +99,10 @@ def _apply(profile, values: dict) -> list[str]:
                 changes.append(_("bỏ chức năng {0}").format(", ".join(sorted(removed))))
     profile.flags.ignore_permissions = True
     profile.save()
-    for doctype, cell in (values.get("matrix") or {}).items():
-        if permission_matrix.set_cell(doctype, profile.role, cell or {}):
-            changes.append(_("đổi quyền trên {0}").format(doctype))
+    with permission_matrix.batch():
+        for doctype, cell in (values.get("matrix") or {}).items():
+            if permission_matrix.set_cell(doctype, profile.role, cell or {}):
+                changes.append(_("đổi quyền trên {0}").format(doctype))
     return changes
 
 

@@ -29,8 +29,10 @@ const confirmDelete = reactive({ open: false, busy: false, error: "" });
 
 const editing = computed(() => Boolean(props.name));
 const extra = computed(() => extrasFor[props.meta.doctype] || null);
-const canWrite = computed(() => (editing.value ? props.meta.permissions.write : props.meta.permissions.create));
-const canDelete = computed(() => editing.value && props.meta.permissions.delete);
+// a record the server describes (`_rights`) may be narrower than the DocType: another fonds, or a sealed record
+const canWrite = computed(() => (editing.value ? props.meta.permissions.write && record._rights?.write !== false : props.meta.permissions.create));
+const canDelete = computed(() => editing.value && props.meta.permissions.delete && record._rights?.delete !== false);
+const lockedReason = computed(() => (editing.value ? record._rights?.locked || "" : ""));
 const title = computed(() => {
   if (!editing.value) return `Thêm mới — ${props.meta.label}`;
   return `${props.meta.label}: ${record[props.meta.title_field] || props.name}`;
@@ -114,6 +116,9 @@ async function remove() {
     <div v-if="loading" class="flex items-center gap-2 py-8 text-ink-muted"><Icon name="loader" spin /> Đang tải...</div>
     <template v-else>
       <p v-if="error" class="mb-4 whitespace-pre-line rounded-md bg-danger-soft px-3 py-2 text-sm text-danger" role="alert">{{ error }}</p>
+      <p v-if="lockedReason" class="mb-4 flex items-center gap-2 rounded-md bg-warning-soft px-3 py-2 text-sm text-warning" role="status">
+        <Icon name="lock-keyhole" :size="16" /> {{ lockedReason }}{{ canWrite ? "" : ": chỉ xem, không sửa được." }}
+      </p>
       <FormRenderer
         v-if="Object.keys(record).length"
         :meta="meta"

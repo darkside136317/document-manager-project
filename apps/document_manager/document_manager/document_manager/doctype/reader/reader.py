@@ -3,6 +3,7 @@ import frappe
 from frappe.model.document import Document
 
 from document_manager.document_manager.permissions import is_staff
+from document_manager.document_manager.services.fonds_access import validate_grants
 
 
 class Reader(Document):
@@ -15,6 +16,7 @@ class Reader(Document):
             self.reader_group = frappe.db.get_value("Reader Group", {"is_default": 1}, "name")
         if self.user and not self.email:
             self.email = frappe.db.get_value("User", self.user, "email")
+        validate_grants(self, "fonds_grants")  # fonds granted to this reader personally
 
     def on_update(self):
         if self.user:

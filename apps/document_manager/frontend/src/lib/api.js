@@ -218,6 +218,7 @@ export const api = {
     remove: (name) => call(`${BASE}.users.delete_user`, { name }, { post: true }),
     matrix: () => call(`${BASE}.users.role_matrix`),
   },
+  fondsAccess: (fonds) => call(`${BASE}.fonds_access.who_may_use`, { fonds }),
   permissions: {
     list: () => call(`${BASE}.permissions.list_groups`),
     get: (role) => call(`${BASE}.permissions.get_group`, { role }),

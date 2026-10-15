@@ -16,7 +16,7 @@ import json
 import frappe
 
 from document_manager.document_manager.permissions import is_file_published
-from document_manager.document_manager.policy import get_reader_scope
+from document_manager.document_manager.policy import UNLIMITED_PRIORITY, get_access
 from document_manager.document_manager.services.errors import log_exception, retry_on_deadlock
 
 _clients = {}  # one client / configured index per site (a bench serves several sites)
@@ -233,15 +233,19 @@ def search(query: str, filters=None, date_from=None, date_to=None, sort_by=None,
     if date_to is not None:
         filter_parts.append(f"document_ts <= {int(date_to)}")
 
-    # Readers: only published documents, up to their clearance, inside their fonds.
-    scope = get_reader_scope()
-    if not scope.is_staff:
-        if not scope.allowed:
+    # Readers: only published documents, up to their clearance, inside their fonds. Staff with a narrowed scope: their
+    # fonds and levels (drafts included). Administrators: everything.
+    access = get_access()
+    if access.kind in ("reader", "guest"):
+        scope = access.reader
+        if not scope or not scope.allowed:
             return {"hits": [], "estimatedTotalHits": 0}
-        filter_parts.append(f"confidentiality_priority <= {int(scope.max_priority)}")
         filter_parts.append("is_published = true")
-        if scope.fonds is not None:
-            quoted = ", ".join(json.dumps(f, ensure_ascii=False) for f in scope.fonds) or '""'
+    if access.kind != "admin":
+        if access.max_priority < UNLIMITED_PRIORITY:
+            filter_parts.append(f"confidentiality_priority <= {int(access.max_priority)}")
+        if access.read_fonds is not None:
+            quoted = ", ".join(json.dumps(f, ensure_ascii=False) for f in access.read_fonds) or '""'
             filter_parts.append(f"fonds IN [{quoted}]")
 
     search_params = {

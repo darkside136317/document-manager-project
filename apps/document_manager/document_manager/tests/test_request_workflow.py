@@ -49,7 +49,7 @@ def _user(email, roles, user_type):
     doc.insert(ignore_permissions=True)
 
 
-def _seed_archive(n=2):
+def _seed_archive(n=2, access_mode="Công khai"):
     """Create a minimal Agency > Fonds > Record Group > Catalog > n Archival Files chain.
 
     Returns [(doctype, name), ...] to delete (children first). A fresh CI site has no archive data.
@@ -65,7 +65,8 @@ def _seed_archive(n=2):
         make({"doctype": "Confidentiality Level", "level_name": "Thường", "priority": 1})
     tag = frappe.generate_hash(length=6)  # unique names: a leftover can never block a later run
     agency = make({"doctype": "Archival Agency", "agency_name": f"RW Test Agency {tag}"})
-    fonds = make({"doctype": "Fonds", "fonds_name": f"RW Test Fonds {tag}", "archival_agency": agency})
+    fonds = make({"doctype": "Fonds", "fonds_name": f"RW Test Fonds {tag}", "archival_agency": agency,
+                  "access_mode": access_mode})
     group = make({"doctype": "Record Group", "group_title": f"RW Test Group {tag}", "fonds": fonds})
     catalog = make({"doctype": "Catalog", "catalog_title": f"RW Test Catalog {tag}",
                     "record_group": group, "fonds": fonds})

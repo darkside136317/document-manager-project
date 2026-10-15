@@ -367,7 +367,10 @@ class TestReaderSite(IntegrationTestCase):
 
     def test_staff_with_a_reader_profile_can_use_the_basket(self):
         frappe.set_user(STAFF_READER)
-        self.assertTrue(basket_api.add_to_basket("file", self.file_secret, "usage")["added"])
+        self.assertTrue(basket_api.add_to_basket("file", self.file_ok, "usage")["added"])
+        # a slip is held to the rights of its reader profile, not to the staff rights of whoever files it
+        with self.assertRaises(frappe.PermissionError):
+            basket_api.add_to_basket("file", self.file_secret, "usage")
 
     def test_removing_rows_and_discarding(self):
         frappe.set_user(READER_A)

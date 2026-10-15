@@ -10,7 +10,7 @@ vi.mock("../src/lib/api.js", () => ({
 
 import PreserveJobDrawer from "../src/components/PreserveJobDrawer.vue";
 import {
-  blankUser, canEditUser, changedValues, cleanLogFilters, diskTone, indexTone, latestPurgeDate, logDownloadUrl, permissionText, prettyJson,
+  accessKey, accessProblem, blankUser, canEditUser, changedValues, cleanLogFilters, diskTone, indexTone, latestPurgeDate, logDownloadUrl, permissionText, prettyJson,
   purgeConfirmed, queueText, serviceTone, sortRoles, toggleValue, userProblem, userToForm,
 } from "../src/lib/admin.js";
 import { api } from "../src/lib/api.js";
@@ -73,8 +73,23 @@ describe("administration helpers", () => {
   const original = { name: "an@x.vn", first_name: "An", last_name: "Nguyen", phone: "", enabled: 1, roles: ["Cataloger", "Document Admin"], groups: ["Nhóm A"], protected: false };
 
   it("starts a user form blank and fills it from an account", () => {
-    expect(blankUser()).toEqual({ email: "", first_name: "", last_name: "", phone: "", enabled: 1, roles: [], groups: [] });
+    expect(blankUser()).toEqual({ email: "", first_name: "", last_name: "", phone: "", enabled: 1, roles: [], groups: [],
+      access: { read_scope: "Tất cả phông", write_scope: "Như phạm vi xem", read_fonds: [], write_fonds: [], max_confidentiality_priority: 0 } });
     expect(userToForm(original)).toMatchObject({ email: "an@x.vn", first_name: "An", roles: ["Cataloger", "Document Admin"] });
+  });
+
+  it("sends the scope only when it changed, and checks it before sending", () => {
+    const form = userToForm(original);
+    expect(changedValues(original, form)).toEqual({});
+    const chosen = { ...form.access, read_scope: "Chỉ các phông được chọn", read_fonds: [{ fonds: "P1", fonds_name: "Phông 1" }] };
+    expect(changedValues(original, { ...form, access: chosen })).toEqual({ access: chosen });
+    // the names of the fonds are not part of the scope: only their codes are compared
+    const renamed = { ...chosen, read_fonds: [{ fonds: "P1", fonds_name: "Tên khác" }] };
+    expect(accessKey(renamed)).toBe(accessKey(chosen));
+    expect(accessProblem({ ...form.access, read_scope: "Chỉ các phông được chọn" })).toContain("ít nhất một phông");
+    expect(accessProblem({ ...chosen, write_scope: "Chỉ các phông được chọn", write_fonds: [{ fonds: "P2", fonds_name: "Phông 2" }] })).toContain("Phông 2");
+    expect(accessProblem(chosen)).toBe("");
+    expect(userProblem({ ...form, access: { ...form.access, read_scope: "Chỉ các phông được chọn" } }, false)).toContain("phông");
   });
 
   it("sends only what changed, whatever order roles and groups are in", () => {

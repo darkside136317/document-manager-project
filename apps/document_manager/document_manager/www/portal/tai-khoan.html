@@ -43,6 +43,16 @@
           <li class="cluster">{% if f.allowed %}<span class="badge badge-success">{{ icon("check") }} Được phép</span>{% else %}<span class="badge badge-muted">{{ icon("lock") }} Không</span>{% endif %}<span>{{ f.label | capitalize }}</span></li>
           {% endfor %}
         </ul>
+        <h3 style="margin: 8px 0 0; font-size: 1rem">Phông được khai thác</h3>
+        {% if account.fonds %}
+        <ul style="list-style: none; margin: 0; padding: 0; display: grid; gap: 6px">
+          {% for f in account.fonds %}
+          <li class="cluster"><span>{{ f.name }}</span>{% if f.until %}<span class="badge badge-warning">đến {{ frappe.utils.formatdate(f.until, "dd/MM/yyyy") }}</span>{% else %}<span class="badge badge-muted">không thời hạn</span>{% endif %}</li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="small muted" style="margin: 0">Bạn chưa được cấp phép khai thác phông nào. Hãy liên hệ phòng đọc.</p>
+        {% endif %}
       </div>
     </section>
   </div>

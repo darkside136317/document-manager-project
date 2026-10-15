@@ -8,7 +8,7 @@
     profile       Reader record name (or None)
     group         Reader Group name (or None)
     max_priority  highest Confidentiality Level priority the user may read
-    fonds         list of Fonds names the user may read, or None for "all fonds"
+    fonds         list of Fonds names the user may read (staff: None for "all fonds"); `fonds_until` their end dates
     can_*         feature flags (search / preview / download / request_usage / request_copy / feedback)
 
 SQL conditions, `has_permission` hooks, the search APIs, the Meilisearch filter and the request
@@ -162,7 +162,7 @@ def get_reader_profile(user: str | None = None) -> str | None:
 
 def _scope(**values) -> frappe._dict:
     base = {"user": None, "is_staff": False, "allowed": False, "profile": None, "group": None,
-            "max_priority": 0, "fonds": None, **{f: False for f in FEATURES}}
+            "max_priority": 0, "fonds": None, "fonds_until": {}, **{f: False for f in FEATURES}}
     base.update(values)
     return frappe._dict(base)
 
@@ -178,32 +178,116 @@ def get_reader_scope(user: str | None = None) -> frappe._dict:
     if is_staff(user):
         return _scope(user=user, is_staff=True, allowed=True, max_priority=UNLIMITED_PRIORITY,
                       **{f: True for f in FEATURES})
-
     profile = frappe.db.get_value(
         "Reader", {"user": user},
         ["name", "is_active", "max_confidentiality_priority", "reader_group"], as_dict=True)
+    return _reader_scope(profile, user)
+
+
+def reader_scope_of(profile_name: str) -> frappe._dict:
+    """The scope of a reader profile, whoever is signed in (a slip filed by the staff for a reader is checked against
+    the reader's rights, even when the reader has no account)."""
+    profile = frappe.db.get_value(
+        "Reader", profile_name, ["name", "is_active", "max_confidentiality_priority", "reader_group", "user"], as_dict=True)
+    return _reader_scope(profile, profile.user if profile else None)
+
+
+def _reader_scope(profile, user) -> frappe._dict:
+    """Readers use the public fonds and the fonds granted to their group or to them (valid today); `fonds_until` says
+    until when each one is open (None: no end). The level and the functions come from the group."""
+    from document_manager.document_manager.services.fonds_access import reader_fonds
+
     if not profile or not profile.is_active:
         return _scope(user=user, profile=profile.name if profile else None)
 
     group_name = profile.reader_group or _default_group_name()
     if group_name:
         group = frappe.db.get_value(
-            "Reader Group", group_name,
-            ["is_active", "max_confidentiality_priority", "fonds_scope", *FEATURES], as_dict=True)
+            "Reader Group", group_name, ["is_active", "max_confidentiality_priority", *FEATURES], as_dict=True)
         if not group or not group.is_active:
             return _scope(user=user, profile=profile.name, group=group_name)  # disabled group
-        fonds = None
-        if group.fonds_scope == "Chỉ các phông được chọn":
-            fonds = frappe.get_all("Reader Group Scope", filters={"parent": group_name, "parenttype": "Reader Group"},
-                                   pluck="fonds")
         features = {f: bool(cint(group.get(f))) for f in FEATURES}
         group_priority = cint(group.max_confidentiality_priority)
     else:  # no group configured anywhere: the safe built-in default (public level, every feature)
-        fonds, features, group_priority = None, {f: True for f in FEATURES}, 1
+        features, group_priority = {f: True for f in FEATURES}, 1
 
+    until = reader_fonds(group_name, profile.name)
     return _scope(user=user, allowed=True, profile=profile.name, group=group_name,
                   max_priority=cint(profile.max_confidentiality_priority) or group_priority or 1,
-                  fonds=fonds, **features)
+                  fonds=sorted(until), fonds_until=until, **features)
+
+
+# --- fonds scope of the staff ----------------------------------------------------------------------------------------
+
+READ_ALL, CHOSEN, WRITE_SAME = "Tất cả phông", "Chỉ các phông được chọn", "Như phạm vi xem"
+
+
+def staff_scope(user: str) -> tuple:
+    """(read_fonds, write_fonds, max_priority) of a staff member who is not an administrator.
+
+    The scope comes from the person's Staff Access and from every staff group of theirs that sets one; they add up (a
+    fonds any of them gives is given). With none of them the person reads and changes every fonds, at every level, as
+    before scopes existed. None means "every fonds". Fonds to change are always among the fonds read.
+    """
+    memo = _memo().setdefault("staff_scope", {})
+    if user in memo:
+        return memo[user]
+    result = (None, None, UNLIMITED_PRIORITY)
+    if frappe.db.table_exists("Staff Access"):
+        sources = []
+        personal = frappe.db.get_value("Staff Access", {"user": user},
+                                       ["name", "read_scope", "write_scope", "max_confidentiality_priority"], as_dict=True)
+        if personal:
+            sources.append(("Staff Access", personal))
+        groups = frappe.get_all("Staff Group Member", filters={"user": user, "parenttype": "Staff Group"}, pluck="parent")
+        if groups:
+            for group in frappe.get_all("Staff Group", filters={"name": ["in", groups], "apply_scope": 1},
+                                        fields=["name", "read_scope", "write_scope"]):
+                sources.append(("Staff Group", group))
+        if sources:
+            rows = frappe.get_all("Staff Access Fonds", fields=["parenttype", "parent", "parentfield", "fonds"], limit_page_length=0,
+                                  filters={"parent": ["in", [src.name for _dt, src in sources]],
+                                           "parenttype": ["in", ["Staff Access", "Staff Group"]]})
+            chosen = {}
+            for row in rows:
+                chosen.setdefault((row.parenttype, row.parent, row.parentfield), set()).add(row.fonds)
+            read, write, read_all, write_all = set(), set(), False, False
+            for doctype, src in sources:
+                own_read = None if (src.read_scope or READ_ALL) == READ_ALL else chosen.get((doctype, src.name, "read_fonds"), set())
+                if (src.write_scope or WRITE_SAME) == WRITE_SAME:
+                    own_write = own_read
+                else:
+                    own_write = chosen.get((doctype, src.name, "write_fonds"), set())
+                    if own_read is not None:
+                        own_write = own_write & own_read
+                if own_read is None:
+                    read_all = True
+                else:
+                    read |= own_read
+                if own_write is None:
+                    write_all = True
+                else:
+                    write |= own_write
+            read_fonds = None if read_all else sorted(read)
+            write_fonds = None if write_all else sorted(write if read_fonds is None else write & set(read_fonds))
+            priority = cint(personal.max_confidentiality_priority) if personal else 0
+            result = (read_fonds, write_fonds, priority or UNLIMITED_PRIORITY)
+    memo[user] = result
+    return result
+
+
+def fonds_in(allowed, fonds) -> bool:
+    """Is `fonds` within `allowed` (None = every fonds)?"""
+    return allowed is None or (bool(fonds) and fonds in allowed)
+
+
+def fonds_sql(allowed, column: str) -> str:
+    """SQL condition limiting `column` to `allowed` ("" for every fonds, "1=0" for none)."""
+    if allowed is None:
+        return ""
+    if not allowed:
+        return "1=0"
+    return f"{column} IN ({', '.join(frappe.db.escape(f) for f in allowed)})"
 
 
 def get_access(user: str | None = None) -> frappe._dict:
@@ -221,11 +305,41 @@ def get_access(user: str | None = None) -> frappe._dict:
         return frappe._dict(user=user, kind="guest", read_fonds=[], write_fonds=[], max_priority=0,
                             capabilities=frozenset(), reader=None)
     if is_staff(user):
-        return frappe._dict(user=user, kind="admin" if is_admin(user) else "staff", read_fonds=None, write_fonds=None,
-                            max_priority=UNLIMITED_PRIORITY, capabilities=capabilities_of(user), reader=None)
+        if is_admin(user):
+            return frappe._dict(user=user, kind="admin", read_fonds=None, write_fonds=None, max_priority=UNLIMITED_PRIORITY,
+                                capabilities=capabilities_of(user), reader=None)
+        read_fonds, write_fonds, priority = staff_scope(user)
+        return frappe._dict(user=user, kind="staff", read_fonds=read_fonds, write_fonds=write_fonds, max_priority=priority,
+                            capabilities=capabilities_of(user), reader=None)
     scope = get_reader_scope(user)
     return frappe._dict(user=user, kind="reader", read_fonds=scope.fonds if scope.allowed else [], write_fonds=[],
                         max_priority=scope.max_priority, capabilities=frozenset(), reader=scope)
+
+
+def is_restricted(access) -> bool:
+    """Does this staff access narrow anything (fonds or level)?"""
+    return access.kind == "staff" and (access.read_fonds is not None or access.write_fonds is not None
+                                       or access.max_priority < UNLIMITED_PRIORITY)
+
+
+def assert_fonds_writable(*fonds: str, user: str | None = None) -> None:
+    """Raise PermissionError unless the user may change data of every one of `fonds` (staff scope)."""
+    access = get_access(user)
+    if access.kind == "admin":
+        return
+    if access.kind != "staff":
+        frappe.throw(_("Bạn không có quyền thay đổi dữ liệu này"), frappe.PermissionError)
+    for name in fonds:
+        if name and not fonds_in(access.write_fonds, name):
+            frappe.throw(_("Bạn không được giao sửa dữ liệu của phông {0}").format(name), frappe.PermissionError)
+
+
+def assert_all_fonds(user: str | None = None) -> None:
+    """Things that hold every fonds at once (a database backup, ...) are only for staff who read every fonds."""
+    access = get_access(user)
+    if access.kind == "staff" and access.read_fonds is not None:
+        frappe.throw(_("Chức năng này gồm dữ liệu của mọi phông: chỉ cán bộ được xem tất cả các phông mới dùng được"),
+                     frappe.PermissionError)
 
 
 def assert_feature(feature: str, user: str | None = None) -> frappe._dict:

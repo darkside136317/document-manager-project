@@ -26,7 +26,7 @@ function addItem(kind, value) {
   if (!value) return;
   const key = kind === "file" ? "archival_file" : "archive_document";
   if (!form.items.some((i) => i[key] === value && (kind === "file" ? !i.archive_document : true))) {
-    form.items.push({ [key]: value, archival_file: kind === "file" ? value : "", archive_document: kind === "document" ? value : "", copy_count: 1, label: value });
+    form.items.push({ [key]: value, archival_file: kind === "file" ? value : "", archive_document: kind === "document" ? value : "", copy_count: 1, copy_form: "Bản giấy", page_range: "", label: value });
   }
   if (kind === "file") form.file = "";
   else form.document = "";
@@ -41,7 +41,7 @@ async function save(submit) {
   try {
     const payload = JSON.stringify({
       reader: form.reader, purpose: form.purpose, notes: form.notes,
-      items: form.items.map((i) => ({ archival_file: i.archival_file, archive_document: i.archive_document, copy_count: i.copy_count })),
+      items: form.items.map((i) => ({ archival_file: i.archival_file, archive_document: i.archive_document, copy_count: i.copy_count, copy_form: i.copy_form, page_range: i.page_range })),
     });
     const result = await api.requests.save(info.value.doctype, payload, null, submit);
     emit("created", result.name);
@@ -77,13 +77,17 @@ async function save(submit) {
       </div>
       <div class="table-wrap rounded-md border border-line">
         <table class="data-table">
-          <thead><tr><th scope="col">Loại</th><th scope="col">Mã</th><th v-if="kind === 'copy'" scope="col" class="w-24">Số bản</th><th scope="col" class="w-10"><span class="sr-only">Bỏ</span></th></tr></thead>
+          <thead><tr><th scope="col">Loại</th><th scope="col">Mã</th><th v-if="kind === 'copy'" scope="col" class="w-24">Số bản</th><th v-if="kind === 'copy'" scope="col">Hình thức, trang</th><th scope="col" class="w-10"><span class="sr-only">Bỏ</span></th></tr></thead>
           <tbody>
             <tr v-if="!form.items.length"><td :colspan="kind === 'copy' ? 4 : 3" class="text-center text-ink-muted">Chưa chọn hồ sơ, văn bản nào</td></tr>
             <tr v-for="(item, index) in form.items" :key="index">
               <td>{{ item.archive_document ? "Văn bản" : "Hồ sơ" }}</td>
               <td class="font-medium">{{ item.archive_document || item.archival_file }}</td>
               <td v-if="kind === 'copy'"><input v-model.number="item.copy_count" class="input" type="number" min="1" :aria-label="`Số bản của ${item.label}`" /></td>
+              <td v-if="kind === 'copy'" class="space-y-1">
+                <select v-model="item.copy_form" class="input" :aria-label="`Hình thức sao của ${item.label}`"><option>Bản giấy</option><option>Bản số</option></select>
+                <input v-model="item.page_range" class="input" type="text" maxlength="60" placeholder="Trang: toàn bộ" :aria-label="`Trang cần sao của ${item.label}`" />
+              </td>
               <td><button class="btn btn-ghost btn-icon" type="button" :aria-label="`Bỏ ${item.label}`" @click="removeItem(index)"><Icon name="trash-2" :size="16" /></button></td>
             </tr>
           </tbody>
