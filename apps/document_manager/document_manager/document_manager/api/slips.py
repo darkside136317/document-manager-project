@@ -299,13 +299,7 @@ def receive_return(name, conditions=None):
 def renew(name):
     """Extend the due date of a slip in use by the renewal period, within the reader's renewal limit."""
     doc = _load_for_staff("usage", name, OFFICERS)
-    allowed, reason = lc.can_renew(doc)
-    if not allowed:
-        frappe.throw(reason)
-    doc.due_date = lc.next_due_date(doc)
-    doc.renewal_count = cint(doc.renewal_count) + 1
-    doc.is_overdue = 0
-    doc.save()
+    lc.renew(doc)
     log_activity("Cập nhật", doc.doctype, doc.name, f"Gia hạn đến {format_date(doc.due_date, 'dd/MM/yyyy')} (lần {doc.renewal_count})")
     user = frappe.db.get_value("Reader", doc.reader, "user")
     label, reader_route, _staff = SLIP_KINDS[doc.doctype]

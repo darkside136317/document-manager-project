@@ -67,40 +67,134 @@ def _lock_reader(profile: str):
     frappe.db.sql("select name from `tabReader` where name = %s for update", profile)
 
 
-def add_item(kind: str, name: str, target: str) -> dict:
-    spec = _target(target)
+def _result(doc, spec: dict, target: str, added: bool, message: str) -> dict:
+    return {"added": added, "request": doc.name, "target": target, "count": len(doc.items),
+            "keys": [item_key(r) for r in doc.items], "route": f"{spec['route']}/{doc.name}", "message": message}
+
+
+def _row_for(kind: str, name: str) -> dict:
+    """The slip row of a hồ sơ / văn bản the signed-in reader may read (one answer for missing and not allowed)."""
     if kind not in KINDS:
         frappe.throw(_("Loại tài liệu không hợp lệ"))
-    from document_manager.document_manager.permissions import assert_feature
-    assert_feature(spec["feature"])
-    profile = _profile()
-
     doctype = KINDS[kind]
-    # One answer for "missing" and "not allowed", so names cannot be probed.
     if not name or not frappe.db.exists(doctype, name) or not frappe.has_permission(doctype, "read", doc=name):
         frappe.throw(_("Không tìm thấy hồ sơ/văn bản hoặc bạn không có quyền khai thác"), frappe.PermissionError)
     if kind == "document":
-        row = {"archive_document": name, "archival_file": frappe.db.get_value("Archive Document", name, "archival_file")}
-    else:
-        row = {"archival_file": name}
+        return {"archive_document": name, "archival_file": frappe.db.get_value("Archive Document", name, "archival_file")}
+    return {"archival_file": name}
 
+
+def _add(profile: str, target: str, row: dict) -> dict:
+    """Put `row` in the reader's draft of `target`, creating the draft when there is none.
+
+    A document whose whole file is already in the draft is not added again; a whole file replaces the documents of it
+    already chosen. The slip's own rules (the reader's rights, copies allowed) run when the draft is saved."""
+    spec = _target(target)
     _lock_reader(profile)
     draft = _draft_name(profile, spec["doctype"])
-    if draft:
-        doc = frappe.get_doc(spec["doctype"], draft)
-        if any((r.archival_file or "") == (row.get("archival_file") or "")
-               and (r.archive_document or "") == (row.get("archive_document") or "") for r in doc.items):
-            return {"added": False, "request": doc.name, "target": target, "count": len(doc.items),
-                    "keys": [item_key(r) for r in doc.items],
-                    "route": f"{spec['route']}/{doc.name}", "message": _("Đã có trong {0}").format(spec["label"])}
-        doc.append("items", row)
-        doc.save()
-    else:
+    if not draft:
         doc = frappe.get_doc({"doctype": spec["doctype"], "items": [row]})
         doc.insert()
-    return {"added": True, "request": doc.name, "target": target, "count": len(doc.items),
-            "keys": [item_key(r) for r in doc.items],
-            "route": f"{spec['route']}/{doc.name}", "message": _("Đã thêm vào {0}").format(spec["label"])}
+        return _result(doc, spec, target, True, _("Đã thêm vào {0}").format(spec["label"]))
+    doc = frappe.get_doc(spec["doctype"], draft)
+    file, document = row.get("archival_file") or "", row.get("archive_document") or ""
+    for r in doc.items:
+        if (r.archival_file or "") == file and (r.archive_document or "") == document:
+            return _result(doc, spec, target, False, _("Đã có trong {0}").format(spec["label"]))
+        if document and (r.archival_file or "") == file and not r.archive_document:
+            return _result(doc, spec, target, False, _("Cả hồ sơ chứa văn bản này đã có trong {0}").format(spec["label"]))
+    message = _("Đã thêm vào {0}").format(spec["label"])
+    if not document:
+        covered = [r for r in doc.items if r.archive_document and (r.archival_file or "") == file]
+        if covered:
+            doc.set("items", [r for r in doc.items if r not in covered])
+            message = _("Đã thêm cả hồ sơ vào {0}, thay cho {1} văn bản đã chọn từ hồ sơ này").format(spec["label"], len(covered))
+    doc.append("items", row)
+    doc.save()
+    return _result(doc, spec, target, True, message)
+
+
+def add_item(kind: str, name: str, target: str) -> dict:
+    spec = _target(target)
+    from document_manager.document_manager.permissions import assert_feature
+    assert_feature(spec["feature"])
+    return _add(_profile(), target, _row_for(kind, name))
+
+
+def move_item(doctype: str, name: str, row: str, target: str) -> dict:
+    """Move one row of a draft to the reader's draft of the other kind (usage <-> copy), keeping its notes.
+    Nothing moves when the other kind refuses it (copies not allowed, the function not granted)."""
+    spec = _target(target)
+    from document_manager.document_manager.permissions import assert_feature
+    assert_feature(spec["feature"])
+    source = _own_draft(doctype, name)
+    if spec["doctype"] == doctype:
+        frappe.throw(_("Hồ sơ, văn bản đã ở trong phiếu này"))
+    moving = next((r for r in source.items if r.name == row), None)
+    if not moving:
+        frappe.throw(_("Không tìm thấy dòng trong phiếu nháp"))
+    result = _add(source.reader, target, {"archival_file": moving.archival_file, "archive_document": moving.archive_document,
+                                          "notes": moving.notes})
+    left = remove_item(doctype, name, row)
+    origin = next(key for key, value in TARGETS.items() if value["doctype"] == doctype)
+    return {**result, "message": _("Đã chuyển sang {0}").format(spec["label"]),
+            "source": {"target": origin, "request": left["request"], "count": left["count"], "keys": left["keys"]}}
+
+
+# items of a sent slip that a new slip may start from
+REUSABLE_ITEMS = ("Đã duyệt", "Đã giao", "Đã trả", "Đã hoàn thành")
+
+
+def start_from(doctype: str, name: str, target: str) -> dict:
+    """Put the items of one of the reader's slips into their draft of `target`: "Lập lại phiếu" (same kind) or
+    "Xin sao chụp" (copies of what a usage slip gave). Items this reader may no longer use, or that cannot be copied,
+    are left out and listed with the reason."""
+    spec = _target(target)
+    from document_manager.document_manager.permissions import assert_feature
+    assert_feature(spec["feature"])
+    if doctype not in {value["doctype"] for value in TARGETS.values()}:
+        frappe.throw(_("Loại phiếu không hợp lệ"), frappe.PermissionError)
+    profile = _profile()
+    if not frappe.db.exists(doctype, name) or frappe.db.get_value(doctype, name, "reader") != profile:
+        frappe.throw(_("Không tìm thấy phiếu"), frappe.PermissionError)
+    source = frappe.get_doc(doctype, name)
+    rows = source.items
+    if spec["doctype"] != doctype and source.docstatus == 1:  # copies of what was granted, not of what was refused
+        rows = [r for r in rows if r.get("item_status") in REUSABLE_ITEMS] or rows
+    added, already, skipped, result = 0, 0, [], None
+    for r in rows:
+        title = r.get("document_title") or r.archive_document or r.archival_file
+        frappe.db.savepoint("dm_start_from")
+        try:
+            kind = "document" if r.archive_document else "file"
+            result = _add(profile, target, _row_for(kind, r.archive_document or r.archival_file))
+            added += int(result["added"])
+            already += int(not result["added"])
+        except (frappe.ValidationError, frappe.PermissionError) as error:
+            frappe.db.rollback(save_point="dm_start_from")
+            frappe.clear_last_message()
+            skipped.append({"title": title, "reason": _clean(error)})
+    if result is None:
+        draft = _draft_name(profile, spec["doctype"])
+        result = _result(frappe.get_doc(spec["doctype"], draft), spec, target, False, "") if draft else \
+            {"request": None, "count": 0, "keys": [], "route": spec["route"], "target": target}
+    if added:
+        message = _("Đã đưa {0} hồ sơ, văn bản vào {1}").format(added, spec["label"])
+        if already:
+            message += _("; {0} mục đã có sẵn trong phiếu").format(already)
+    elif already:
+        message = _("Các hồ sơ, văn bản này đã có sẵn trong {0}").format(spec["label"])
+    else:
+        message = _("Không có hồ sơ, văn bản nào đưa được vào {0}").format(spec["label"])
+    return {**result, "added": added, "already": already, "skipped": skipped, "message": message}
+
+
+def _clean(error) -> str:
+    """A refusal as one line of plain text (server messages may carry HTML and line breaks)."""
+    import re
+
+    text = re.sub(r"<[^>]+>", "", str(error) or "").strip()
+    return " ".join(text.split())[:200] or _("Không đưa được vào phiếu")
 
 
 def _own_draft(doctype: str, name: str):

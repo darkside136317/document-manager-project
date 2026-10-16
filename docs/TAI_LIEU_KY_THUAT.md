@@ -457,12 +457,21 @@ stateDiagram-v2
 ```
 
 - **Giỏ** (`services/basket.py`): phiếu *Nháp* trên máy chủ, một phiếu mỗi loại mỗi độc giả; thêm/bớt mục bằng `api/basket.py`.
+  - Không giữ cùng lúc một hồ sơ và văn bản của chính hồ sơ đó: văn bản của hồ sơ đã có thì không thêm; thêm cả hồ sơ thì thay các văn bản của nó.
+  - `move_item` chuyển một dòng sang phiếu nháp loại kia (sử dụng ↔ sao chụp), giữ ghi chú; luật của phiếu đích (cho phép sao chụp) vẫn áp dụng.
+  - `start_from` tạo phiếu nháp từ một phiếu cũ: *Lập lại phiếu* (cùng loại) hoặc *Xin sao chụp* (các mục đã được duyệt của phiếu sử dụng);
+    mục không còn quyền hoặc không được sao bị bỏ qua và liệt kê kèm lý do.
+  - Phiếu nháp tự lưu: `save_request` nhận `item_updates` (sửa tại chỗ theo mã dòng) để không mất mục thêm từ tab khác.
+- **Biết trước**: `lifecycle.item_flags` cho mỗi kết quả tìm kiếm và mỗi dòng phiếu biết có sao chụp được không và có cần lãnh đạo duyệt không;
+  `lifecycle.quota` (hạn mức) và `lifecycle.terms` (cần lãnh đạo, số ngày giữ, gia hạn, hạn cấp phép) hiện trên phiếu nháp trước khi gửi.
 - **Gửi**: kiểm tính năng, hạn mức (`lifecycle.check_quota`: số phiếu/ngày, số mục/phiếu, số phiếu đang mở, chặn khi có phiếu quá hạn) và
   quyền của độc giả trên từng mục. `requires_leader` được tính theo `approval_mode` của nhóm độc giả và cờ `requires_leader_approval` của mức mật.
 - **Duyệt**: cán bộ phòng đọc quyết định **từng mục** (`api/slips.decide_items`: đồng ý hoặc từ chối có lý do), rồi thực hiện hành động
   workflow qua `api/requests.apply_action`. Mục hết quyền (cấp phép hết hạn hoặc bị thu hồi) chặn việc duyệt.
 - **Giao, trả, gia hạn**: `due_date` = ngày giao + số ngày giữ, không vượt ngày hết hạn cấp phép (`lifecycle.access_end`); gia hạn tối đa
-  `max_renewals` lần và cũng dừng ở ngày đó.
+  `max_renewals` lần và cũng dừng ở ngày đó (`lifecycle.renew`, dùng chung cho phòng đọc và độc giả).
+- **Độc giả tự gia hạn** (`api/basket.renew_slip`): cùng luật như tại quầy, thêm điều kiện phiếu chưa quá hạn và chưa chạm hạn cấp phép
+  (`lifecycle.can_self_renew`); chỉ ba trường gia hạn được đổi (`request_base.SELF_RENEWAL_FIELDS`), ghi nhật ký và báo cho người có `slips.receive`.
 - **Quá hạn** là cờ `is_overdue`, không phải trạng thái: job hằng ngày `overdue.mark_overdue_and_remind` đặt cờ và nhắc độc giả.
 - **Thông báo**: `services/notify.py` tạo Notification Log cho độc giả khi phiếu đổi trạng thái hoặc góp ý được trả lời; thông báo cho cán bộ
   gửi tới người có chức năng tương ứng (`notify_capability`).

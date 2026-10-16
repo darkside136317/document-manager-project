@@ -150,6 +150,82 @@ def can_renew(doc) -> tuple[bool, str]:
     return True, ""
 
 
+def can_self_renew(doc) -> tuple[bool, str]:
+    """(allowed, reason it is not) for a reader renewing their own slip online: the same limit as at the counter, and
+    neither an overdue slip (the reading room decides) nor one already at the end of the reader's access to a fonds."""
+    allowed, reason = can_renew(doc)
+    if not allowed:
+        return False, reason
+    if doc.due_date and getdate(doc.due_date) < getdate(nowdate()):
+        return False, _("Phiếu đã quá hạn trả: vui lòng liên hệ phòng đọc để gia hạn")
+    end = access_end(doc)
+    if end and end <= getdate(doc.due_date or nowdate()):
+        return False, _("Quyền khai thác phông của bạn hết hạn ngày {0}: không gia hạn thêm được").format(end.strftime("%d/%m/%Y"))
+    return True, ""
+
+
+def renew(doc) -> None:
+    """Extend a slip in use by the renewal period (within the limit and the reader's access) and save it.
+    The caller checks who may renew; a reader renewing online is checked with `can_self_renew` first."""
+    allowed, reason = can_renew(doc)
+    if not allowed:
+        frappe.throw(reason)
+    doc.due_date = next_due_date(doc)
+    doc.renewal_count = cint(doc.renewal_count) + 1
+    doc.is_overdue = 0
+    doc.save()
+
+
+def item_flags(rows, profile: str | None) -> dict:
+    """What a reader learns about a hồ sơ / văn bản before adding it to a slip, by (fonds, level):
+    {"can_copy": bool, "needs_leader": bool}. `rows` carry `fonds` and `confidentiality_level`."""
+    keys = {(r.get("fonds"), r.get("confidentiality_level")) for r in rows}
+    fonds_copy = {f.name: bool(cint(f.allow_copy)) for f in frappe.get_all(
+        "Fonds", filters={"name": ["in", [k[0] for k in keys if k[0]] or [""]]}, fields=["name", "allow_copy"])}
+    levels = {lv.name: lv for lv in frappe.get_all(
+        "Confidentiality Level", filters={"name": ["in", [k[1] for k in keys if k[1]] or [""]]},
+        fields=["name", "allow_copy", "requires_leader_approval"])}
+    mode = get_limits(profile).approval_mode if profile else ""
+    out = {}
+    for fonds, level in keys:
+        lv = levels.get(level)
+        if mode == "Luôn qua lãnh đạo":
+            leader = True
+        elif mode == "Chỉ phòng đọc duyệt":
+            leader = False
+        else:
+            leader = bool(lv and cint(lv.requires_leader_approval))
+        out[(fonds, level)] = {"can_copy": fonds_copy.get(fonds, True) and (not lv or bool(cint(lv.allow_copy))),
+                               "needs_leader": leader}
+    return out
+
+
+def terms(doc) -> list[str]:
+    """What the reader should know before sending: how long documents are kept and renewed, until when each licensed
+    fonds of the items may be used, and whether a leader must approve."""
+    from document_manager.document_manager.policy import reader_scope_of
+
+    lines = []
+    if doc.items and needs_leader(doc):
+        lines.append(_("Phiếu có tài liệu cần lãnh đạo duyệt, nên thời gian xử lý có thể lâu hơn."))
+    if doc.doctype == USAGE:
+        limits = get_limits(doc.reader)
+        text = _("Tài liệu được giữ tại phòng đọc {0} ngày kể từ khi bạn nhận").format(limits.hold_days)
+        if limits.max_renewals:
+            text += _("; gia hạn trực tuyến tối đa {0} lần, mỗi lần {1} ngày").format(limits.max_renewals, limits.renewal_days)
+        lines.append(text + ".")
+    until = (reader_scope_of(doc.reader).fonds_until or {}) if doc.reader else {}
+    ends = {}
+    for row in doc.items:
+        fonds = item_fonds(row)
+        if fonds and until.get(fonds):
+            ends[fonds] = getdate(until[fonds])
+    for fonds, end in sorted(ends.items(), key=lambda kv: kv[1]):
+        name = frappe.db.get_value("Fonds", fonds, "fonds_name") or fonds
+        lines.append(_("Bạn được khai thác {0} đến ngày {1}: hạn trả không vượt quá ngày này.").format(name, end.strftime("%d/%m/%Y")))
+    return lines
+
+
 def next_due_date(doc):
     """Renewal adds days to the later of the current due date and today (an overdue slip is not
     extended into the past)."""

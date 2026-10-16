@@ -70,7 +70,7 @@ def _meta(doctype: str, name: str) -> dict:
         return {"unavailable": bool(name)}
     number_field = "document_number" if doctype == "Archive Document" else "file_number"
     values = frappe.db.get_value(doctype, name, [number_field, "fonds", "confidentiality_level"], as_dict=True) or {}
-    return {"number": values.get(number_field) or "", "level": values.get("confidentiality_level") or "",
+    return {"number": values.get(number_field) or "", "level": values.get("confidentiality_level") or "", "fonds": values.get("fonds") or "",
             "fonds_name": frappe.db.get_value("Fonds", values.get("fonds"), "fonds_name") if values.get("fonds") else "",
             "unavailable": False}
 
@@ -94,6 +94,30 @@ def _item_rows(doc) -> list[dict]:
     return rows
 
 
+# a finished slip may be filed again; a usage slip that was granted may ask for copies of what it gave
+FINISHED = ("Đã trả", "Đã hoàn thành", "Từ chối", "Đã hủy")
+GRANTED = ("Đã duyệt", "Đang sử dụng", "Đã trả")
+
+
+def _flag_items(items: list[dict], profile: str | None) -> None:
+    """Mark the rows a leader will have to approve, and the rows that cannot be copied."""
+    readable = [{"fonds": i.get("fonds"), "confidentiality_level": i.get("level")} for i in items if not i.get("unavailable")]
+    flags = lc.item_flags(readable, profile) if profile and readable else {}
+    for item in items:
+        item.update(flags.get((item.get("fonds"), item.get("level")), {"can_copy": True, "needs_leader": False}))
+
+
+def _next_steps(cfg: dict, key: str, doc, state: str, scope) -> dict:
+    """What the reader may do next with a sent slip: renew it online, file it again, ask for copies of what it gave."""
+    out = {"renew": None, "again": False, "copies": False}
+    if key == "usage" and state == "Đang sử dụng":
+        allowed, reason = lc.can_self_renew(doc)
+        out["renew"] = {"allowed": allowed, "reason": reason, "days": lc.get_limits(doc.reader).renewal_days}
+    out["again"] = state in FINISHED and bool(scope.get("can_request_usage" if key == "usage" else "can_request_copy"))
+    out["copies"] = key == "usage" and state in GRANTED and bool(scope.get("can_request_copy"))
+    return out
+
+
 def slip_context(context, key: str):
     cfg = CONFIG[key]
     require_reader()
@@ -112,9 +136,14 @@ def slip_context(context, key: str):
         actions = {a["action"] for a in get_actions(cfg["doctype"], name)}
         options = templates.slip_options_for(cfg["doctype"])
         items = _item_rows(doc)
+        _flag_items(items, scope.profile)
         slip_quota = lc.quota(doc) if editable else frappe._dict(problems=[], notes=[])
+        other = "copy" if key == "usage" else "usage"
         context.update({
-            "doc": doc, "state": state, "steps": _steps(cfg, state, bool(cint(doc.requires_leader))), "editable": editable, "items": items,
+            "doc": doc, "state": state, "editable": editable, "items": items,
+            "steps": _steps(cfg, state, bool(cint(doc.requires_leader)) or (editable and bool(doc.items) and lc.needs_leader(doc))),
+            "terms": lc.terms(doc) if editable else [],
+            "next_steps": _next_steps(cfg, key, doc, state, scope) if not editable else {},
             "reader_name": doc.reader_name or frappe.db.get_value("Reader", doc.reader, "full_name") or doc.reader,
             "due_date": format_date(doc.get("due_date"), "dd/MM/yyyy") if doc.get("due_date") else "",
             "overdue": bool(doc.get("due_date") and state == "Đang sử dụng" and getdate(doc.due_date) < getdate(nowdate())),
@@ -132,7 +161,10 @@ def slip_context(context, key: str):
                 "items": items, "listUrl": cfg["base"], "target": key, "requirePurpose": options.require_purpose,
                 "purposes": options.purposes or [], "maxItems": lc.get_limits(doc.reader).max_items_per_request,
                 "blocked": bool(slip_quota.problems),
+                "other": {"target": other, "label": CONFIG[other]["noun"],
+                          "allowed": bool(scope.get("can_request_copy" if other == "copy" else "can_request_usage"))},
             }),
+            "actions_config": inline_json({"doctype": cfg["doctype"], "name": doc.name, "listUrl": cfg["base"]}),
             "title": f"{cfg['title']} {doc.name}",
         })
         return context

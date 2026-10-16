@@ -259,6 +259,10 @@ def reader_management(c, api):
     check("an unknown slip is a clean error", status in (404, 417), str(status))
     check("a reader's card and slips are staff only",
           all(c[k].json(api + "slips.reader_slips?reader=RD-1")[0] in (401, 403) for k in ("reader", "noprofile", "guest")))
+    for endpoint, payload in (("basket.renew_slip", {"name": "UR-NOPE"}), ("basket.start_from", {"doctype": "Usage Request", "name": "UR-NOPE", "target": "usage"}),
+                              ("basket.move_item", {"doctype": "Usage Request", "name": "UR-NOPE", "row": "x", "target": "copy"})):
+        statuses = [c[k].post_json(api + endpoint, payload)[0] for k in ("guest", "noprofile", "officer")]
+        check(f"only a reader's own slips: {endpoint}", all(st in (401, 403) for st in statuses), str(statuses))
     check("only the reading room prepares a slip for a reader at the counter",
           all(c[k].post_json(api + "slips.prepare_slip", {"kind": "usage", "items": "[]"})[0] in (401, 403)
               for k in ("reader", "noprofile", "guest", "leader"))

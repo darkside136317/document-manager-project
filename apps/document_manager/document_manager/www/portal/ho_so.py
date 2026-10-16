@@ -18,6 +18,13 @@ def _label(doctype, name, field):
     return (frappe.db.get_value(doctype, name, field) or name) if name else ""
 
 
+def _flags(profile, fonds, level) -> dict:
+    """Whether this item can be copied and whether a leader must approve it, told before it is added to a slip."""
+    from document_manager.document_manager.services import lifecycle as lc
+
+    return lc.item_flags([{"fonds": fonds, "confidentiality_level": level}], profile).get((fonds, level), {}) if profile else {}
+
+
 def get_context(context):
     require_reader()
     name = frappe.form_dict.get("name")
@@ -51,5 +58,6 @@ def get_context(context):
         ) if value],
         "documents": documents, "total": total, "page": page, "pages": max(1, -(-total // PAGE_SIZE)),
         "can_add": {"usage": bool(scope.profile and scope.can_request_usage), "copy": bool(scope.profile and scope.can_request_copy)},
+        "flags": _flags(scope.profile, doc.fonds, doc.confidentiality_level),
     })
     return context

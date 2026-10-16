@@ -36,6 +36,9 @@ def _signature(doc) -> list:
              row.get("decision_note"), row.get("return_condition")) for row in doc.get("items") or []]
 
 
+SELF_RENEWAL_FIELDS = ("due_date", "renewal_count", "is_overdue")
+
+
 class RequestDocument(Document):
     # Set by subclasses: state name -> datetime field stamped on entering that state.
     final_state_field: dict[str, str] = {}
@@ -90,8 +93,10 @@ class RequestDocument(Document):
     def _guard_protected_fields(self):
         if is_staff() or self.is_new():
             return
+        # a reader renewing online (api.basket.renew_slip, after lifecycle.can_self_renew) changes these and nothing else
+        allowed = SELF_RENEWAL_FIELDS if self.flags.get("dm_self_renewal") else ()
         for fieldname in ("reader", *STAFF_ONLY_FIELDS):
-            if self.has_value_changed(fieldname):
+            if fieldname not in allowed and self.has_value_changed(fieldname):
                 frappe.throw(_("Bạn không được sửa trường {0}").format(self.meta.get_label(fieldname)),
                              frappe.PermissionError)
         before = self.get_doc_before_save()

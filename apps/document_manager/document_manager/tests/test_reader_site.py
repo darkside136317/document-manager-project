@@ -315,22 +315,21 @@ class TestReaderSite(IntegrationTestCase):
     # ---------------------------------------------------------------- basket
     def test_adding_to_the_basket_builds_one_open_draft(self):
         frappe.set_user(READER_A)
-        first = basket_api.add_to_basket("file", self.file_ok, "usage")
+        first = basket_api.add_to_basket("document", self.doc_ok, "usage")
         self.assertTrue(first["added"])
         self.assertEqual(first["count"], 1)
-        again = basket_api.add_to_basket("file", self.file_ok, "usage")
-        self.assertFalse(again["added"])  # the same item twice is a no-op
-        self.assertEqual(again["request"], first["request"])
-        doc_added = basket_api.add_to_basket("document", self.doc_ok, "usage")
-        self.assertTrue(doc_added["added"])
-        self.assertEqual(doc_added["count"], 2)
         draft = frappe.get_doc("Usage Request", first["request"])
         self.assertEqual((draft.docstatus, draft.reader, draft.workflow_state), (0, self.profile_a, "Nháp"))
-        row = [r for r in draft.items if r.archive_document][0]
-        self.assertEqual(row.archival_file, self.file_ok)  # the document's file is filled in
+        self.assertEqual(draft.items[0].archival_file, self.file_ok)  # the document's file is filled in
+        again = basket_api.add_to_basket("document", self.doc_ok, "usage")
+        self.assertFalse(again["added"])  # the same item twice is a no-op
+        self.assertEqual(again["request"], first["request"])
+        whole = basket_api.add_to_basket("file", self.file_ok, "usage")  # the whole file takes the place of its document
+        self.assertEqual((whole["added"], whole["count"], whole["keys"]), (True, 1, [f"file:{self.file_ok}"]))
+        self.assertFalse(basket_api.add_to_basket("document", self.doc_ok, "usage")["added"])  # already in, with its file
         self.assertEqual(frappe.db.count("Usage Request", {"reader": self.profile_a, "docstatus": 0}), 1)
         summary = basket_api.get_basket()
-        self.assertEqual((summary["usage"]["count"], summary["usage"]["name"]), (2, first["request"]))
+        self.assertEqual((summary["usage"]["count"], summary["usage"]["name"]), (1, first["request"]))
         self.assertEqual(summary["copy"]["count"], 0)
 
     def test_copy_and_usage_baskets_are_separate(self):
@@ -373,9 +372,11 @@ class TestReaderSite(IntegrationTestCase):
             basket_api.add_to_basket("file", self.file_secret, "usage")
 
     def test_removing_rows_and_discarding(self):
+        second = frappe.get_doc({"doctype": "Archive Document", "document_title": "RS văn bản thứ hai",
+                                 "archival_file": self.file_ok}).insert(ignore_permissions=True).name
         frappe.set_user(READER_A)
-        added = basket_api.add_to_basket("file", self.file_ok, "usage")
-        basket_api.add_to_basket("document", self.doc_ok, "usage")
+        added = basket_api.add_to_basket("document", self.doc_ok, "usage")
+        basket_api.add_to_basket("document", second, "usage")
         draft = frappe.get_doc("Usage Request", added["request"])
         result = basket_api.remove_from_basket("Usage Request", draft.name, draft.items[0].name)
         self.assertEqual(result["count"], 1)

@@ -291,14 +291,19 @@ số ngày gia hạn (E8).
 **F7 Quá hạn.** Giới thiệu tab *Quá hạn* và công việc hằng ngày: đánh dấu phiếu quá hạn, nhắc độc giả trước hạn; quá hạn là cờ, không phải trạng thái.
 (Muốn thấy dữ liệu thật ở tab này cần phiếu đã quá hạn từ hôm trước, xem mục 5.)
 
-**F8 Độc giả theo dõi.** W2: chuông thông báo có tin ở mỗi bước (tiếp nhận, duyệt, giao, trả); `/portal/phieu/<số phiếu>` thấy kết quả từng mục, hạn trả.
+**F8 Độc giả theo dõi, tự gia hạn, lập lại.** W2: chuông thông báo có tin ở mỗi bước (tiếp nhận, duyệt, giao, trả); `/portal/phieu/<số phiếu>` thấy kết quả
+từng mục, hạn trả. Phiếu *Đang sử dụng* có nút **Gia hạn thêm N ngày**: độc giả tự gia hạn trong giới hạn số lần, không vượt hạn cấp phép, không áp dụng
+khi đã quá hạn; phòng đọc nhận thông báo. Phiếu đã trả, bị từ chối hoặc đã hủy có nút **Lập lại phiếu** (đưa lại các mục còn quyền vào phiếu nháp).
 Độc giả *Hủy phiếu* được khi phiếu chưa ai quyết định.
 
 ### Phần G – Phiếu sao chụp (7 phút)
 
 **G1 ★ Độc giả lập phiếu sao chụp.** W2 (An): *Thêm vào phiếu sao chụp* cho văn bản "Quyet dinh 123" → mở *Phiếu sao chụp*: *Số bản* 2, *Hình thức* *Bản số*,
-*Trang* "1–2", mục đích → *Gửi yêu cầu*. Thử thêm văn bản *Mật* vào phiếu sao chụp → bị từ chối.
-- *Mong đợi:* chỉ sao chụp được tài liệu của phông *Cho phép sao chụp* và mức mật *Cho phép sao chụp* (mặc định chỉ *Thường*).
+*Trang* "1–2", mục đích → *Gửi yêu cầu*. Ở kết quả tìm, văn bản *Mật* có nút **Không được sao chụp** (bị khóa) và nhãn *Cần lãnh đạo duyệt*.
+Hai cách khác để lập phiếu sao chụp: trong phiếu sử dụng nháp, nút **Sang phiếu sao chụp** trên từng dòng; trên phiếu sử dụng đã được duyệt,
+nút **Xin sao chụp các tài liệu này**.
+- *Mong đợi:* chỉ sao chụp được tài liệu của phông *Cho phép sao chụp* và mức mật *Cho phép sao chụp* (mặc định chỉ *Thường*); độc giả biết điều này
+  trước khi bấm, không phải đợi đến khi gửi.
 
 **G2 ★ Duyệt và hoàn thành.** W1 (`phongdoc.demo`): *Khai thác tài liệu → Phiếu sao chụp* → mở → quyết định mục → *Lưu quyết định* → *Chuyển lãnh đạo*.
 W3 (`lanhdao.demo`): *Duyệt*. W1: *Hoàn thành* → *In phiếu* / *PDF*. Thêm: *Lập phiếu cho độc giả* (phiếu sao chụp), sửa và xóa nháp, tìm phiếu.

@@ -31,7 +31,10 @@
 
 {#- A button that puts a hồ sơ / văn bản in the reader's draft slip, or opens the draft when it is already in it.
     `kind` "file" | "document", `target` "usage" | "copy"; `short` for the narrow rows of a table. -#}
-{% macro add_to_slip(kind, name, target, classes="btn", short=False) -%}
+{% macro add_to_slip(kind, name, target, classes="btn", short=False, blocked="") -%}
+{%- if blocked -%}
+<button class="{{ classes }}" type="button" disabled title="{{ blocked }}" aria-label="{{ blocked }}">{{ icon("copy") }} Không được sao chụp</button>
+{%- else -%}
 {%- set noun = "phiếu sử dụng" if target == "usage" else "phiếu sao chụp" -%}
 {%- set key = "$store.basket.has('" ~ target ~ "', '" ~ kind ~ "', " ~ (name | tojson) ~ ")" -%}
 <button class="{{ classes }}" type="button" :class="{ 'btn-added': {{ key | forceescape }} }" :disabled="$store.basket.busy"
@@ -40,4 +43,10 @@
   <span x-show="!{{ key | forceescape }}">{{ icon("plus" if target == "usage" else "copy") }} {{ "Thêm vào phiếu" if short else "Thêm vào " ~ noun }}</span>
   <span x-show="{{ key | forceescape }}" x-cloak>{{ icon("check") }} {{ "Đã trong phiếu" if short else "Đã có trong " ~ noun }}</span>
 </button>
+{%- endif -%}
+{%- endmacro %}
+
+{#- Badge telling a reader that a leader will have to approve this item. -#}
+{% macro leader_badge(flags) -%}
+{%- if flags and flags.needs_leader %}<span class="badge badge-warning" title="Tài liệu này cần lãnh đạo duyệt khi lập phiếu sử dụng">Cần lãnh đạo duyệt</span>{% endif -%}
 {%- endmacro %}
