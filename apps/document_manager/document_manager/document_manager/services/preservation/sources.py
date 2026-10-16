@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-"""Where the bytes of a document live: the private file on disk (the working copy) and the GridFS copy in MongoDB.
+"""Where the bytes of a document live: the private file on disk and its MinIO copy.
 
-Reading prefers the disk, then GridFS. Nothing here raises for a missing source: the callers decide what a
+Reading prefers the disk, then MinIO. Nothing here raises for a missing source: the callers decide what a
 missing or unreadable file means (an error in a backup, a finding in a check).
 """
 
@@ -20,15 +20,20 @@ def sha256(content: bytes) -> str:
     return hashlib.sha256(content).hexdigest()
 
 
-def mongo_available() -> tuple[bool, str]:
-    """(reachable, reason) of the GridFS server; remembered for a minute so a long run pings it once."""
+def object_available() -> tuple[bool, str]:
+    """(reachable, reason) of MinIO; remembered for a minute so a long run probes it once."""
+    from document_manager.document_manager.services.object_storage import configured
+
+    if not configured():
+        return False, "Đã tắt"
     now = time.monotonic()
     if now - _probe["at"] < PROBE_TTL and _probe["at"]:
         return _probe["ok"], _probe["message"]
     try:
-        from document_manager.document_manager.services.mongodb_storage import _get_database
+        from document_manager.document_manager.services.object_storage import ObjectStorage
 
-        _get_database().client.admin.command("ping")
+        storage = ObjectStorage()
+        storage.client.head_bucket(Bucket=storage.bucket)
         _probe.update(at=now, ok=True, message="")
     except Exception as e:
         from document_manager.document_manager.services.health import _short
@@ -70,37 +75,37 @@ def read_disk(file_url: str) -> bytes | None:
 
 
 def read_gridfs(file_id: str) -> bytes | None:
-    if not file_id or not mongo_available()[0]:
+    if not file_id or not file_id.startswith("minio:") or not object_available()[0]:
         return None
     try:
-        from document_manager.document_manager.services.mongodb_storage import MongoGridFSStorage
+        from document_manager.document_manager.services.object_storage import ObjectStorage
 
-        storage = MongoGridFSStorage(collection_name="documents")
+        storage = ObjectStorage(collection_name="documents")
         return storage.download_file(file_id) if storage.file_exists(file_id) else None
     except Exception:
-        log_exception("Preservation", f"Could not read GridFS file {file_id}")
+        log_exception("Preservation", f"Could not read MinIO object {file_id}")
         return None
 
 
 def gridfs_exists(file_id: str) -> bool | None:
-    """True/False when MongoDB answers, None when it cannot be asked."""
-    if not file_id or not mongo_available()[0]:
+    """True/False when MinIO answers, None when it cannot be asked."""
+    if not file_id or not file_id.startswith("minio:") or not object_available()[0]:
         return None
     try:
-        from document_manager.document_manager.services.mongodb_storage import MongoGridFSStorage
+        from document_manager.document_manager.services.object_storage import ObjectStorage
 
-        return bool(MongoGridFSStorage(collection_name="documents").file_exists(file_id))
+        return bool(ObjectStorage(collection_name="documents").file_exists(file_id))
     except Exception:
         return None
 
 
 def read_document(row) -> tuple[bytes | None, str]:
-    """(bytes, source) of a document's file: "disk" or "gridfs"; (None, "") when neither can be read."""
+    """(bytes, source) of a document's file: "disk" or "minio"; (None, "") when neither can be read."""
     content = read_disk(row.get("file_attachment"))
     if content is not None:
         return content, "disk"
     content = read_gridfs(row.get("gridfs_file_id"))
-    return (content, "gridfs") if content is not None else (None, "")
+    return (content, "minio") if content is not None else (None, "")
 
 
 def filename_of(row) -> str:

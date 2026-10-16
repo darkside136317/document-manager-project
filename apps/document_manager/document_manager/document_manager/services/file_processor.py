@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """File processing worker — extract text from uploaded documents.
 
-Pipeline: upload → extract text (PDF/DOCX/XLSX) → store in MongoDB Atlas GridFS →
+Pipeline: upload → extract text (PDF/DOCX/XLSX) → store in MinIO when configured →
 compute checksum → index in Meilisearch.
 
 Called via frappe.enqueue from doc_events hooks. Jobs are enqueued *after the request commits*
@@ -21,7 +21,7 @@ TEXT_LIMIT = 65000  # MariaDB TEXT column
 
 
 def extract_and_store(doc_name: str):
-    """Main pipeline: extract text from file, store in GridFS, index in Meilisearch.
+    """Main pipeline: extract text from file, store in MinIO, index in Meilisearch.
 
     Args:
         doc_name: Archive Document name
@@ -60,15 +60,17 @@ def extract_and_store(doc_name: str):
         elif file_type == "XLSX":
             content_text = _extract_text_xlsx(file_content)
 
-        # 4. Store file in MongoDB Atlas GridFS
+        # 4. Store an object when production MinIO is configured.
         gridfs_file_id = ""
         previous_file_id = doc.gridfs_file_id
-        try:
-            from document_manager.document_manager.services.mongodb_storage import upload_document_file
-            filename = doc.file_attachment.rsplit("/", 1)[-1] if "/" in doc.file_attachment else doc.file_attachment
-            gridfs_file_id = upload_document_file(doc_name, file_content, filename)
-        except Exception:
-            log_exception("File Storage Error", f"GridFS upload failed for {doc_name}")
+        from document_manager.document_manager.services.object_storage import configured
+        if configured():
+            try:
+                from document_manager.document_manager.services.object_storage import upload_document_file
+                filename = doc.file_attachment.rsplit("/", 1)[-1] if "/" in doc.file_attachment else doc.file_attachment
+                gridfs_file_id = upload_document_file(doc_name, file_content, filename)
+            except Exception:
+                log_exception("File Storage Error", f"MinIO upload failed for {doc_name}")
 
         # 5. Update document record
         update_values = {
@@ -88,8 +90,8 @@ def extract_and_store(doc_name: str):
 
         # The replaced file is garbage now (never delete before the new one is recorded).
         if gridfs_file_id and previous_file_id and previous_file_id != gridfs_file_id:
-            from document_manager.document_manager.services.mongodb_storage import delete_gridfs_files
-            delete_gridfs_files([previous_file_id])
+            from document_manager.document_manager.services.object_storage import delete_object_files
+            delete_object_files([previous_file_id])
 
         # 6. Index in Meilisearch
         try:

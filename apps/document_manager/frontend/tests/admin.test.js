@@ -154,6 +154,7 @@ describe("administration helpers", () => {
   it("colours the monitor figures", () => {
     expect(serviceTone({ ok: true })).toBe("success");
     expect(serviceTone({ ok: false })).toBe("danger");
+    expect(serviceTone({ ok: true, disabled: true })).toBe("muted");
     expect(diskTone({ used_percent: 95 })).toBe("danger");
     expect(diskTone({ used_percent: 80 })).toBe("warning");
     expect(diskTone({ used_percent: 20 })).toBe("success");

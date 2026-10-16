@@ -1,3 +1,5 @@
+boto3>=1.34.0,<2
+# Used only while importing legacy GridFS-only files during a production cutover.
 pymongo>=4.6.0
 dnspython>=2.0.0
 meilisearch>=0.31.0

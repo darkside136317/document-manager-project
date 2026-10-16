@@ -1,7 +1,7 @@
 # =============================================================================
 # Docker Compose PRODUCTION Override
 # =============================================================================
-# Usage: docker compose --env-file .env.prod -f docker-compose.yml -f docker-compose.prod.yml up -d
+# Usage: python3 ../scripts/prod_compose.py up -d
 # This overrides the base compose with production-specific settings.
 # =============================================================================
 
@@ -18,6 +18,8 @@ services:
   frontend:
     image: docmanager-custom:${ERPNEXT_VERSION:?}
     restart: always
+    # The sites volume contains private uploads on the host SSD. Nginx only
+    # needs read access; backend and workers retain write access in the base file.
     volumes:
       - sites:/home/frappe/frappe-bench/sites:ro
     ports:

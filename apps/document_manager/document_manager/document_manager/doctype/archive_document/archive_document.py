@@ -4,7 +4,7 @@ import frappe
 from frappe.model.document import Document
 
 from document_manager.document_manager.services.archive.counters import refresh_file_document_count
-from document_manager.document_manager.services.mongodb_storage import enqueue_delete_gridfs_files
+from document_manager.document_manager.services.object_storage import enqueue_delete_object_files
 from document_manager.document_manager.services.archive.locks import assert_move_allowed, assert_unlocked
 
 
@@ -17,7 +17,7 @@ class ArchiveDocument(Document):
     """Văn bản/Tài liệu — Tầng 5 (leaf) trong mô hình phân cấp.
 
     Là đơn vị chứa file thực tế (PDF/DOCX/XLSX/ảnh).
-    Tích hợp với MongoDB Atlas GridFS để lưu file gốc và Meilisearch để full-text search.
+    Tích hợp với MinIO để lưu bản đối tượng và Meilisearch để full-text search.
     """
 
     def validate(self):
@@ -33,9 +33,9 @@ class ArchiveDocument(Document):
 
     def after_delete(self):
         refresh_file_document_count(self.archival_file)
-        # The bytes in GridFS are released only after the deletion has been committed.
-        enqueue_delete_gridfs_files([self.gridfs_file_id], "documents")
-        enqueue_delete_gridfs_files([self.gridfs_preview_id], "previews")
+        # The object is released only after the deletion has been committed.
+        enqueue_delete_object_files([self.gridfs_file_id], "documents")
+        enqueue_delete_object_files([self.gridfs_preview_id], "previews")
 
     def _detect_file_type(self):
         """Tự động phát hiện loại file từ phần mở rộng."""

@@ -117,7 +117,7 @@ class TestPreservation(IntegrationTestCase):
         frappe.set_user(ADMIN)
         frappe.db.savepoint("pv_test")
         sources.forget_probe()
-        patcher = patch.object(sources, "mongo_available", return_value=(False, "không kết nối"))
+        patcher = patch.object(sources, "object_available", return_value=(False, "không kết nối"))
         patcher.start()
         self.addCleanup(patcher.stop)
 
@@ -380,7 +380,7 @@ class TestPreservation(IntegrationTestCase):
         self.assertEqual(by_doc[self.documents[0]], {"FILE_MISSING"})
         self.assertEqual(by_doc[self.documents[1]], {"CHECKSUM"})
         self.assertEqual(by_doc[self.documents[2]], {"TYPE_MISMATCH"})
-        self.assertEqual((check.status, check.errors_found, check.warnings_found, check.total_checked), ("Phát hiện lỗi", 2, 2, 3))  # + MongoDB is down here
+        self.assertEqual((check.status, check.errors_found, check.warnings_found, check.total_checked), ("Phát hiện lỗi", 2, 1, 3))
         self.assertTrue(all(not f.restorable for f in self.findings(check)))  # there is no backup yet
 
     def test_a_finding_says_whether_a_backup_could_restore_it(self):
@@ -399,12 +399,13 @@ class TestPreservation(IntegrationTestCase):
         self.assertIn("FILE_EMPTY", codes)
         self.assertEqual(check.total_checked, 1)  # only the document with a file is a file to check
 
-    def test_without_mongodb_the_check_says_so_and_with_it_gridfs_is_checked(self):
+    def test_disabled_minio_is_not_reported_down_and_enabled_objects_are_checked(self):
         self.attach_all()
         down = self.run_check()
-        self.assertTrue(any(f.code == "MONGO_DOWN" for f in self.findings(down)))
-        frappe.db.set_value("Archive Document", self.documents[0], "gridfs_file_id", "abc123")
-        with patch.object(sources, "mongo_available", return_value=(True, "")), patch.object(sources, "gridfs_exists", return_value=False):
+        self.assertFalse(any(f.code == "MONGO_DOWN" for f in self.findings(down)))
+        frappe.db.set_value("Archive Document", self.documents[0], "gridfs_file_id", "minio:abc123")
+        with patch("document_manager.document_manager.services.object_storage.configured", return_value=True), \
+             patch.object(sources, "object_available", return_value=(True, "")), patch.object(sources, "gridfs_exists", return_value=False):
             up = self.run_check()
             links = self.run_check("Liên kết file-metadata")
         self.assertEqual([f.document for f in self.findings(up, "GRIDFS_MISSING")], [self.documents[0]])

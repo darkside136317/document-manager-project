@@ -180,7 +180,7 @@ export function prettyJson(text) {
 // --- the monitor ----------------------------------------------------------------------------------------------------
 
 export function serviceTone(service) {
-  return service?.ok ? "success" : "danger";
+  return service?.disabled ? "muted" : service?.ok ? "success" : "danger";
 }
 
 export function diskTone(disk) {

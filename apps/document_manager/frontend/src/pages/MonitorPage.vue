@@ -44,9 +44,9 @@ const toneText = { success: "text-success", warning: "text-warning", danger: "te
     <section class="card px-4 py-4" aria-label="Dịch vụ">
       <h2 class="m-0 mb-3 flex items-center gap-2 text-sm font-semibold"><Icon name="server" :size="16" /> Dịch vụ</h2>
       <p v-for="(service, name) in data.services" :key="name" class="m-0 mb-2 text-sm">
-        <span class="font-medium">{{ name === "mongodb" ? "MongoDB Atlas (GridFS)" : "Meilisearch" }}</span>:
-        <span :class="toneText[serviceTone(service)]">{{ service.ok ? "Kết nối được" : "Không kết nối" }}</span>
-        <span class="block text-xs text-ink-muted">{{ service.ok ? (name === "mongodb" ? `${formatNumber(service.files)} tệp` : `${formatNumber(service.documents)} văn bản trong chỉ mục`) : service.message }}</span>
+        <span class="font-medium">{{ name === "minio" ? "MinIO" : "Meilisearch" }}</span>:
+        <span :class="toneText[serviceTone(service)]">{{ service.disabled ? "Đã tắt" : service.ok ? "Kết nối được" : "Không kết nối" }}</span>
+        <span class="block text-xs text-ink-muted">{{ service.disabled ? service.message : service.ok ? (name === "minio" ? "Kho tệp sẵn sàng" : `${formatNumber(service.documents)} văn bản trong chỉ mục`) : service.message }}</span>
       </p>
     </section>
 

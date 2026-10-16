@@ -149,7 +149,7 @@ def backup_index() -> dict:
     return index
 
 
-def check_file(row, tests: set, available: dict, mongo: bool) -> list[tuple]:
+def check_file(row, tests: set, available: dict, object_store: bool) -> list[tuple]:
     """Problems of one document's file: [(code, severity, message, restorable)]."""
     out = []
     restorable = row.name in available
@@ -158,10 +158,10 @@ def check_file(row, tests: set, available: dict, mongo: bool) -> list[tuple]:
         return out
     content = sources.read_disk(url) if url else None
     if "link" in tests:
-        if url and not gridfs_id and mongo:
-            out.append(("GRIDFS_NOT_STORED", "Cảnh báo", _("Có tệp đính kèm nhưng chưa có bản trên MongoDB (GridFS)"), restorable or content is not None))
+        if url and not gridfs_id.startswith("minio:") and object_store:
+            out.append(("GRIDFS_NOT_STORED", "Cảnh báo", _("Có tệp đính kèm nhưng chưa có bản trên MinIO"), restorable or content is not None))
         if gridfs_id and not url:
-            out.append(("NO_ATTACHMENT", "Cảnh báo", _("Có bản trên GridFS nhưng không còn tệp đính kèm"), True))
+            out.append(("NO_ATTACHMENT", "Cảnh báo", _("Có bản lưu trữ nhưng không còn tệp đính kèm"), True))
         return out
     if url and content is None:
         if "missing" in tests:
@@ -174,18 +174,19 @@ def check_file(row, tests: set, available: dict, mongo: bool) -> list[tuple]:
             out.append(("CHECKSUM", "Lỗi", _("Mã kiểm SHA-256 của tệp khác với mã đã ghi khi tải lên: tệp đã bị thay đổi hoặc hỏng"), restorable))
         if "type" in tests and content and sources.matches_type(row.get("file_type"), content) is False:
             out.append(("TYPE_MISMATCH", "Cảnh báo", _("Nội dung tệp không đúng loại {0} đã khai báo").format(row.file_type), False))
-    if "gridfs" in tests and gridfs_id and mongo and sources.gridfs_exists(gridfs_id) is False:
-        out.append(("GRIDFS_MISSING", "Lỗi", _("Không còn bản của tệp trên MongoDB (GridFS)"), content is not None or restorable))
+    if "gridfs" in tests and gridfs_id.startswith("minio:") and object_store and sources.gridfs_exists(gridfs_id) is False:
+        out.append(("GRIDFS_MISSING", "Lỗi", _("Không còn bản của tệp trên MinIO"), content is not None or restorable))
     return out
 
 
 def run_files_phase(doc, findings: runner.Findings, notes: list) -> None:
     tests = FILE_TESTS.get(doc.check_type, FILE_TESTS["Toàn bộ"])
     sources.forget_probe()
-    mongo, reason = sources.mongo_available()
-    if not mongo and ({"gridfs", "link"} & tests):
-        findings.add("Cảnh báo", _("Không kết nối được MongoDB ({0}): bỏ qua kiểm tra bản trên GridFS").format(reason or "?"), None, code="MONGO_DOWN")
-        notes.append("MongoDB không kết nối được: chỉ kiểm tra tệp trên máy chủ.")
+    object_store, reason = sources.object_available()
+    from document_manager.document_manager.services.object_storage import configured
+    if configured() and not object_store and ({"gridfs", "link"} & tests):
+        findings.add("Cảnh báo", _("Không kết nối được MinIO ({0}): bỏ qua kiểm tra bản trên MinIO").format(reason or "?"), None, code="MONGO_DOWN")
+        notes.append("MinIO không kết nối được: chỉ kiểm tra tệp trên máy chủ.")
     available = backup_index() if ({"missing", "checksum", "empty"} & tests) else {}
     filters = [["fonds", "=", doc.fonds]] if doc.fonds else []
     or_filters = [["file_attachment", "!=", ""], ["gridfs_file_id", "!=", ""]]
@@ -198,7 +199,7 @@ def run_files_phase(doc, findings: runner.Findings, notes: list) -> None:
         if not rows:
             break
         for row in rows:
-            for code, severity, message, restorable in check_file(row, tests, available, mongo):
+            for code, severity, message, restorable in check_file(row, tests, available, object_store):
                 findings.add(severity, message, row.name, code=code, restorable=1 if restorable else 0)
         checked += len(rows)
         cursor = rows[-1].name

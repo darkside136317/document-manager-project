@@ -14,13 +14,13 @@ export const BACKUP_TYPES = [
 ];
 export const CHECK_TYPES = [
   ["Toàn bộ", "Toàn bộ: cơ sở dữ liệu, siêu dữ liệu và từng tệp"], ["Cơ sở dữ liệu", "Cấu trúc cơ sở dữ liệu (liên kết, bộ đếm, ngày tháng, trùng lặp)"],
-  ["Tệp tài liệu", "Từng tệp tài liệu (còn không, đúng mã kiểm, đúng loại, bản GridFS)"], ["Siêu dữ liệu", "Mô tả tài liệu (số, ngày, tác giả, vị trí lưu trữ)"],
+  ["Tệp tài liệu", "Từng tệp tài liệu (còn không, đúng mã kiểm, đúng loại, bản MinIO)"], ["Siêu dữ liệu", "Mô tả tài liệu (số, ngày, tác giả, vị trí lưu trữ)"],
 ];
 export const STATUS_FILTERS = ["", "Chưa chạy", "Đang chờ", "Đang chạy", "Thành công", "Hoàn thành", "Phát hiện lỗi", "Một phần", "Cần thao tác thủ công", "Lỗi", "Đã hủy"];
 
 const CODES = {
-  FILE_MISSING: "Mất tệp", CHECKSUM: "Tệp đã thay đổi", FILE_EMPTY: "Tệp rỗng", TYPE_MISMATCH: "Sai loại tệp", GRIDFS_MISSING: "Mất bản GridFS",
-  GRIDFS_NOT_STORED: "Chưa có bản GridFS", NO_ATTACHMENT: "Không còn tệp đính kèm", MONGO_DOWN: "Không kết nối MongoDB",
+  FILE_MISSING: "Mất tệp", CHECKSUM: "Tệp đã thay đổi", FILE_EMPTY: "Tệp rỗng", TYPE_MISMATCH: "Sai loại tệp", GRIDFS_MISSING: "Mất bản MinIO",
+  GRIDFS_NOT_STORED: "Chưa có bản MinIO", NO_ATTACHMENT: "Không còn tệp đính kèm", MONGO_DOWN: "Không kết nối MinIO",
   ORPHAN_GROUP: "Khối mồ côi", ORPHAN_CATALOG: "Mục lục mồ côi", ORPHAN_FILE: "Hồ sơ mồ côi", ORPHAN_DOCUMENT: "Văn bản mồ côi",
   HIERARCHY_FILE: "Sai cấp bậc (hồ sơ)", HIERARCHY_DOCUMENT: "Sai cấp bậc (văn bản)", BROKEN_LEVEL_FILE: "Mức mật hỏng (hồ sơ)",
   BROKEN_LEVEL_DOCUMENT: "Mức mật hỏng (văn bản)", COUNTER_FONDS: "Sai bộ đếm phông", COUNTER_FILE: "Sai bộ đếm hồ sơ", DATE_FILE: "Ngày hồ sơ sai",

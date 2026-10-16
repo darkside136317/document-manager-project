@@ -9,12 +9,26 @@ Có hai lớp tự động:
 
 ## 1. Phát triển cục bộ (hot reload)
 
-Chạy từ thư mục `docker/`:
+Chạy từ thư mục dự án:
 
 ```bash
-docker compose --env-file .env.dev -f docker-compose.yml -f docker-compose.dev.yml up -d --no-build
-docker compose --env-file .env.dev -f docker-compose.yml -f docker-compose.dev.yml restart frontend websocket
+./scripts/start-dev.sh
 ```
+
+Script dùng `docker/.env.dev` và hai file Compose dev, khởi động toàn bộ dịch vụ rồi in trạng thái. Chạy `./scripts/start-dev.sh --build` sau khi đổi Dockerfile hoặc thư viện Python. Nếu chưa có `docker/.env.dev`, sao chép từ `docker/.env.dev.example` và điền cấu hình trước khi chạy. Các lệnh Compose bên dưới chạy từ thư mục `docker/`.
+
+### Dữ liệu mẫu cho giao diện và tài liệu hướng dẫn
+
+Sau khi stack dev đã chạy, nạp bộ dữ liệu giả HD MẪU để thử cây biên mục, tra cứu và cổng độc giả. Script chỉ kết nối site `docmanager.local`, tạo Phông → Khối → Mục lục tài liệu → Hồ sơ → Văn bản theo đúng thứ tự bắt buộc, và có thể chạy lại mà không tạo bản ghi trùng:
+
+```bash
+cd docker
+docker compose --env-file .env.dev -f docker-compose.yml -f docker-compose.dev.yml \
+  exec -T -w /home/frappe/frappe-bench/sites backend \
+  /home/frappe/frappe-bench/env/bin/python - up < ../scripts/demo/seed_user_guide.py
+```
+
+Script tạo một tài khoản độc giả giả `demo.reader@example.com`; mật khẩu ngẫu nhiên chỉ được in ở lần tạo đầu. Có thể đặt lại mật khẩu từ giao diện quản trị nếu cần. Các văn bản mẫu chỉ chứa thông tin mô tả, chưa có tệp đính kèm. Để gỡ dữ liệu mẫu, chạy lại lệnh với `down` thay cho `up`.
 
 Mã nguồn `apps/document_manager` được bind-mount vào backend, **frontend (nginx phục vụ JS/CSS)**, worker, scheduler và dịch vụ `dev-watcher`. Sau khi lưu file, vài giây sau thay đổi có hiệu lực:
 
@@ -74,9 +88,9 @@ Lưu ý:
 Triển khai bản mới lên máy chủ:
 
 ```bash
-docker compose --env-file .env.prod -f docker-compose.yml -f docker-compose.prod.yml pull
-docker compose --env-file .env.prod -f docker-compose.yml -f docker-compose.prod.yml up -d
-docker compose --env-file .env.prod -f docker-compose.yml -f docker-compose.prod.yml exec backend bench --site <tên-site> migrate
+python3 ../scripts/prod_compose.py pull
+python3 ../scripts/prod_compose.py up -d --remove-orphans
+python3 ../scripts/prod_compose.py exec backend bench --site <tên-site> migrate
 ```
 
 Để compose dùng image từ GHCR, đổi `image:` của các dịch vụ trong `docker-compose.prod.yml` thành `ghcr.io/<chủ-repo>/docmanager-custom:${ERPNEXT_VERSION}`.

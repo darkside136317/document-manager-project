@@ -86,7 +86,8 @@ Trình duyệt ─▶ nginx (frontend) ─▶ gunicorn (backend: Frappe + docume
                                       ├─▶ worker long/short, scheduler
                                       │      trích xuất văn bản, lập chỉ mục, sao lưu, kiểm tra, xuất/nhập XML
                                       ├─▶ Meilisearch            tìm toàn văn (dự phòng bằng MariaDB khi hỏng)
-                                      └─▶ MongoDB Atlas GridFS   tệp gốc và bản xem trước (tùy chọn)
+                                      ├─▶ Frappe private files  tệp gốc (mặc định)
+                                      └─▶ MinIO                 bản đối tượng tùy chọn trên production
 ```
 
 Nguyên tắc:
@@ -102,9 +103,10 @@ Yêu cầu: Docker Engine 24+ với Compose v2, Docker được cấp ít nhất
 
 ```bash
 git clone <địa-chỉ-repo> document-manager-project
-cd document-manager-project/docker
-cp .env.dev.example .env.dev      # điền mật khẩu và khóa (xem mục Cấu hình)
-docker compose --env-file .env.dev -f docker-compose.yml -f docker-compose.dev.yml up -d
+cd document-manager-project
+cp docker/.env.dev.example docker/.env.dev  # điền mật khẩu và khóa (xem mục Cấu hình)
+./scripts/start-dev.sh
+cd docker
 docker compose --env-file .env.dev -f docker-compose.yml -f docker-compose.dev.yml logs -f create-site
 ```
 
@@ -115,6 +117,7 @@ Mở **http://localhost:8888** (cổng `HTTP_PUBLISH_PORT`):
 
 Ở chế độ phát triển, mã nguồn được gắn thẳng vào container: sửa Python, mẫu trang hay DocType có hiệu lực sau vài giây
 (trình theo dõi `dev-watcher` tự chạy `migrate` khi cần), giao diện cán bộ được dịch vụ `staff-ui` build lại tự động.
+Chạy lại `./scripts/start-dev.sh` từ thư mục dự án để khởi động các dịch vụ đã dừng; thêm `--build` khi đổi Dockerfile hoặc thư viện Python.
 
 Một số lệnh hay dùng (chạy trong thư mục `docker/`):
 
@@ -135,13 +138,14 @@ cd docker
 cp .env.prod.example .env.prod    # tên miền khách hàng, mật khẩu mạnh, khóa Meilisearch mới
 chmod 600 .env.prod
 python3 ../scripts/validate_prod_env.py .env.prod
-docker compose --env-file .env.prod -f docker-compose.yml -f docker-compose.prod.yml build backend
-docker compose --env-file .env.prod -f docker-compose.yml -f docker-compose.prod.yml up -d
-docker compose --env-file .env.prod -f docker-compose.yml -f docker-compose.prod.yml logs -f create-site
+python3 ../scripts/prod_compose.py build
+python3 ../scripts/prod_compose.py up -d --remove-orphans
+python3 ../scripts/prod_compose.py logs -f create-site
 ```
 
 Image có tầng Node: chạy kiểm thử giao diện và build giao diện cán bộ, nên máy chủ không cần cài Node.
 Site mới tự gieo vai trò, mức độ mật, workflow, nhóm độc giả mặc định và giá trị mặc định của thiết lập; không cần cài ứng dụng bằng tay.
+Production mặc định `MINIO_MODE=disabled`, chỉ lưu tệp trong Frappe. Xem [hướng dẫn triển khai](docs/DEPLOYMENT.md) để bật MinIO `auto` hoặc `manual`.
 Đặt một reverse proxy có TLS phía trước nginx của compose, và sao chép định kỳ thư mục sao lưu ra ngoài máy chủ.
 
 Cập nhật phiên bản: `git pull`, build lại, `up -d`, rồi `bench --site <site> migrate`. CI phát hành sẵn image lên GHCR khi push lên `main` hoặc tag `v*`.
@@ -157,7 +161,8 @@ Biến môi trường trong `docker/.env.dev` hoặc `docker/.env.prod`:
 | `COMPOSE_PROJECT_NAME`, `DATA_VOLUME_PREFIX` | Tên riêng cho từng môi trường và bộ volume dữ liệu |
 | `ADMIN_PASSWORD` | Mật khẩu `Administrator` |
 | `MARIADB_ROOT_PASSWORD` | Mật khẩu root MariaDB |
-| `MONGODB_ATLAS_URI`, `MONGODB_DATABASE` | GridFS cho tệp (tùy chọn) |
+| `MINIO_MODE` | Production mặc định `disabled`; `auto` hoặc `manual` để bật MinIO |
+| `MONGODB_ATLAS_URI`, `MONGODB_DATABASE` | Chỉ dùng khi chuyển dữ liệu GridFS cũ sang MinIO |
 | `MEILISEARCH_HOST`, `MEILISEARCH_MASTER_KEY` | Máy tìm kiếm toàn văn; khóa bắt buộc đổi |
 | `GUNICORN_WORKERS`, `GUNICORN_THREADS`, `GUNICORN_TIMEOUT` | Số tiến trình web |
 | `HTTP_PUBLISH_PORT`, `CLIENT_MAX_BODY_SIZE`, `PROXY_READ_TIMEOUT` | nginx |
@@ -230,7 +235,7 @@ document-manager-project/
 
 ## Giới hạn đã biết
 
-- **MongoDB Atlas là tùy chọn**: khi không kết nối được (thường do IP máy chủ chưa được cho phép trong Atlas), tệp được giữ ở thư mục riêng của Frappe và việc kiểm tra bản GridFS ghi cảnh báo.
+- **MinIO tắt mặc định trên production**: tệp ở thư mục riêng của Frappe; bật `auto` trên cùng SSD sẽ dùng thêm dung lượng cho một bản đối tượng.
 - **Chưa có OTP (2FA)** trên trang `/dang-nhap`; tài khoản bật 2FA đăng nhập qua `/login` của Frappe.
 - **Lược đồ XML là lược đồ nội bộ** (có XSD tải được), chưa theo một XSD chính thức.
 - **Khôi phục cơ sở dữ liệu tự động tắt mặc định**; xem mục Cấu hình.

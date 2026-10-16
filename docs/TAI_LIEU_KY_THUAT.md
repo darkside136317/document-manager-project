@@ -93,8 +93,8 @@ Trình duyệt ── HTTP ──▶  │ frontend (nginx :8080)                
                          backend (gunicorn: Frappe + document_manager)
                             │        │            │                 │
                             ▼        ▼            ▼                 ▼
-                         MariaDB   Redis       Meilisearch       MongoDB Atlas (tùy chọn)
-                          11.8   cache/queue   chỉ mục văn bản   GridFS: bản lưu tệp gốc
+                         MariaDB   Redis       Meilisearch       Frappe files / MinIO (tùy chọn)
+                          11.8   cache/queue   chỉ mục văn bản   tệp gốc / bản đối tượng
                             ▲        │
                             │        ▼
                          queue-long / queue-short (RQ worker)   scheduler (cron của Frappe)
@@ -103,6 +103,7 @@ Trình duyệt ── HTTP ──▶  │ frontend (nginx :8080)                
 ### 2.2. Các dịch vụ Docker Compose
 
 Tệp gốc `docker/docker-compose.yml`, chồng thêm `docker-compose.dev.yml` (phát triển) hoặc `docker-compose.prod.yml` (sản xuất).
+Production nạp thêm `docker-compose.prod.minio.yml` khi `MINIO_MODE=auto` hoặc `manual` qua `scripts/prod_compose.py`.
 
 | Dịch vụ | Image | Vai trò |
 |---|---|---|
@@ -138,7 +139,7 @@ Máy chủ sản xuất không cần Node. CI build và phát hành image lên G
 |---|---|---|
 | Siêu dữ liệu, phiếu, người dùng, nhật ký | MariaDB | Nguồn sự thật duy nhất |
 | Tệp gốc của văn bản (bản làm việc) | Tệp riêng tư của Frappe: `sites/<site>/private/files` | Liên kết qua `Archive Document.file_attachment` |
-| Bản lưu bền của tệp gốc | MongoDB GridFS, collection `documents` (nếu cấu hình) | `gridfs_file_id`; thiếu MongoDB thì hệ thống vẫn chạy |
+| Bản đối tượng bổ sung | MinIO, bucket `documents` (chỉ khi bật) | Trường cũ `gridfs_file_id` giữ để tương thích dữ liệu |
 | Nội dung trích xuất | `Archive Document.content_text` (tối đa 65.000 ký tự) và chỉ mục Meilisearch | Không bao giờ gửi nguyên văn cho người dùng |
 | Chỉ mục tìm kiếm | Meilisearch, index `archive_documents` | Dựng lại được từ MariaDB (`reindex_all`, `reconcile_index`) |
 | Bản sao lưu | Thư mục sao lưu của site: bản kết xuất CSDL `.sql.gz` + kho tệp đặt tên theo SHA-256 | Xem mục 7.8 |
@@ -398,7 +399,7 @@ flowchart LR
     B -->|"after_insert, sau commit"| C["file_processor.extract_and_store<br/>hàng đợi long"]
     C --> D["Đọc byte, SHA-256 → checksum"]
     D --> E["Trích chữ: pdfplumber, python-docx, openpyxl<br/>PDF ít chữ → OCR nếu có pytesseract"]
-    E --> F["Lưu bản GridFS nếu có MongoDB"]
+    E --> F["Lưu bản MinIO nếu đã bật"]
     F --> G["Ghi content_text, file_type, file_size_kb"]
     G --> H["search_index.index_document → Meilisearch"]
 ```
@@ -422,9 +423,9 @@ flowchart LR
 
 ### 7.3. Xem trước và tải tệp
 
-`api/file_access.py`: `get_preview` (siêu dữ liệu, không lộ id GridFS hay đường dẫn riêng), `preview_file` (PDF/ảnh hiển thị trong trình duyệt),
+`api/file_access.py`: `get_preview` (siêu dữ liệu, không lộ id đối tượng hay đường dẫn riêng), `preview_file` (PDF/ảnh hiển thị trong trình duyệt),
 `download_file`. Mỗi lời gọi kiểm tính năng (`can_preview` hoặc `can_download`) và quyền đọc văn bản qua `doc.check_permission("read")`, đọc byte
-từ GridFS trước rồi tới tệp trên đĩa, ghi `last_accessed` và nhật ký "Xem"/"Tải xuống".
+từ MinIO trước nếu đã bật rồi tới tệp trên đĩa, ghi `last_accessed` và nhật ký "Xem"/"Tải xuống".
 
 ### 7.4. Phiếu sử dụng và phiếu sao chụp
 
@@ -501,7 +502,7 @@ Chi tiết định dạng: [XML_SCHEMA.md](XML_SCHEMA.md).
   với mã lúc tải lên bị báo và **không** được chép, để tệp hỏng không thay bản tốt. Chạy theo trang, có `cursor` để chạy tiếp. Giữ theo
   `backup_retention_days` nhưng không bao giờ dưới `backup_keep_min` đợt thành công. Lịch: job hằng ngày `backup.run_scheduled` đọc tần suất trong thiết lập.
 - **Kiểm tra toàn vẹn** (`preservation/integrity.py`): 27 phép SQL (`DB_CHECKS`: mồ côi, sai thứ bậc, mức mật hỏng, bộ đếm, ngày, trùng số, thiếu mã băm,
-  lỗi chỉ mục; `META_CHECKS`: thiếu siêu dữ liệu bắt buộc) và kiểm từng tệp (tồn tại trên đĩa, trong GridFS, khớp SHA-256, có bản sao lưu khôi phục được).
+  lỗi chỉ mục; `META_CHECKS`: thiếu siêu dữ liệu bắt buộc) và kiểm từng tệp (tồn tại trên đĩa, trong MinIO nếu bật, khớp SHA-256, có bản sao lưu khôi phục được).
   Phát hiện ghi vào `Integrity Check Item`, có trạng thái xử lý. Lịch: Chủ nhật 2 giờ sáng.
 - **Khôi phục** (`preservation/restore.py`): đợt khôi phục tệp từ bản sao lưu, thường tạo từ kết quả kiểm tra; khôi phục CSDL **mặc định chỉ hiện hướng dẫn**
   đã kiểm tra, chỉ tự chạy khi site đặt `dm_allow_db_restore = 1` và có mật khẩu root.
@@ -607,7 +608,7 @@ Kiểm thử `scripts/e2e/e2e_http.py` gọi từng API bằng từng loại tà
 | Hàng đợi | Công việc |
 |---|---|
 | `long` | Trích chữ và lưu tệp, lập chỉ mục hàng loạt, cập nhật cấp dưới khi chuyển cấp cha, xuất/nhập XML, sao lưu, kiểm tra, khôi phục |
-| `short` | Lập chỉ mục một văn bản, xóa bản GridFS cũ, đo dung lượng thư mục tệp cho màn hình giám sát |
+| `short` | Lập chỉ mục một văn bản, xóa đối tượng MinIO cũ nếu có, đo dung lượng thư mục tệp cho màn hình giám sát |
 
 ### 11.2. Lịch (`hooks.scheduler_events`)
 
@@ -648,7 +649,8 @@ Kiểm thử `scripts/e2e/e2e_http.py` gọi từng API bằng từng loại tà
 | `DB_HOST`, `DB_PORT`, `MARIADB_ROOT_PASSWORD` | MariaDB |
 | `REDIS_CACHE`, `REDIS_QUEUE` | Redis |
 | `GUNICORN_WORKERS`, `GUNICORN_THREADS`, `GUNICORN_TIMEOUT` | Tiến trình web |
-| `MONGODB_ATLAS_URI`, `MONGODB_DATABASE` | GridFS (tùy chọn) |
+| `MINIO_MODE` | Production mặc định `disabled`; `auto` hoặc `manual` để bật MinIO |
+| `MONGODB_ATLAS_URI`, `MONGODB_DATABASE` | Chỉ dùng để chuyển dữ liệu GridFS cũ sang MinIO |
 | `MEILISEARCH_HOST`, `MEILISEARCH_MASTER_KEY` | Meilisearch; khóa bắt buộc đổi ở sản xuất |
 | `HTTP_PUBLISH_PORT`, `CLIENT_MAX_BODY_SIZE`, `PROXY_READ_TIMEOUT` | nginx (máy phát triển dùng cổng 8888) |
 
@@ -684,10 +686,10 @@ cập nhật phiên bản (13.5). Các lệnh chạy trong thư mục `docker/` 
 | RAM | 8 GB cấp cho Docker | 4 GB | 8 GB trở lên |
 | Đĩa | 30 GB trống | 40 GB SSD | 200 GB SSD trở lên (tệp và kho sao lưu tăng theo dữ liệu) |
 | Hệ điều hành | Windows 10/11 (Docker Desktop + WSL2), macOS, Linux | Ubuntu 22.04 / Debian 12 | Ubuntu 24.04 LTS |
-| Phần mềm | Docker Engine 24+ với Compose v2, Git; Node 20 chỉ khi chạy vitest ngoài container | Docker Engine 24+, Compose v2, Git | như trên |
+| Phần mềm | Docker Engine 24+ với Compose v2, Git; Node 20 chỉ khi chạy vitest ngoài container | Docker Engine 24+, Compose v2, Git, Python 3 cho script triển khai | như trên |
 | Mạng | Truy cập Internet lần đầu (tải image) | Tên miền trỏ về máy chủ; cổng 80/443 | như trên |
 
-Không cần cài Python, Node, MariaDB hay Redis trên máy: mọi thứ chạy trong container. MongoDB Atlas là tùy chọn.
+Máy dev không cần cài Python, MariaDB hay Redis trên host: các dịch vụ chạy trong container; Node có sẵn trong container build giao diện.
 
 ### 13.2. Cài đặt môi trường phát triển
 
@@ -706,7 +708,7 @@ cp .env.dev.example .env.dev
 
 Sửa ít nhất `ADMIN_PASSWORD`, `MARIADB_ROOT_PASSWORD`, `MEILISEARCH_MASTER_KEY`. Giữ `HTTP_PUBLISH_PORT=8888` hoặc chọn cổng khác còn trống.
 `FRAPPE_SITE_NAME` để nguyên cũng được: nginx luôn gửi tên site này cho backend, nên mở bằng `localhost` vẫn đúng site, không cần sửa tệp `hosts`.
-Không dùng MongoDB thì để trống `MONGODB_ATLAS_URI`.
+Để trống `MONGODB_ATLAS_URI`; dev mặc định chỉ dùng tệp Frappe.
 
 **Bước 3. Build image và khởi động.**
 
@@ -767,11 +769,10 @@ cd /opt/docmanager/docker
 
 Để triển khai đúng một phiên bản, chuyển sang tag hoặc commit đã kiểm thử: `git checkout <tag>`.
 
-**Bước 3 (tùy chọn). Chuẩn bị MongoDB Atlas.**
-
-1. Tạo cluster ở khu vực gần nhất và một người dùng cơ sở dữ liệu có quyền đọc, ghi.
-2. *Network Access*: thêm địa chỉ IP của máy chủ (quên bước này là nguyên nhân thường gặp của lỗi *SSL handshake failed*).
-3. Lấy chuỗi kết nối `mongodb+srv://...` ở *Database → Connect → Drivers*.
+**Bước 3 (tùy chọn). Chọn MinIO.** Mặc định `MINIO_MODE=disabled`: tệp lưu trong volume Frappe, không cần
+MongoDB Atlas hoặc MinIO. Nếu bật `auto`, Compose tự chạy MinIO và khởi tạo bucket/tài khoản; nếu bật `manual`,
+chuẩn bị endpoint, bucket và khóa ứng dụng trên MinIO có sẵn. Xem [DEPLOYMENT.md](DEPLOYMENT.md) để chọn chế độ.
+URI MongoDB cũ chỉ cần trong lần chuyển dữ liệu GridFS sang MinIO.
 
 **Bước 4. Tạo `.env.prod`.**
 
@@ -790,7 +791,8 @@ python3 ../scripts/validate_prod_env.py .env.prod
 | `COMPOSE_PROJECT_NAME`, `DATA_VOLUME_PREFIX` | Tên riêng của khách hàng; giữ nguyên khi cập nhật |
 | `ADMIN_PASSWORD`, `MARIADB_ROOT_PASSWORD` | Chuỗi ngẫu nhiên mạnh |
 | `MEILISEARCH_MASTER_KEY` | Chuỗi ngẫu nhiên (`openssl rand -hex 16`); **bắt buộc đổi** |
-| `MONGODB_ATLAS_URI`, `MONGODB_DATABASE` | Chuỗi kết nối Atlas; để trống URI nếu lưu tệp trong volume riêng của Frappe |
+| `MINIO_MODE` | Mặc định `disabled` (chỉ Frappe); `auto` (MinIO cùng stack); `manual` (MinIO có sẵn) |
+| `MONGODB_ATLAS_URI`, `MONGODB_DATABASE` | Chỉ dùng tạm khi nhập dữ liệu GridFS cũ vào MinIO; để trống khi cài mới |
 | `HTTP_PUBLISH_PORT` | `127.0.0.1:8080` khi có reverse proxy trên cùng máy: nginx của compose chỉ nghe trên máy chủ, không lộ HTTP ra ngoài và không tranh cổng 80 với proxy |
 | `GUNICORN_WORKERS`, `GUNICORN_THREADS` | Khoảng `2 × số lõi + 1` tiến trình, 4 luồng |
 | `CLIENT_MAX_BODY_SIZE`, `PROXY_READ_TIMEOUT` | `200m`, `120` (giới hạn tệp của ứng dụng là 100 MB) |
@@ -802,7 +804,7 @@ Không đưa `.env.prod` vào git. Trên máy nhiều RAM, tăng `innodb_buffer_
 *Cách A – build trên máy chủ:*
 
 ```bash
-C="docker compose --env-file .env.prod -f docker-compose.yml -f docker-compose.prod.yml"
+C="python3 ../scripts/prod_compose.py"
 $C build backend
 ```
 
@@ -892,7 +894,7 @@ Kiểm tra định kỳ rằng một bản sao lưu khôi phục được (xem [
 | Máy chủ web | `curl -s https://<tên-miền>/api/method/ping` | `{"message":"pong"}` |
 | Bộ lập lịch | `bench --site <site> scheduler status` | *Scheduler is enabled* |
 | Trang | `/gioi-thieu`, `/dang-nhap`, `/dashboard` | Mở được; HTTP chuyển sang HTTPS |
-| Dịch vụ phụ | **Quản trị → Giám sát hệ thống** | Meilisearch, hàng đợi, đĩa xanh; MongoDB xanh nếu có dùng |
+| Dịch vụ phụ | **Quản trị → Giám sát hệ thống** | Meilisearch, hàng đợi, đĩa xanh; MinIO hiện "Đã tắt" theo mặc định hoặc "Kết nối được" khi bật |
 | Xử lý nền | Tải một PDF có chữ vào một hồ sơ thử | Sau khoảng 15 giây trạng thái *Đã index*, tìm được theo nội dung |
 | Sao lưu | **Bảo quản → Sao lưu → Sao lưu mới** | Đợt kết thúc *Thành công*; **Kiểm tra bản sao lưu** đạt |
 | Cổng nội bộ | Từ máy khác: `curl http://<IP>:8080` và `:7700` | Không kết nối được |
@@ -946,7 +948,7 @@ $C down -v       # dừng và XÓA toàn bộ dữ liệu: cơ sở dữ liệu,
 | Trang báo 502 sau khi khởi động lại | `$C up -d` rồi `$C restart frontend` (backend đổi địa chỉ) |
 | Sao lưu tự động, cờ quá hạn không chạy | Bộ lập lịch chưa bật (bước 7), hoặc `scheduler`/`queue-long` không chạy |
 | Meilisearch báo 401 | Khóa trong tệp môi trường khác khóa đã ghi vào site: `$C up -d` để `configurator` ghi lại, rồi khởi động lại `backend` và worker |
-| Giám sát báo MongoDB "Không kết nối" dù đã cấu hình | IP máy chủ chưa có trong *Network Access* của Atlas, hoặc chuỗi kết nối sai |
+| Giám sát báo MinIO "Không kết nối" khi đã bật | Kiểm tra endpoint, bucket, khóa ứng dụng và mạng giữa container với MinIO |
 
 Các sự cố khi vận hành: [DEPLOYMENT.md](DEPLOYMENT.md#9-xử-lý-sự-cố).
 
@@ -960,11 +962,11 @@ Các sự cố khi vận hành: [DEPLOYMENT.md](DEPLOYMENT.md#9-xử-lý-sự-c�
 | Chống dò | Đăng ký và quên mật khẩu không tiết lộ email đã tồn tại; giới hạn tần suất theo IP (`frappe.rate_limiter`) |
 | CSRF | Mọi lời gọi ghi mang CSRF token của phiên |
 | XSS | Mẫu trang độc giả bọc `autoescape`; thông báo máy chủ được bỏ thẻ HTML trước khi hiện trong SPA |
-| Tệp tải lên | Danh sách phần mở rộng cho phép, tối đa 100 MB, lưu dạng tệp riêng tư; tải về qua API có kiểm quyền, không lộ đường dẫn hay id GridFS |
+| Tệp tải lên | Danh sách phần mở rộng cho phép, tối đa 100 MB, lưu dạng tệp riêng tư; tải về qua API có kiểm quyền, không lộ đường dẫn hay id đối tượng |
 | XML | Không DTD/ENTITY, không truy cập mạng, không cây quá lớn, kiểm XSD; nhập chạy với quyền của người yêu cầu |
 | Dữ liệu mật | `content_text` không bao giờ trả cho người dùng; nhật ký không chép giá trị nhạy cảm; trường nhạy cảm theo permlevel |
 | Thao tác nguy hiểm | Khôi phục CSDL tắt mặc định; dọn nhật ký phải nhập lại số dòng và được ghi lại; sao lưu/khôi phục CSDL cần phạm vi mọi phông |
-| Bí mật | Khóa Meilisearch, mật khẩu DB, URI MongoDB nằm trong tệp môi trường/site config; màn hình giám sát không lộ thông tin đăng nhập |
+| Bí mật | Khóa Meilisearch, mật khẩu DB và khóa MinIO nếu bật nằm trong tệp môi trường; màn hình giám sát không lộ thông tin đăng nhập |
 
 ## 15. Hiệu năng
 

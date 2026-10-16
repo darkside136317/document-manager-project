@@ -24,7 +24,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Python compiles
-        run: python -m compileall -q apps docker/dev scripts/validate_prod_env.py
+        run: python -m compileall -q apps docker/dev scripts/validate_prod_env.py scripts/prod_compose.py
       - name: Lint (real errors only)
         run: |
           pip install -q ruff
@@ -51,6 +51,8 @@ jobs:
           cp .env.dev.example .env.dev
           docker compose --env-file .env.dev -f docker-compose.yml config -q
           docker compose --env-file .env.prod.example -f docker-compose.yml -f docker-compose.prod.yml config -q
+          MINIO_MODE=auto COMPOSE_PROFILES=auto MINIO_ENDPOINT=http://minio:9000 MINIO_APP_ACCESS_KEY=ci-access-key MINIO_APP_SECRET_KEY=ci-secret-key docker compose --env-file .env.prod.example -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.prod.minio.yml config -q
+          MINIO_MODE=manual COMPOSE_PROFILES= MINIO_ENDPOINT=https://storage.example.test MINIO_APP_ACCESS_KEY=ci-access-key MINIO_APP_SECRET_KEY=ci-secret-key docker compose --env-file .env.prod.example -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.prod.minio.yml config -q
           docker compose --env-file .env.dev -f docker-compose.yml -f docker-compose.dev.yml config -q
 
   frontend:

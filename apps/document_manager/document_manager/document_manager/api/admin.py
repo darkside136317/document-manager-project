@@ -14,7 +14,7 @@ from document_manager.document_manager.services.errors import log_exception
 
 @frappe.whitelist()
 def get_service_health():
-    """Status of MongoDB Atlas (file storage) and Meilisearch (search)."""
+    """Status of MinIO (file storage) and Meilisearch (search)."""
     assert_capability("monitor.view")
     from document_manager.document_manager.services.health import check_services
 

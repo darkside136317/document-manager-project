@@ -338,7 +338,7 @@ class TestAdministration(IntegrationTestCase):
         data = admin.monitor()
         for key in ("services", "documents", "jobs", "storage", "users", "log", "backups", "site"):
             self.assertIn(key, data)
-        self.assertEqual(set(data["services"]), {"mongodb", "meilisearch"})
+        self.assertEqual(set(data["services"]), {"minio", "meilisearch"})
         self.assertGreaterEqual(data["documents"]["total"], data["documents"]["indexed"])
         self.assertLessEqual(data["documents"]["percent"], 100)
         self.assertGreaterEqual(data["users"]["staff"], 5)

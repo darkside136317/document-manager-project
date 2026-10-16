@@ -138,18 +138,18 @@
     {
       "fieldname": "gridfs_file_id",
       "fieldtype": "Data",
-      "label": "GridFS File ID",
+      "label": "Object File ID",
       "read_only": 1,
       "hidden": 1,
-      "description": "MongoDB Atlas GridFS ObjectId cho file gốc"
+      "description": "Mã đối tượng của tệp gốc trong MinIO; tên trường cũ được giữ để tương thích dữ liệu"
     },
     {
       "fieldname": "gridfs_preview_id",
       "fieldtype": "Data",
-      "label": "GridFS Preview ID",
+      "label": "Object Preview ID",
       "read_only": 1,
       "hidden": 1,
-      "description": "MongoDB Atlas GridFS ObjectId cho file preview"
+      "description": "Mã đối tượng của bản xem trước trong MinIO"
     },
     {
       "fieldname": "column_break_storage",

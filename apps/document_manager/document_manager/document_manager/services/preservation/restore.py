@@ -3,8 +3,8 @@
 
 Files: a batch lists the documents to restore (picked by hand or taken from the restorable findings of an integrity
 check); each is looked up in the manifests (the chosen backup, else the newest backup holding it), the blob is
-verified against its hash, the private file is rewritten where it is missing or differs, and the GridFS copy is
-re-uploaded where MongoDB lacks it. Items make a run resumable and show what happened to each document.
+verified against its hash, the private file is rewritten where it is missing or differs, and the MinIO copy is
+re-uploaded where MinIO lacks it. Items make a run resumable and show what happened to each document.
 
 Database: restoring the site's database from inside the running site is dangerous, so the default is a *verified
 runbook* (`Cần thao tác thủ công`): the dump is checked (present, a valid gzip, same SHA-256 as when it was made) and the
@@ -105,7 +105,7 @@ def manifest_entries(documents: set, source_backup: str | None) -> dict:
 
 
 def restore_document(row, entry: dict, blob: bytes) -> list[str]:
-    """Put `blob` back where the document's file should be. Returns what was done: ["đĩa", "GridFS", ...]."""
+    """Put `blob` back where the document's file should be."""
     done = []
     digest = entry["sha256"]
     name = row.name
@@ -135,11 +135,12 @@ def restore_document(row, entry: dict, blob: bytes) -> list[str]:
         updates.update(checksum=digest, file_size_kb=round(len(blob) / 1024, 2))
     if updates:
         frappe.db.set_value("Archive Document", name, updates, update_modified=False)
-    if row.gridfs_file_id and sources.gridfs_exists(row.gridfs_file_id) is False:
-        from document_manager.document_manager.services.mongodb_storage import upload_document_file
+    from document_manager.document_manager.services.object_storage import configured, upload_document_file
+    if configured() and (not (row.gridfs_file_id or "").startswith("minio:")
+                         or sources.gridfs_exists(row.gridfs_file_id) is False):
 
         upload_document_file(name, blob, entry.get("filename") or name)
-        done.append("bản trên GridFS")
+        done.append("bản trên MinIO")
     return done
 
 

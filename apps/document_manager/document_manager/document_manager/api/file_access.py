@@ -27,15 +27,15 @@ def _get_permitted_document(doc_name, feature="can_preview"):
 
 
 def _read_original_file(doc):
-    """Original bytes and filename: the durable GridFS copy first, the uploaded file when GridFS is
+    """Original bytes and filename: the MinIO copy first, the uploaded file when MinIO is
     unavailable (not configured, unreachable, or the copy has not been made yet)."""
     if doc.gridfs_file_id:
         try:
-            from document_manager.document_manager.services.mongodb_storage import MongoGridFSStorage
+            from document_manager.document_manager.services.object_storage import ObjectStorage
 
-            storage = MongoGridFSStorage(collection_name="documents")
+            storage = ObjectStorage(collection_name="documents")
             info = storage.get_file_info(doc.gridfs_file_id)
-            return storage.download_file(doc.gridfs_file_id), info["filename"]
+            return storage.download_file(doc.gridfs_file_id), info["filename"] or PurePosixPath(doc.file_attachment or doc.name).name
         except Exception:
             if not doc.file_attachment:
                 raise
@@ -79,7 +79,7 @@ def _download_url(doc_name):
 
 @frappe.whitelist()
 def get_preview(doc_name):
-    """Return preview metadata without exposing GridFS identifiers or private paths."""
+    """Return preview metadata without exposing object identifiers or private paths."""
     doc = _get_permitted_document(doc_name)
     file_type = (doc.file_type or "").upper()
     filename = (

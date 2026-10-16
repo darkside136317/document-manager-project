@@ -241,7 +241,7 @@ def _bind_file(file, document) -> None:
 def add_document_from_file(archival_file, file_url, title=None):
     """Create a document in `archival_file` from a file that was just uploaded (is_private=1).
 
-    The title defaults to the file name. Text extraction, storage in GridFS and indexing follow
+    The title defaults to the file name. Text extraction, storage in MinIO and indexing follow
     in the background (document hooks).
     """
     _require_staff()

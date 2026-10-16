@@ -6,12 +6,18 @@ import re
 import stat
 import sys
 from pathlib import Path
+from urllib.parse import urlsplit
 
 
 DOMAIN = re.compile(r"^(?=.{1,253}$)[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+$")
 IDENTIFIER = re.compile(r"^[a-z][a-z0-9_-]*$")
 PORT = re.compile(r"^127\.0\.0\.1:([1-9][0-9]{0,4})$")
-SECRETS = ("ADMIN_PASSWORD", "MARIADB_ROOT_PASSWORD", "MEILISEARCH_MASTER_KEY")
+BASE_SECRETS = (
+    "ADMIN_PASSWORD", "MARIADB_ROOT_PASSWORD", "MEILISEARCH_MASTER_KEY",
+    "MINIO_APP_ACCESS_KEY", "MINIO_APP_SECRET_KEY",
+)
+ROOT_SECRETS = ("MINIO_ROOT_USER", "MINIO_ROOT_PASSWORD")
+BUCKET = re.compile(r"^(?=.{3,63}$)[a-z0-9][a-z0-9.-]*[a-z0-9]$")
 
 
 def read_env(path: Path) -> dict[str, str]:
@@ -60,18 +66,55 @@ def validate(path: Path) -> list[str]:
     if not match or int(match.group(1)) > 65535:
         issues.append("HTTP_PUBLISH_PORT must bind to 127.0.0.1:<valid port>")
 
-    secrets = [values.get(key, "") for key in SECRETS]
-    if any(len(value) < 24 or "REPLACE" in value or "change_me" in value for value in secrets):
-        issues.append("Generate independent random values of at least 24 characters for all three secrets")
+    mode = values.get("MINIO_MODE", "disabled")
+    if mode not in ("disabled", "auto", "manual"):
+        issues.append("MINIO_MODE must be disabled, auto, or manual")
+    profiles = values.get("COMPOSE_PROFILES", "")
+    if profiles != ("auto" if mode == "auto" else ""):
+        issues.append("COMPOSE_PROFILES must be auto in auto mode and empty otherwise")
+    endpoint = values.get("MINIO_ENDPOINT", "")
+    bucket = values.get("MINIO_BUCKET", "")
+    if mode == "disabled":
+        if endpoint or any(values.get(key) for key in (*ROOT_SECRETS, "MINIO_APP_ACCESS_KEY", "MINIO_APP_SECRET_KEY")):
+            issues.append("Leave MinIO endpoint and credentials empty when disabled")
+    elif mode == "auto":
+        if endpoint != "http://minio:9000" or bucket != "documents":
+            issues.append("Auto mode requires MINIO_ENDPOINT=http://minio:9000 and MINIO_BUCKET=documents")
+    elif mode == "manual":
+        try:
+            parsed = urlsplit(endpoint)
+            valid_port = parsed.port is None or parsed.port > 0
+        except ValueError:
+            parsed = urlsplit("")
+            valid_port = False
+        if (
+            parsed.scheme not in ("http", "https") or not parsed.hostname
+            or parsed.username or parsed.password or parsed.path not in ("", "/")
+            or parsed.query or parsed.fragment or endpoint == "http://minio:9000" or not valid_port
+        ):
+            issues.append("Manual mode requires the URL of an existing MinIO server in MINIO_ENDPOINT")
+        if not BUCKET.fullmatch(bucket) or ".." in bucket or ".-" in bucket or "-." in bucket:
+            issues.append("MINIO_BUCKET must be a valid existing bucket name")
+        if any(values.get(key) for key in ROOT_SECRETS):
+            issues.append("Leave MinIO root credentials empty in manual mode")
+
+    secret_keys = BASE_SECRETS[:3] if mode == "disabled" else BASE_SECRETS + (ROOT_SECRETS if mode == "auto" else ())
+    secrets = [values.get(key, "") for key in secret_keys]
+    if any(
+        len(value) < (8 if mode == "manual" and key.startswith("MINIO_APP_") else 24)
+        or "REPLACE" in value or "change_me" in value
+        for key, value in zip(secret_keys, secrets)
+    ):
+        issues.append("Generate strong secrets; existing manual MinIO app keys need at least 8 characters")
     if len(set(secrets)) != len(secrets):
-        issues.append("The three secrets must be different")
+        issues.append("All secrets must be different")
 
     dev_path = path.with_name(".env.dev")
     if dev_path.exists():
         dev = read_env(dev_path)
         if dev.get("DATA_VOLUME_PREFIX") == prefix:
             issues.append("Production and development must use different data volume prefixes")
-        if any(dev.get(key) == values.get(key) for key in SECRETS):
+        if any(dev.get(key) == values.get(key) for key in secret_keys):
             issues.append("Production must not reuse development secrets")
     return issues
 

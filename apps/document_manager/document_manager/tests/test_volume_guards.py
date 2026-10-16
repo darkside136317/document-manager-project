@@ -13,7 +13,7 @@ from frappe.tests import IntegrationTestCase
 from frappe.utils import add_days, nowdate
 
 from document_manager.document_manager.api import admin, crud, logs
-from document_manager.document_manager.services import health, mongodb_storage, queries, search_service
+from document_manager.document_manager.services import health, object_storage, queries, search_service
 from document_manager.document_manager.setup import install
 from document_manager.tests.test_request_workflow import _names, _seed_archive
 
@@ -106,29 +106,22 @@ class TestVolumeGuards(IntegrationTestCase):
     # ---- the monitor and the probes
     def test_service_probes_are_kept_for_a_few_seconds(self):
         frappe.cache.delete_value(health.CACHE_KEY)
-        with patch.object(health, "_check_mongodb", return_value={"ok": False, "message": "x"}) as mongo, \
+        with patch.object(health, "_check_minio", return_value={"ok": False, "message": "x"}) as minio, \
                 patch.object(health, "_check_meilisearch", return_value={"ok": True, "message": "ok", "documents": 1}) as meili:
             first = health.check_services()
             second = health.check_services()
             self.assertEqual(first, second)
-            self.assertEqual((mongo.call_count, meili.call_count), (1, 1))
+            self.assertEqual((minio.call_count, meili.call_count), (1, 1))
             health.check_services(fresh=True)
-            self.assertEqual(mongo.call_count, 2)
+            self.assertEqual(minio.call_count, 2)
         frappe.cache.delete_value(health.CACHE_KEY)
 
-    def test_a_mongodb_that_just_failed_is_not_waited_for_again(self):
-        uri = "mongodb://127.0.0.1:1/never"
-        saved = dict(mongodb_storage._mongo_clients)
-        mongodb_storage._mongo_clients.clear()
-        frappe.cache.set_value(mongodb_storage.DOWN_KEY, "không kết nối", expires_in_sec=30)
-        try:
-            with patch.dict(frappe.local.conf, {"mongodb_atlas_uri": uri}):
-                with self.assertRaises(frappe.ValidationError) as caught:
-                    mongodb_storage._get_mongo_client()
-            self.assertIn("tạm thời", str(caught.exception))
-        finally:
-            frappe.cache.delete_value(mongodb_storage.DOWN_KEY)
-            mongodb_storage._mongo_clients.update(saved)
+    def test_minio_requires_complete_application_credentials(self):
+        with patch.dict("os.environ", {"MINIO_ENDPOINT": "http://minio:9000", "MINIO_APP_ACCESS_KEY": ""}):
+            with self.assertRaises(RuntimeError):
+                object_storage._settings()
+        with self.assertRaises(ValueError):
+            object_storage._object_key("legacy-gridfs-id")
 
     def test_the_size_of_the_uploaded_files_is_measured_in_the_background(self):
         frappe.cache.delete_value(admin.FILES_SIZE_KEY)
