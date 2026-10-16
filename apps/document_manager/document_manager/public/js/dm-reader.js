@@ -305,8 +305,12 @@
         var from = fmtDate(row.start_date), to = fmtDate(row.end_date);
         return from && to && from !== to ? from + " – " + to : from || to;
       },
+      itemKind: function () { return this.kind === "files" ? "file" : "document"; },
+      inBasket: function (row, target) { return Alpine.store("basket").has(target, this.itemKind(), this.id(row)); },
       add: function (row, target) {
-        return Alpine.store("basket").add(this.kind === "files" ? "file" : "document", this.id(row), target);
+        var basket = Alpine.store("basket");
+        if (this.inBasket(row, target)) { nav.go(basket.href(target)); return Promise.resolve(); }
+        return basket.add(this.itemKind(), this.id(row), target);
       },
     };
   };
@@ -418,6 +422,22 @@
     };
   };
 
+  var AUTOSAVE_MS = 1200;
+
+  /** Ask in the page (the reader site's own dialog); the browser's dialog only when the page has none. */
+  function ask(message, options) {
+    var store = window.Alpine && Alpine.store("confirm");
+    return store && store.ask ? store.ask(message, options) : Promise.resolve(window.confirm(message));
+  }
+
+  function clock() {
+    var d = new Date();
+    return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+  }
+
+  /** "Mục đích khác" (any suggestion naming "khác") asks the reader to write their own purpose. */
+  var isOther = function (text) { return /\bkhác\b/i.test(String(text || "")); };
+
   components.slipEditor = function (config) {
     return {
       doctype: config.doctype,
@@ -426,16 +446,62 @@
       notes: config.notes || "",
       items: config.items || [],
       listUrl: config.listUrl,
+      maxItems: config.maxItems || 0,
+      blocked: !!config.blocked,
       busy: false,
       error: "",
+      saveState: "saved", // saved | dirty | saving | error
+      savedAt: "",
+      timer: null,
+      pending: null,
+
+      init: function () {
+        var self = this;
+        window.addEventListener("beforeunload", function (event) {
+          if (self.saveState === "dirty" || self.saveState === "saving") { event.preventDefault(); event.returnValue = ""; }
+        });
+      },
+      get overMax() { return !!this.maxItems && this.items.length > this.maxItems; },
+      get statusText() {
+        return {
+          dirty: "Có thay đổi, sắp lưu…",
+          saving: "Đang lưu…",
+          error: "Chưa lưu được thay đổi",
+          saved: this.savedAt ? "Đã lưu tự động lúc " + this.savedAt : "Bản nháp được lưu tự động",
+        }[this.saveState];
+      },
+      // only the reader's own fields of the rows already there: rows added from another tab stay in the draft
       payload: function () {
         return JSON.stringify({
           purpose: this.purpose, notes: this.notes,
-          items: this.items.map(function (item) {
-            return { archival_file: item.archival_file, archive_document: item.archive_document, notes: item.notes, copy_count: item.copy_count,
-              copy_form: item.copy_form, page_range: item.page_range };
+          item_updates: this.items.map(function (item) {
+            return { row: item.row, notes: item.notes, copy_count: item.copy_count, copy_form: item.copy_form, page_range: item.page_range };
           }),
         });
+      },
+      changed: function () {
+        var self = this;
+        this.saveState = "dirty";
+        this.error = "";
+        clearTimeout(this.timer);
+        this.timer = setTimeout(function () { self.flush(); }, AUTOSAVE_MS);
+      },
+      /** Save now when something changed; resolves true when the draft on the server is up to date. */
+      flush: function () {
+        var self = this;
+        clearTimeout(this.timer);
+        if (this.pending) return this.pending.then(function () { return self.flush(); });
+        if (this.saveState !== "dirty" && this.saveState !== "error") return Promise.resolve(this.saveState === "saved");
+        this.saveState = "saving";
+        this.pending = api.saveRequest(this.doctype, this.payload(), this.name, false).then(function () {
+          if (self.saveState === "saving") { self.saveState = "saved"; self.savedAt = clock(); }
+          return true;
+        }).catch(function (error) {
+          self.saveState = "error";
+          self.error = error.message;
+          return false;
+        }).then(function (ok) { self.pending = null; return ok; });
+        return this.pending;
       },
       work: function (promise, done) {
         var self = this;
@@ -447,37 +513,75 @@
         });
       },
       save: function () {
+        this.saveState = "dirty";
+        return this.flush().then(function (ok) { if (ok) Alpine.store("toast").show("Đã lưu phiếu."); });
+      },
+      isPurpose: function (text) { return !isOther(text) && this.purpose === text; },
+      choosePurpose: function (text) {
+        if (isOther(text)) {
+          this.purpose = "";
+          var box = document.getElementById("purpose");
+          if (box) box.focus();
+        } else {
+          this.purpose = text;
+        }
+        this.changed();
+      },
+      /** Leave for the search page (to add documents) once the draft is saved. */
+      goAdd: function (url) {
         var self = this;
-        return this.work(api.saveRequest(this.doctype, this.payload(), this.name, false), function () {
-          self.busy = false;
-          Alpine.store("toast").show("Đã lưu phiếu.");
-        });
+        return this.flush().then(function (ok) { if (ok) nav.go(url); else self.error = self.error || "Chưa lưu được bản nháp."; });
       },
       send: function () {
+        var self = this;
+        if (this.blocked) { this.error = "Phiếu chưa gửi được: xem lưu ý ở đầu phiếu."; return Promise.resolve(); }
         if (config.requirePurpose !== false && !this.purpose.trim()) { this.error = "Vui lòng nhập mục đích trước khi gửi."; return Promise.resolve(); }
         if (!this.items.length) { this.error = "Phiếu chưa có hồ sơ, văn bản nào."; return Promise.resolve(); }
-        return this.work(api.saveRequest(this.doctype, this.payload(), this.name, true), function () { nav.reload(); });
+        if (this.overMax) { this.error = "Một phiếu có tối đa " + this.maxItems + " hồ sơ, văn bản: hãy bỏ bớt."; return Promise.resolve(); }
+        clearTimeout(this.timer);
+        var wait = this.pending || Promise.resolve();
+        return wait.then(function () {
+          return self.work(api.saveRequest(self.doctype, self.payload(), self.name, true), function () {
+            self.saveState = "saved";
+            nav.reload();
+          });
+        });
       },
       removeItem: function (item) {
         var self = this;
-        return this.work(api.removeFromBasket(this.doctype, this.name, item.row), function (result) {
-          Alpine.store("basket").sync(config.target, result);
-          if (!result.request) { nav.go(self.listUrl); return; }
-          self.items = self.items.filter(function (x) { return x.row !== item.row; });
-          self.busy = false;
+        var last = this.items.length === 1;
+        var confirmed = last ? ask("Đây là hồ sơ, văn bản cuối cùng: bỏ nó sẽ hủy bản nháp này.", { ok: "Bỏ và hủy bản nháp", danger: true })
+          : Promise.resolve(true);
+        return confirmed.then(function (yes) {
+          if (!yes) return undefined;
+          return self.flush().then(function () {
+            return self.work(api.removeFromBasket(self.doctype, self.name, item.row), function (result) {
+              Alpine.store("basket").sync(config.target, result);
+              if (!result.request) { self.saveState = "saved"; nav.go(self.listUrl); return; }
+              self.items = self.items.filter(function (x) { return x.row !== item.row; });
+              self.busy = false;
+            });
+          });
         });
       },
       discard: function () {
         var self = this;
-        if (!window.confirm("Hủy bản nháp này? Các hồ sơ, văn bản trong phiếu sẽ bị bỏ.")) return Promise.resolve();
-        return this.work(api.discardDraft(this.doctype, this.name), function () {
-          Alpine.store("basket").sync(config.target, { request: null, count: 0 });
-          nav.go(self.listUrl);
+        return ask("Hủy bản nháp này? Các hồ sơ, văn bản trong phiếu sẽ bị bỏ.", { ok: "Hủy bản nháp", danger: true }).then(function (yes) {
+          if (!yes) return undefined;
+          clearTimeout(self.timer);
+          return self.work(api.discardDraft(self.doctype, self.name), function () {
+            self.saveState = "saved";
+            Alpine.store("basket").sync(config.target, { request: null, count: 0, keys: [] });
+            nav.go(self.listUrl);
+          });
         });
       },
       cancelSlip: function () {
-        if (!window.confirm("Hủy phiếu này?")) return Promise.resolve();
-        return this.work(api.applyAction(this.doctype, this.name, "Hủy phiếu"), function () { nav.reload(); });
+        var self = this;
+        return ask("Hủy phiếu này? Phòng đọc sẽ không xử lý phiếu nữa.", { ok: "Hủy phiếu", danger: true }).then(function (yes) {
+          if (!yes) return undefined;
+          return self.work(api.applyAction(self.doctype, self.name, "Hủy phiếu"), function () { nav.reload(); });
+        });
       },
     };
   };
@@ -565,14 +669,22 @@
 
     var basket = BOOT.basket || {};
     Alpine.store("basket", {
-      usage: basket.usage || { count: 0, name: null, route: "/portal/phieu" },
-      copy: basket.copy || { count: 0, name: null, route: "/portal/sao-chep" },
+      usage: Object.assign({ count: 0, name: null, keys: [], route: "/portal/phieu" }, basket.usage),
+      copy: Object.assign({ count: 0, name: null, keys: [], route: "/portal/sao-chep" }, basket.copy),
       busy: false,
       get total() { return (this.usage.count || 0) + (this.copy.count || 0); },
+      has: function (target, kind, name) { return (this[target].keys || []).indexOf(kind + ":" + name) >= 0; },
+      href: function (target) { var slot = this[target]; return slot.name ? slot.route + "/" + slot.name : slot.route; },
       sync: function (target, result) {
         var slot = this[target];
         slot.count = result.count || 0;
         slot.name = result.request || null;
+        if (result.keys) slot.keys = result.keys;
+      },
+      /** Put a result in a draft; when it is already there, open that draft instead. */
+      addOrOpen: function (kind, name, target) {
+        if (this.has(target, kind, name)) { nav.go(this.href(target)); return Promise.resolve(); }
+        return this.add(kind, name, target);
       },
       add: function (kind, name, target) {
         var self = this;
@@ -583,6 +695,23 @@
         }).catch(function (error) {
           Alpine.store("toast").show(error.message, { error: true });
         }).then(function () { self.busy = false; });
+      },
+    });
+
+    Alpine.store("confirm", {
+      open: false, message: "", ok: "Đồng ý", danger: false, resolve: null,
+      ask: function (message, options) {
+        var self = this;
+        options = options || {};
+        if (this.resolve) this.resolve(false);
+        Object.assign(this, { message: message, ok: options.ok || "Đồng ý", danger: !!options.danger, open: true });
+        return new Promise(function (resolve) { self.resolve = resolve; });
+      },
+      answer: function (value) {
+        var resolve = this.resolve;
+        this.open = false;
+        this.resolve = null;
+        if (resolve) resolve(!!value);
       },
     });
 

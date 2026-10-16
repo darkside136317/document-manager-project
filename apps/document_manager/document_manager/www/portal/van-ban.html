@@ -1,5 +1,5 @@
 {% extends "templates/reader/base.html" %}
-{% from "templates/reader/macros.html" import icon %}
+{% from "templates/reader/macros.html" import icon, add_to_slip %}
 
 {% block main %}{% autoescape true %}
 <ol class="breadcrumb">
@@ -15,8 +15,8 @@
   </div>
   <div class="cluster no-print" x-data>
     {% if can_download %}<a class="btn btn-primary" href="{{ preview.download_url }}">{{ icon("download") }} Tải tệp gốc</a>{% endif %}
-    {% if can_add.usage %}<button class="btn" type="button" @click="$store.basket.add('document', {{ doc.name | tojson | forceescape }}, 'usage')" :disabled="$store.basket.busy">{{ icon("plus") }} Thêm vào phiếu sử dụng</button>{% endif %}
-    {% if can_add.copy %}<button class="btn" type="button" @click="$store.basket.add('document', {{ doc.name | tojson | forceescape }}, 'copy')" :disabled="$store.basket.busy">{{ icon("copy") }} Thêm vào phiếu sao chụp</button>{% endif %}
+    {% if can_add.usage %}{{ add_to_slip("document", doc.name, "usage") }}{% endif %}
+    {% if can_add.copy %}{{ add_to_slip("document", doc.name, "copy") }}{% endif %}
   </div>
 </div>
 

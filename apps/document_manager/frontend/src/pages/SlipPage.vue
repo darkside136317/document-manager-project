@@ -11,8 +11,8 @@ import { formatDate, formatDateTime } from "../lib/format.js";
 import { pageTitle } from "../lib/page.js";
 import { refreshBadges } from "../lib/registrations.js";
 import {
-  actionStyle, approvedCount, CONDITIONS, confirmText, daysLate, decisionsFrom, kindOf, needsConfirm, needsReason,
-  rejectedWithoutReason,
+  actionHint, actionStyle, approvedCount, CONDITIONS, confirmText, daysLate, decideAll, decisionsFrom, kindOf, needsConfirm, needsReason,
+  rejectedWithoutReason, sortActions,
 } from "../lib/slips.js";
 import { toast, toastError } from "../lib/toast.js";
 
@@ -158,6 +158,10 @@ const setDecision = (item, status) => {
   if (item.item_status !== "Từ chối") item.decision_note = item.item_status === "Đã duyệt" ? item.decision_note : "";
 };
 const printLinks = computed(() => Object.entries(slip.value?.print || {}));
+const printOpen = ref(false);
+const actions = computed(() => sortActions(slip.value?.actions || []));
+const hint = computed(() => (slip.value ? actionHint(slip.value) : ""));
+const undecided = computed(() => items.value.filter((i) => i.item_status === "Chờ duyệt").length);
 const printLabel = (kind) => ({ standard: "Phiếu", pickup: "Phiếu lấy tài liệu" })[kind] || kind;
 const reviewLabel = computed(() => (slip.value?.state === "Chờ lãnh đạo duyệt" ? "Lãnh đạo duyệt từng dòng" : "Duyệt từng hồ sơ, văn bản"));
 </script>
@@ -183,11 +187,17 @@ const reviewLabel = computed(() => (slip.value?.state === "Chờ lãnh đạo du
         </h1>
         <p class="mt-1 text-sm text-ink-muted">Độc giả {{ slip.reader.full_name || slip.reader.name }} · gửi lúc {{ formatDateTime(slip.submitted_on) || "chưa gửi" }}</p>
       </div>
-      <div class="flex flex-wrap items-center gap-2">
-        <template v-for="[kindName, urls] in printLinks" :key="kindName">
-          <a class="btn" :href="urls.view" target="_blank" rel="noopener"><Icon name="printer" :size="16" /> In {{ printLabel(kindName).toLowerCase() }}</a>
-          <a class="btn" :href="urls.pdf" target="_blank" rel="noopener" :aria-label="`Tải PDF ${printLabel(kindName).toLowerCase()}`"><Icon name="download" :size="16" /> PDF</a>
-        </template>
+      <div v-if="printLinks.length" class="relative" @keydown.escape="printOpen = false">
+        <button class="btn" type="button" aria-haspopup="menu" :aria-expanded="printOpen" @click="printOpen = !printOpen">
+          <Icon name="printer" :size="16" /> In <Icon name="chevron-down" :size="14" />
+        </button>
+        <div v-if="printOpen" class="card absolute right-0 z-30 mt-1 w-72 py-1 shadow-pop" role="menu" @click="printOpen = false">
+          <div v-for="[kindName, urls] in printLinks" :key="kindName" class="flex items-center justify-between gap-2 px-3 py-1.5">
+            <a class="flex flex-1 items-center gap-2 text-sm text-ink no-underline hover:underline" :href="urls.view" target="_blank" rel="noopener" role="menuitem">
+              <Icon name="printer" :size="15" /> In {{ printLabel(kindName).toLowerCase() }}</a>
+            <a class="btn btn-sm" :href="urls.pdf" target="_blank" rel="noopener" role="menuitem" :aria-label="`Tải PDF ${printLabel(kindName).toLowerCase()}`"><Icon name="download" :size="14" /> PDF</a>
+          </div>
+        </div>
       </div>
     </header>
 
@@ -196,7 +206,7 @@ const reviewLabel = computed(() => (slip.value?.state === "Chờ lãnh đạo du
 
     <!-- what can be done next -->
     <section v-if="slip.actions.length || slip.can.renew || slip.can.delete_draft" class="card mb-5 flex flex-wrap items-center gap-2 p-4" aria-label="Thao tác">
-      <button v-for="action in slip.actions" :key="action" class="btn" :class="actionStyle(action)" type="button" :disabled="busy" @click="run(action)">{{ action }}</button>
+      <button v-for="action in actions" :key="action" class="btn" :class="actionStyle(action, slip.actions)" type="button" :disabled="busy" @click="run(action)">{{ action }}</button>
       <button v-if="slip.can.renew" class="btn" type="button" :disabled="busy" @click="Object.assign(dialog, { type: 'renew', error: '' })">
         <Icon name="calendar-plus" :size="16" /> Gia hạn
       </button>
@@ -204,6 +214,7 @@ const reviewLabel = computed(() => (slip.value?.state === "Chờ lãnh đạo du
         <Icon name="trash-2" :size="16" /> Xóa nháp
       </button>
       <span v-if="slip.renew_reason && slip.state === 'Đang sử dụng'" class="text-sm text-ink-muted">{{ slip.renew_reason }}</span>
+      <p v-if="hint" class="m-0 flex basis-full items-start gap-1.5 text-sm text-ink-muted"><Icon name="info" :size="14" class="mt-0.5 shrink-0" /><span>{{ hint }}</span></p>
     </section>
 
     <div class="mb-5 grid gap-4 lg:grid-cols-3">
@@ -236,8 +247,10 @@ const reviewLabel = computed(() => (slip.value?.state === "Chờ lãnh đạo du
     <section class="card mb-5 overflow-hidden" aria-label="Hồ sơ, văn bản trong phiếu">
       <header class="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-3">
         <h2 class="m-0 text-base font-semibold">Hồ sơ, văn bản trong phiếu <span class="badge badge-muted">{{ items.length }}</span></h2>
-        <div v-if="canDecide" class="flex items-center gap-2">
-          <span class="text-sm text-ink-muted">{{ reviewLabel }} — {{ approvedCount(items) }} dòng sẽ được duyệt</span>
+        <div v-if="canDecide" class="flex flex-wrap items-center gap-2">
+          <span class="text-sm text-ink-muted">{{ reviewLabel }}: {{ approvedCount(items) }}/{{ items.length }} dòng sẽ được duyệt<template v-if="undecided"> ({{ undecided }} chưa quyết định)</template></span>
+          <button class="btn btn-sm" type="button" :disabled="busy" @click="decideAll(items, 'Đã duyệt')"><Icon name="check" :size="14" /> Duyệt tất cả</button>
+          <button class="btn btn-sm" type="button" :disabled="busy || !dirty" @click="decideAll(items, 'Chờ duyệt')">Đặt lại</button>
           <button class="btn btn-sm btn-primary" type="button" :disabled="busy || !dirty" @click="saveDecisions"><Icon name="save" :size="14" /> Lưu quyết định</button>
         </div>
       </header>
@@ -267,7 +280,7 @@ const reviewLabel = computed(() => (slip.value?.state === "Chờ lãnh đạo du
                     <button class="btn btn-sm" :class="{ 'btn-danger': item.item_status === 'Từ chối' }" type="button" :aria-pressed="item.item_status === 'Từ chối'" @click="setDecision(item, 'Từ chối')">Từ chối</button>
                   </div>
                   <input v-if="item.item_status === 'Từ chối'" v-model="item.decision_note" class="input" placeholder="Lý do từ chối (bắt buộc)" :aria-label="`Lý do từ chối ${item.title}`" />
-                  <StatusBadge v-if="item.item_status === 'Chờ duyệt'" value="Chờ duyệt" />
+                  <p v-if="item.item_status === 'Chờ duyệt'" class="m-0 text-xs text-ink-muted">Chưa quyết định: sẽ được duyệt cùng phiếu</p>
                 </div>
                 <div v-else>
                   <StatusBadge :value="item.item_status" />

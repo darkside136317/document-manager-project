@@ -156,6 +156,7 @@ export const api = {
     renew: (name) => call(`${BASE}.slips.renew`, { name }, { post: true }),
     deleteDraft: (kind, name) => call(`${BASE}.slips.delete_draft`, { kind, name }, { post: true }),
     readerSlips: (reader) => call(`${BASE}.slips.reader_slips`, { reader }),
+    prepare: (kind, reader, items) => call(`${BASE}.slips.prepare_slip`, { kind, reader: reader || "", items: JSON.stringify(items || []) }, { post: true }),
   },
   requests: {
     action: (doctype, name, action, text) => call(`${BASE}.requests.apply_action`, { doctype, name, action, text }, { post: true }),

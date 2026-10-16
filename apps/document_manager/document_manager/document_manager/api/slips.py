@@ -342,3 +342,65 @@ def reader_slips(reader, limit=10):
         "overdue": lc.overdue_count(reader),
         "print": print_urls("Reader", reader),
     }
+
+
+MAX_PREPARED_ITEMS = 100
+
+
+def _brief(row) -> dict:
+    """Title, number, level and fonds of an item the reading room picked, as far as the officer may read it."""
+    doctype, name = ("Archive Document", row.archive_document) if row.archive_document else ("Archival File", row.archival_file)
+    if not name or not frappe.db.exists(doctype, name) or not frappe.has_permission(doctype, "read", doc=name):
+        return {"title": name or "", "number": "", "level": "", "fonds_name": "", "kind": "Văn bản" if row.archive_document else "Hồ sơ"}
+    fields = ["document_title", "document_number"] if row.archive_document else ["file_title", "file_number"]
+    values = frappe.db.get_value(doctype, name, [*fields, "confidentiality_level", "fonds"], as_dict=True)
+    return {"title": values.get(fields[0]) or name, "number": values.get(fields[1]) or "", "level": values.confidentiality_level or "",
+            "fonds_name": frappe.db.get_value("Fonds", values.fonds, "fonds_name") if values.fonds else "",
+            "kind": "Văn bản" if row.archive_document else "Hồ sơ"}
+
+
+@frappe.whitelist()
+def prepare_slip(kind, reader=None, items=None):
+    """What the reading room needs while filing a slip for a reader at the counter, before anything is saved: the purposes
+    of the slip template, who the reader is (group, fonds they may use, what to know: limits, overdue documents) and each
+    picked item with its title and, once the reader is known, whether this reader may have it (the same rule as sending)."""
+    assert_capability(*OFFICERS)
+    from document_manager.document_manager.policy import reader_scope_of
+    from document_manager.document_manager.services import templates
+
+    doctype = _doctype(kind)
+    options = templates.slip_options_for(doctype)
+    rows = frappe.parse_json(items) if isinstance(items, str) else (items or [])
+    probe = frappe.new_doc(doctype)
+    probe.name = "__new__"
+    scope = None
+    out = {"purposes": options.purposes or [], "require_purpose": bool(options.require_purpose), "reader": None, "items": []}
+    if reader:
+        info = frappe.db.get_value("Reader", reader, ["name", "full_name", "reader_group", "is_active", "email", "phone"], as_dict=True)
+        if not info:
+            frappe.throw(_("Không tìm thấy độc giả {0}").format(reader), frappe.DoesNotExistError)
+        scope = reader_scope_of(reader)
+        probe.reader = reader
+    for raw in rows[:MAX_PREPARED_ITEMS]:
+        file, document = (raw or {}).get("archival_file"), (raw or {}).get("archive_document")
+        if document and not file:
+            file = frappe.db.get_value("Archive Document", document, "archival_file")
+        row = frappe._dict(archival_file=file, archive_document=document or None)
+        probe.append("items", {"archival_file": file, "archive_document": document or None})
+        problem = probe._item_problem(row, scope) if scope is not None else None
+        out["items"].append({**_brief(row), "archival_file": file, "archive_document": document or "", "problem": problem or ""})
+    if reader:
+        quota = lc.quota(probe)
+        fonds_names = {f.name: f.fonds_name for f in frappe.get_all("Fonds", filters={"name": ["in", scope.fonds or [""]]},
+                                                                      fields=["name", "fonds_name"])}
+        warnings = list(quota.problems)
+        if not scope.allowed:
+            warnings.insert(0, _("Độc giả đang bị khóa, hoặc nhóm độc giả bị khóa: không khai thác được tài liệu nào."))
+        out["reader"] = {
+            "name": info.name, "full_name": info.full_name, "group": scope.group or info.reader_group or "",
+            "active": bool(cint(info.is_active)), "contact": " · ".join(filter(None, [info.email, info.phone])),
+            "fonds": [{"name": fonds_names.get(f, f), "until": format_date(scope.fonds_until.get(f), "dd/MM/yyyy") if scope.fonds_until.get(f) else ""}
+                      for f in scope.fonds or []],
+            "warnings": warnings, "notes": quota.notes,
+        }
+    return out

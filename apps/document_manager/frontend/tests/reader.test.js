@@ -345,55 +345,148 @@ describe("slipEditor", () => {
     ],
     ...extra,
   });
+  const saved = () => reply({ message: { name: "UR-1", state: "Nháp" } });
+  const answer = async (value) => { await Promise.resolve(); stores.confirm.answer(value); };
 
-  it("sends the slip without the display-only fields", () => {
+  it("saves only the reader's own fields of the rows, by row, so rows added elsewhere stay", () => {
     const editor = components.slipEditor(config({ purpose: "Nghiên cứu" }));
     expect(JSON.parse(editor.payload())).toEqual({
       purpose: "Nghiên cứu", notes: "",
-      items: [
-        { archival_file: "AF-1", archive_document: "", notes: "", copy_count: 1 },
-        { archival_file: "AF-1", archive_document: "DOC-1", notes: "", copy_count: 2 },
-      ],
+      item_updates: [{ row: "r1", notes: "", copy_count: 1 }, { row: "r2", notes: "", copy_count: 2 }],
     });
   });
 
-  it("will not send a slip without a purpose", async () => {
-    const fetch = mockFetch();
+  it("saves the draft by itself a moment after the reader stops typing", async () => {
+    vi.useFakeTimers();
+    const fetch = mockFetch(saved());
     const editor = components.slipEditor(config());
-    await editor.send();
-    expect(fetch).not.toHaveBeenCalled();
-    expect(editor.error).toMatch(/mục đích/);
+    editor.purpose = "Ngh";
+    editor.changed();
+    editor.purpose = "Nghiên cứu";
+    editor.changed();
+    expect(editor.saveState).toBe("dirty");
+    await vi.advanceTimersByTimeAsync(1300);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(fetch.mock.calls[0][1].body)).toMatchObject({ name: "UR-1", submit: 0 });
+    expect(editor.saveState).toBe("saved");
+    expect(editor.statusText).toMatch(/Đã lưu tự động lúc \d\d:\d\d/);
+    vi.useRealTimers();
   });
 
-  it("saves, then sends for approval and reloads the page", async () => {
+  it("keeps the change marked unsaved when saving fails, and says so", async () => {
+    mockFetch(reply({ exc_type: "ValidationError", _server_messages: JSON.stringify([JSON.stringify({ message: "Lỗi lưu" })]) }, 417));
+    const editor = components.slipEditor(config());
+    editor.changed();
+    expect(await editor.flush()).toBe(false);
+    expect(editor.saveState).toBe("error");
+    expect(editor.error).toBe("Lỗi lưu");
+  });
+
+  it("saves before leaving for the search page", async () => {
+    const fetch = mockFetch(saved());
+    const editor = components.slipEditor(config());
+    editor.purpose = "Nghiên cứu";
+    editor.changed();
+    await editor.goAdd("/portal");
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(dm.nav.go).toHaveBeenCalledWith("/portal");
+  });
+
+  it("marks the chosen purpose; 'Mục đích khác' clears the box for the reader's own words", () => {
+    const editor = components.slipEditor(config());
+    editor.choosePurpose("Nghiên cứu khoa học");
+    expect(editor.purpose).toBe("Nghiên cứu khoa học");
+    expect(editor.isPurpose("Nghiên cứu khoa học")).toBe(true);
+    editor.choosePurpose("Mục đích khác");
+    expect(editor.purpose).toBe("");
+    expect(editor.isPurpose("Mục đích khác")).toBe(false);
+    expect(editor.saveState).toBe("dirty");
+  });
+
+  it("will not send a slip without a purpose, over the limit or blocked by the reader's limits", async () => {
+    const fetch = mockFetch();
+    let editor = components.slipEditor(config());
+    await editor.send();
+    expect(editor.error).toMatch(/mục đích/);
+    editor = components.slipEditor(config({ purpose: "x", maxItems: 1 }));
+    expect(editor.overMax).toBe(true);
+    await editor.send();
+    expect(editor.error).toMatch(/tối đa 1/);
+    editor = components.slipEditor(config({ purpose: "x", blocked: true }));
+    await editor.send();
+    expect(editor.error).toMatch(/chưa gửi được/);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("sends for approval without replacing the rows, then reloads the page", async () => {
     const fetch = mockFetch(reply({ message: { name: "UR-1", state: "Chờ duyệt" } }));
     const editor = components.slipEditor(config({ purpose: "Nghiên cứu" }));
     await editor.send();
     const body = JSON.parse(fetch.mock.calls[0][1].body);
     expect(body).toMatchObject({ doctype: "Usage Request", name: "UR-1", submit: 1 });
+    expect(JSON.parse(body.payload).items).toBeUndefined();
     expect(dm.nav.reload).toHaveBeenCalled();
   });
 
-  it("removes a row, and leaves the page when the draft is gone", async () => {
-    mockFetch(reply({ message: { request: "UR-1", count: 1 } }), reply({ message: { request: null, count: 0 } }));
+  it("removes a row; the last one only after the reader agrees to drop the draft", async () => {
+    mockFetch(reply({ message: { request: "UR-1", count: 1, keys: ["document:DOC-1"] } }), reply({ message: { request: null, count: 0, keys: [] } }));
     const editor = components.slipEditor(config());
     await editor.removeItem(editor.items[0]);
     expect(editor.items.map((i) => i.row)).toEqual(["r2"]);
     expect(stores.basket.usage.count).toBe(1);
-    await editor.removeItem(editor.items[0]);
+    expect(stores.basket.usage.keys).toEqual(["document:DOC-1"]);
+    let pending = editor.removeItem(editor.items[0]);
+    expect(stores.confirm.open).toBe(true);
+    await answer(false);
+    await pending;
+    expect(editor.items).toHaveLength(1);
+    pending = editor.removeItem(editor.items[0]);
+    await answer(true);
+    await pending;
     expect(dm.nav.go).toHaveBeenCalledWith("/portal/phieu");
     expect(stores.basket.usage.name).toBeNull();
   });
 
-  it("asks before discarding the draft", async () => {
+  it("asks in the page before discarding the draft", async () => {
     const fetch = mockFetch(reply({ message: { request: null } }));
-    vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValueOnce(true);
     const editor = components.slipEditor(config());
-    await editor.discard();
+    let pending = editor.discard();
+    expect(stores.confirm.message).toMatch(/Hủy bản nháp/);
+    await answer(false);
+    await pending;
     expect(fetch).not.toHaveBeenCalled();
-    await editor.discard();
+    pending = editor.discard();
+    await answer(true);
+    await pending;
     expect(fetch).toHaveBeenCalledTimes(1);
     expect(dm.nav.go).toHaveBeenCalledWith("/portal/phieu");
+  });
+});
+
+describe("what is already in a draft", () => {
+  it("tells the results already in a draft and opens the draft instead of adding them twice", async () => {
+    load({ basket: { usage: { count: 1, name: "UR-1", keys: ["file:AF-1"], route: "/portal/phieu" } } });
+    expect(stores.basket.has("usage", "file", "AF-1")).toBe(true);
+    expect(stores.basket.has("copy", "file", "AF-1")).toBe(false);
+    expect(stores.basket.href("usage")).toBe("/portal/phieu/UR-1");
+    expect(stores.basket.href("copy")).toBe("/portal/sao-chep");
+    const fetch = mockFetch(reply({ message: { added: true, request: "CR-1", count: 1, keys: ["file:AF-1"], route: "/portal/sao-chep/CR-1", message: "Đã thêm" } }));
+    await stores.basket.addOrOpen("file", "AF-1", "usage");
+    expect(dm.nav.go).toHaveBeenCalledWith("/portal/phieu/UR-1");
+    expect(fetch).not.toHaveBeenCalled();
+    await stores.basket.addOrOpen("file", "AF-1", "copy");
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(stores.basket.has("copy", "file", "AF-1")).toBe(true);
+  });
+
+  it("the page's own confirmation answers once, and a new question cancels the old one", async () => {
+    const first = stores.confirm.ask("Một?");
+    const second = stores.confirm.ask("Hai?", { ok: "Đồng ý xóa", danger: true });
+    expect(await first).toBe(false);
+    expect(stores.confirm).toMatchObject({ open: true, message: "Hai?", ok: "Đồng ý xóa", danger: true });
+    stores.confirm.answer(true);
+    expect(await second).toBe(true);
+    expect(stores.confirm.open).toBe(false);
   });
 });
 

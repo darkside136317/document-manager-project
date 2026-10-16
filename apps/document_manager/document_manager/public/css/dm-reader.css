@@ -414,3 +414,31 @@ main.container { flex: 1; padding-top: 24px; padding-bottom: 48px; }
   html { scroll-behavior: auto; }
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
+
+/* ---- slips: drafts, choices, confirmation ------------------------------------------------- */
+.text-danger { color: var(--r-danger); }
+ul.tight { margin: 4px 0 6px; padding-left: 18px; }
+.tab-count { display: inline-block; min-width: 20px; margin-left: 4px; padding: 0 6px; border-radius: 999px; background: var(--r-primary-soft); color: var(--r-ink); font-size: 0.75rem; font-weight: 600; text-align: center; }
+.draft-banner { align-items: center; }
+.draft-banner > div { flex: 1; }
+.quota-notes { display: flex; align-items: center; gap: 6px; margin: 0; padding: 8px 20px; border-bottom: 1px solid var(--r-line); }
+.save-state { margin-right: 4px; }
+.btn.btn-chosen { background: var(--r-primary-soft); border-color: var(--r-primary); color: var(--r-ink); font-weight: 600; }
+.btn.btn-added { background: var(--r-success-soft); border-color: var(--r-success); color: var(--r-success); }
+.btn-danger-solid { background: var(--r-danger); border-color: var(--r-danger); color: #fff; }
+.btn-danger-solid:hover:not(:disabled) { filter: brightness(0.92); }
+.modal { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; padding: 16px; }
+.modal-backdrop { position: absolute; inset: 0; background: rgba(5, 12, 22, 0.5); }
+.modal-card { position: relative; width: 100%; max-width: 440px; padding: 20px; border-radius: var(--r-radius); background: var(--r-surface); box-shadow: var(--r-shadow-pop); }
+.modal-card p { margin: 0 0 16px; }
+.modal-actions { justify-content: flex-end; }
+@media (max-width: 639px) {
+  .stepper li { min-width: 76px; padding-top: 26px; font-size: 0.75rem; }
+  /* tables of slips become one card per row */
+  .table-cards thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .table-cards, .table-cards tbody, .table-cards tr, .table-cards td { display: block; width: auto !important; }
+  .table-cards tr { padding: 10px 14px; border-bottom: 1px solid var(--r-line); }
+  .table-cards td { padding: 4px 0; border: 0; }
+  .table-cards td[data-label]::before { content: attr(data-label); display: block; color: var(--r-muted); font-size: 0.75rem; }
+  .table-cards td.right { text-align: left; }
+}

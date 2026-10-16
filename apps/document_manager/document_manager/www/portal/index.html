@@ -114,8 +114,12 @@
           <p class="snippet" x-show="snippet(row)" x-html="snippet(row)" x-cloak></p>
           <div class="actions">
             <a class="btn btn-sm" :href="href(row)">{{ icon("eye") }} Xem chi tiết</a>
-            <button class="btn btn-sm" type="button" x-show="canAdd.usage" x-cloak @click="add(row, 'usage')" :disabled="$store.basket.busy">{{ icon("plus") }} Phiếu sử dụng</button>
-            <button class="btn btn-sm" type="button" x-show="canAdd.copy" x-cloak @click="add(row, 'copy')" :disabled="$store.basket.busy">{{ icon("copy") }} Phiếu sao chụp</button>
+            {% for target in ("usage", "copy") %}{% set noun = "phiếu sử dụng" if target == "usage" else "phiếu sao chụp" %}
+            <button class="btn btn-sm" type="button" x-show="canAdd.{{ target }}" x-cloak @click="add(row, '{{ target }}')" :class="{ 'btn-added': inBasket(row, '{{ target }}') }"
+                    :disabled="$store.basket.busy" :aria-label="inBasket(row, '{{ target }}') ? 'Đã có trong {{ noun }}: mở phiếu' : 'Thêm vào {{ noun }}'">
+              <span x-show="!inBasket(row, '{{ target }}')">{{ icon("plus" if target == "usage" else "copy") }} Thêm vào {{ noun }}</span>
+              <span x-show="inBasket(row, '{{ target }}')" x-cloak>{{ icon("check") }} Đã có trong {{ noun }}</span>
+            </button>{% endfor %}
           </div>
         </li>
       </template>

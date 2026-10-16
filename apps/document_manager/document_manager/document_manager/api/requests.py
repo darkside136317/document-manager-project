@@ -73,6 +73,19 @@ def get_actions(doctype, name):
     return actions
 
 
+def _update_rows(doc, updates) -> None:
+    """Change the reader's own fields of existing rows in place (`row` = the row name). Rows keep their names, and rows
+    added meanwhile (from another tab of the reader site) are left alone: the draft page saves itself as the reader types."""
+    editable = [f for f in ITEM_FIELDS[doc.doctype] if f not in ("archival_file", "archive_document")]
+    rows = {r.name: r for r in doc.items}
+    for update in updates or []:
+        row = rows.get((update or {}).get("row"))
+        if row:
+            for field in editable:
+                if field in update:
+                    row.set(field, update[field])
+
+
 @frappe.whitelist(methods=["POST"])
 def save_request(doctype, payload, name=None, submit=0):
     """Create or update a draft request, optionally sending it for approval ("Gửi duyệt")."""
@@ -91,6 +104,8 @@ def save_request(doctype, payload, name=None, submit=0):
         allowed = ITEM_FIELDS[doctype]
         doc.set("items", [{k: v for k, v in (row or {}).items() if k in allowed}
                           for row in data["items"]])
+    elif name and data.get("item_updates"):
+        _update_rows(doc, data["item_updates"])
     doc.save() if name else doc.insert()
     if frappe.utils.cint(submit):
         doc = apply_workflow(doc, "Gửi duyệt")

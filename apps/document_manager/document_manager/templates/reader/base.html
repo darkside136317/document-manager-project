@@ -49,9 +49,9 @@
             </button>
             <div class="menu-panel" x-show="basket" x-cloak role="menu">
               <div class="menu-head"><strong>Phiếu đang soạn</strong><span>Thêm hồ sơ, văn bản từ kết quả tìm kiếm</span></div>
-              <a role="menuitem" :href="$store.basket.usage.name ? $store.basket.usage.route + '/' + $store.basket.usage.name : '/portal/phieu'">
+              <a role="menuitem" :href="$store.basket.href('usage')">
                 {{ icon("file-text") }} Phiếu yêu cầu sử dụng <span class="badge badge-muted" x-text="$store.basket.usage.count"></span></a>
-              <a role="menuitem" :href="$store.basket.copy.name ? $store.basket.copy.route + '/' + $store.basket.copy.name : '/portal/sao-chep'">
+              <a role="menuitem" :href="$store.basket.href('copy')">
                 {{ icon("copy") }} Phiếu sao chụp <span class="badge badge-muted" x-text="$store.basket.copy.count"></span></a>
             </div>
           </div>
@@ -120,6 +120,18 @@
         <a x-show="t.link" :href="t.link" x-text="t.label"></a>
       </div>
     </template>
+  </div>
+
+  <div class="modal" x-data x-show="$store.confirm.open" x-cloak @keydown.escape.window="$store.confirm.open && $store.confirm.answer(false)">
+    <div class="modal-backdrop" @click="$store.confirm.answer(false)"></div>
+    <div class="modal-card" role="alertdialog" aria-modal="true" aria-labelledby="dm-confirm-text">
+      <p id="dm-confirm-text" x-text="$store.confirm.message"></p>
+      <div class="cluster modal-actions">
+        <button class="btn" type="button" @click="$store.confirm.answer(false)">Quay lại</button>
+        <button class="btn" type="button" x-ref="ok" :class="$store.confirm.danger ? 'btn-danger-solid' : 'btn-primary'"
+                x-effect="$store.confirm.open && $nextTick(() => $refs.ok.focus())" @click="$store.confirm.answer(true)" x-text="$store.confirm.ok"></button>
+      </div>
+    </div>
   </div>
 
   <script>window.__DM__ = {{ boot_json | safe }};</script>

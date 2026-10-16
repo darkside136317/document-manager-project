@@ -252,13 +252,17 @@ nhắc trước hạn, chặn khi có tài liệu quá hạn, cho tự đăng k�
 ### Phần F – Phiếu yêu cầu sử dụng (15 phút)
 
 **F1 ★ Độc giả lập và gửi phiếu.** W2 (An): ở kết quả tìm, *Thêm vào phiếu sử dụng* cho HS-001, văn bản "Bao cao nam 2020" (Mật) và HS-101 (P-2025).
-Mở phiếu (biểu tượng giỏ / *Phiếu sử dụng*): chọn mục đích "Nghiên cứu luận văn" (E7), ghi chú, bỏ một mục rồi thêm lại, *Lưu nháp* → *Gửi yêu cầu*.
+Nút đổi thành *✓ Đã có trong phiếu sử dụng*: bấm lần nữa thì mở phiếu, không thêm trùng.
+Mở phiếu (biểu tượng giỏ / *Phiếu sử dụng*): mỗi mục ghi số, phông, mức mật; dòng *Mỗi phiếu tối đa …* cho biết hạn mức trước khi gửi.
+Chọn mục đích "Nghiên cứu luận văn" (E7, nút được đánh dấu), ghi chú: bản nháp **tự lưu** sau khoảng một giây ("Đã lưu tự động lúc …"), tải lại trang vẫn còn.
+Bỏ một mục; bỏ mục cuối cùng thì hệ thống hỏi trước khi hủy bản nháp → *Gửi yêu cầu*.
 Mở `/portal/phieu`: danh sách phiếu, lọc trạng thái, xem chi tiết.
 - *Mong đợi:* phiếu nháp được giữ trên máy chủ (đổi máy vẫn còn); vượt hạn mức (E8) thì bị từ chối kèm lý do.
 
 **F2 ★ Phòng đọc tiếp nhận, quyết định từng mục.** W1 (`phongdoc.demo`): *Khai thác tài liệu → Phiếu yêu cầu sử dụng* (số đếm trên thanh bên). Các tab:
 *Chờ tiếp nhận, Chờ lãnh đạo duyệt, Đã duyệt, Đang sử dụng, Quá hạn, Đã đóng, Nháp, Tất cả*. Tìm theo số phiếu hoặc tên độc giả. Mở phiếu của An:
-duyệt HS-001 và HS-101, mục Mật để lãnh đạo → *Lưu quyết định* → *Chuyển lãnh đạo*.
+duyệt HS-001 và HS-101 (hoặc *Duyệt tất cả*), mục Mật để lãnh đạo → *Chuyển lãnh đạo* (quyết định từng dòng được lưu cùng lúc).
+Dòng gợi ý dưới các nút giải thích vì sao không có *Duyệt*; dòng chưa quyết định ghi "sẽ được duyệt cùng phiếu".
 - *Mong đợi:* phiếu có tài liệu mật thì phòng đọc **không** tự *Duyệt* được, chỉ *Chuyển lãnh đạo* (theo *Cách duyệt phiếu* của nhóm và cờ *Cần lãnh đạo duyệt* của mức mật).
 
 **F3 ★ Lãnh đạo duyệt.** W3 (`lanhdao.demo`): tab *Chờ lãnh đạo duyệt* → mở phiếu → quyết định mục Mật (đồng ý hoặc từ chối kèm lý do) → *Lưu quyết định* → *Duyệt*.
@@ -267,14 +271,16 @@ Giới thiệu thêm *Trả lại phòng đọc*.
 **F4 ★ Giao, gia hạn, nhận trả, in.** W1 (`phongdoc.demo`): tab *Đã duyệt* → mở phiếu → *Giao tài liệu*.
 - *Mong đợi:* *Hạn trả* = ngày giao + số ngày giữ, nhưng **không vượt ngày hết hạn cấp phép P-2025** (3 ngày, E6).
 
-*In phiếu*, *In phiếu lấy tài liệu* (có vị trí kho của từng hồ sơ), *PDF*. Tab *Đang sử dụng* → *Gia hạn*.
+Menu *In* → *In phiếu*, *In phiếu lấy tài liệu* (có vị trí kho của từng hồ sơ), mỗi mục có *PDF*. Tab *Đang sử dụng* → *Gia hạn*.
 - *Mong đợi:* với phiếu này hệ thống **từ chối gia hạn** vì hạn trả đã chạm ngày hết cấp phép P-2025 ("Quyền khai thác phông của độc giả hết hạn ngày …").
   Đây là quy tắc, nên nói trước. Muốn minh họa gia hạn thành công, dùng phiếu chỉ có tài liệu P-2024 (phiếu của Trần Thị Bình ở F5 sau khi duyệt và giao).
 
 *Nhận trả*: ghi tình trạng từng mục → *Xác nhận đã nhận trả* → phiếu *Đã trả*. Mở *Lịch sử xử lý* của phiếu: ai làm gì, lúc nào.
 
-**F5 Cán bộ lập, sửa, xóa phiếu hộ độc giả.** W1: *Lập phiếu cho độc giả* → chọn Trần Thị Bình → *Thêm hồ sơ* / *Thêm văn bản* → *Lưu nháp*.
-Tab *Nháp* → mở → sửa ghi chú → xóa nháp. Lập lại → thử thêm HS-101 → bị từ chối (Bình chưa được cấp phép P-2025, dù cán bộ xem được) → bỏ mục đó → *Gửi duyệt*.
+**F5 Cán bộ lập, sửa, xóa phiếu hộ độc giả.** W1: *Lập phiếu cho độc giả* → chọn Trần Thị Bình (hiện nhóm, phông được khai thác, lưu ý nếu có tài liệu quá hạn)
+→ chọn mục đích gợi ý → *Thêm hồ sơ* / *Thêm văn bản* (mỗi dòng hiện tiêu đề, số, phông) → *Lưu nháp*.
+Tab *Nháp* → mở → sửa ghi chú → xóa nháp. Lập lại → thử thêm HS-101 → dòng đó tô đỏ ngay "Không lập được: độc giả không được khai thác…" và nút gửi bị khóa (Bình chưa được cấp phép P-2025,
+dù cán bộ xem được) → bỏ mục đó → *Gửi duyệt*.
 - *Mong đợi:* mỗi mục được kiểm theo quyền của **độc giả của phiếu**, không theo quyền của cán bộ lập phiếu.
 
 Tiếp tục với phiếu này: phiếu chỉ có tài liệu mức *Thường* nên phòng đọc tự *Duyệt* được (không qua lãnh đạo) → *Giao tài liệu* → *Gia hạn* → hạn trả được cộng thêm

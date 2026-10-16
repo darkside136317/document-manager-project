@@ -259,6 +259,10 @@ def reader_management(c, api):
     check("an unknown slip is a clean error", status in (404, 417), str(status))
     check("a reader's card and slips are staff only",
           all(c[k].json(api + "slips.reader_slips?reader=RD-1")[0] in (401, 403) for k in ("reader", "noprofile", "guest")))
+    check("only the reading room prepares a slip for a reader at the counter",
+          all(c[k].post_json(api + "slips.prepare_slip", {"kind": "usage", "items": "[]"})[0] in (401, 403)
+              for k in ("reader", "noprofile", "guest", "leader"))
+          and c["officer"].post_json(api + "slips.prepare_slip", {"kind": "usage", "items": "[]"})[0] == 200)
 
     # reader administration: staff read, the leader cannot write, nobody outside the staff touches it
     check("the leader reads the readers list", c["leader"].json(api + "crud.get_list?doctype=Reader")[0] == 200)
