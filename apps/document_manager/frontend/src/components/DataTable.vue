@@ -26,6 +26,11 @@ const columns = computed(() =>
 );
 
 const isStatus = (column) => column.fieldtype === "Select" && /status$/.test(column.fieldname);
+const aiState = {
+  waiting: ["clock", "Đang chờ AI"], processing: ["loader", "AI đang xử lý"],
+  needs_review: ["alert-triangle", "Chưa duyệt kết quả"], reviewed: ["circle-check", "Đã duyệt"],
+  failed: ["alert-triangle", "AI xử lý lỗi"],
+};
 function text(column, value) {
   if (column.fieldname === "file_size_kb") return value ? formatSize(Math.round(Number(value) * 1024)) : "";
   return displayValue(column, value);
@@ -49,7 +54,11 @@ function text(column, value) {
       <tbody :class="{ 'opacity-60': loading }">
         <tr v-for="row in rows" :key="row[rowKey]" class="is-clickable" tabindex="0" @click="emit('open', row)" @keydown.enter="emit('open', row)">
           <td v-for="(column, index) in columns" :key="column.fieldname" :class="index === 0 ? 'font-medium' : 'text-ink-soft'">
-            <span v-if="column.fieldtype === 'Check'" class="badge" :class="row[column.fieldname] ? 'badge-success' : 'badge-muted'">
+            <span v-if="column.fieldname === 'ai_extraction_state'" class="inline-flex items-center gap-1">
+              <Icon :name="aiState[row.ai_extraction_state]?.[0] || 'info'" :size="15" />
+              {{ aiState[row.ai_extraction_state]?.[1] || 'Chưa xử lý' }}
+            </span>
+            <span v-else-if="column.fieldtype === 'Check'" class="badge" :class="row[column.fieldname] ? 'badge-success' : 'badge-muted'">
               {{ row[column.fieldname] ? "Có" : "Không" }}
             </span>
             <StatusBadge v-else-if="isStatus(column)" :value="row[column.fieldname]" />

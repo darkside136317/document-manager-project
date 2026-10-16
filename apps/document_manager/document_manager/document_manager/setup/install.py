@@ -16,6 +16,8 @@ ROLES = (
     ("Reading Room Officer", 1),
     ("Archive Leader", 1),
     ("Preservation Officer", 1),
+    ("Digitization Editor", 1),
+    ("Digitization Reviewer", 1),
     ("Reader", 0),
 )
 

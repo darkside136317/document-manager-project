@@ -30,6 +30,8 @@ GROUP_ADMIN = "Quản trị"
 MASTERS = [
     {"doctype": "Archival Agency", "slug": "co-quan-luu-tru", "label": "Cơ quan lưu trữ", "icon": "building-2"},
     {"doctype": "Fonds", "slug": "phong-luu-tru", "label": "Phông lưu trữ", "icon": "library"},
+    {"doctype": "Catalog", "slug": "muc-luc-tai-lieu", "label": "Mục lục tài liệu", "icon": "book-open-text",
+     "list_fields": ["catalog_title", "catalog_number", "record_group", "fonds"]},
     {"doctype": "Document Type Category", "slug": "loai-hinh-tai-lieu", "label": "Loại hình tài liệu", "icon": "file-type"},
     {"doctype": "Document Group", "slug": "nhom-tai-lieu", "label": "Nhóm tài liệu", "icon": "layers"},
     {"doctype": "Storage Warehouse", "slug": "kho-luu-tru", "label": "Kho, giá, hộp lưu trữ", "icon": "warehouse"},
@@ -47,8 +49,6 @@ DICTIONARY_LANGUAGE = "Ngôn ngữ"
 ARCHIVE_SCREENS = [
     {"doctype": "Record Group", "slug": "khoi-tai-lieu", "label": "Khối tài liệu", "icon": "layers",
      "list_fields": ["group_title", "group_code", "fonds", "status"]},
-    {"doctype": "Catalog", "slug": "muc-luc", "label": "Mục lục tài liệu", "icon": "book-open-text",
-     "list_fields": ["catalog_title", "catalog_number", "record_group", "fonds"]},
     {"doctype": "Archival File", "slug": "ho-so", "label": "Hồ sơ lưu trữ", "icon": "folder",
      "list_fields": ["file_number", "file_title", "catalog", "status", "confidentiality_level", "total_documents"],
      "search_fields": ["file_title", "file_number"]},
@@ -107,7 +107,8 @@ LEGACY_LINKS = []  # every screen is in the staff app now (kept so that older im
 
 
 # Roles the staff app may give to a user (never System Manager / Administrator) and how they are described.
-STAFF_ASSIGNABLE_ROLES = ("Document Admin", "Cataloger", "Reading Room Officer", "Archive Leader", "Preservation Officer")
+STAFF_ASSIGNABLE_ROLES = ("Document Admin", "Cataloger", "Reading Room Officer", "Archive Leader", "Preservation Officer",
+                          "Digitization Editor", "Digitization Reviewer")
 ROLE_INFO = {
     "Document Admin": {"label": "Quản trị viên", "group": "Quản trị",
                        "description": "Quản trị toàn bộ hệ thống: người dùng, thiết lập, sao lưu, trao đổi dữ liệu, nhật ký; có mọi quyền nghiệp vụ."},
@@ -115,6 +116,10 @@ ROLE_INFO = {
                        "description": "Xem toàn bộ dữ liệu và báo cáo; duyệt các phiếu yêu cầu cần lãnh đạo duyệt."},
     "Cataloger": {"label": "Biên mục viên", "group": "Tác nghiệp",
                   "description": "Biên mục phông, mục lục, hồ sơ, văn bản và danh mục; tải tệp; kiểm kê phông."},
+    "Digitization Editor": {"label": "Nhân viên số hóa", "group": "Tác nghiệp",
+                            "description": "Nhập và chỉnh sửa dữ liệu trong chế độ số hóa."},
+    "Digitization Reviewer": {"label": "Người duyệt số hóa", "group": "Tác nghiệp",
+                              "description": "Kiểm tra và duyệt kết quả bóc tách AI."},
     "Reading Room Officer": {"label": "Cán bộ phòng đọc", "group": "Tác nghiệp",
                              "description": "Quản lý độc giả, tiếp nhận, duyệt, giao và nhận trả phiếu; xử lý góp ý."},
     "Preservation Officer": {"label": "Cán bộ bảo quản", "group": "Tác nghiệp",
@@ -133,6 +138,9 @@ CAPABILITIES = (
     ("inventory.manage", "Lập và hoàn thành tổng kiểm kê phông", "Biên mục"),
     ("inventory.reopen", "Mở lại kỳ kiểm kê đã hoàn thành", "Biên mục"),
     ("archive.edit_closed", "Sửa hồ sơ, phông đã hoàn thành hoặc đã đóng", "Biên mục"),
+    ("digitization.edit", "Nhập và chỉnh sửa dữ liệu số hóa", "Số hóa"),
+    ("digitization.review", "Duyệt kết quả số hóa", "Số hóa"),
+    ("digitization.extract", "Gửi khối tài liệu cho AI bóc tách", "Số hóa"),
     ("exchange.export", "Xuất dữ liệu XML", "Trao đổi dữ liệu"),
     ("exchange.import", "Nhập dữ liệu XML", "Trao đổi dữ liệu"),
     ("preservation.backup", "Sao lưu, tải và dọn bản sao lưu", "Bảo quản"),
@@ -150,6 +158,8 @@ ADMIN_ONLY_CAPABILITIES = frozenset({"users.manage"})
 ADMIN_ROLE = "Document Admin"
 # What the built-in groups may do: exactly what the hard-coded role checks allowed before permission groups existed.
 BUILTIN_CAPABILITIES = {
+    "Digitization Editor": ("digitization.edit",),
+    "Digitization Reviewer": ("digitization.review",),
     "Archive Leader": ("slips.view", "slips.leader_approve", "feedback.handle"),
     "Cataloger": ("inventory.manage",),
     "Reading Room Officer": ("slips.view", "slips.receive", "feedback.handle", "readers.registrations", "readers.grant_fonds"),

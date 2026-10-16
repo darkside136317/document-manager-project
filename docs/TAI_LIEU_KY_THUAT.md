@@ -651,7 +651,7 @@ Kiểm thử `scripts/e2e/e2e_http.py` gọi từng API bằng từng loại tà
 | `GUNICORN_WORKERS`, `GUNICORN_THREADS`, `GUNICORN_TIMEOUT` | Tiến trình web |
 | `MINIO_MODE` | Production mặc định `disabled`; `auto` hoặc `manual` để bật MinIO |
 | `MONGODB_ATLAS_URI`, `MONGODB_DATABASE` | Chỉ dùng để chuyển dữ liệu GridFS cũ sang MinIO |
-| `MEILISEARCH_HOST`, `MEILISEARCH_MASTER_KEY` | Meilisearch; khóa bắt buộc đổi ở sản xuất |
+| `MEILISEARCH_MASTER_KEY` | Khóa Meilisearch bắt buộc đổi ở sản xuất; địa chỉ nội bộ `http://meilisearch:7700` và cổng nằm trong Compose |
 | `HTTP_PUBLISH_PORT`, `CLIENT_MAX_BODY_SIZE`, `PROXY_READ_TIMEOUT` | nginx (máy phát triển dùng cổng 8888) |
 
 ### 12.2. `site_config.json`

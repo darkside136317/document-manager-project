@@ -13,6 +13,7 @@ const empty = {
   inventory: [],
   admin: [],
   upload: { extensions: [], max_mb: 0 },
+  digitization: { enabled: false, allowed: false },
 };
 
 export const boot = { ...empty, ...(typeof window !== "undefined" ? window.__DM_BOOT__ : {}) };

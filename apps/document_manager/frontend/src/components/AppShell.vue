@@ -2,11 +2,13 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { boot } from "../lib/boot.js";
+import { workMode, setWorkMode } from "../lib/workMode.js";
 import { pageTitle } from "../lib/page.js";
 import { theme, toggleTheme } from "../lib/theme.js";
 import ChangePasswordDialog from "./ChangePasswordDialog.vue";
 import CommandPalette from "./CommandPalette.vue";
 import Icon from "./Icon.vue";
+import NotificationBell from "./NotificationBell.vue";
 import SidebarNav from "./SidebarNav.vue";
 import ToastHost from "./ToastHost.vue";
 import UserMenu from "./UserMenu.vue";
@@ -54,10 +56,15 @@ watch(title, (value) => { document.title = value ? `${value} — ${boot.org}` : 
           <Icon name="menu" />
         </button>
         <p class="m-0 min-w-0 flex-1 truncate text-sm font-medium text-ink-muted">{{ title }}</p>
+        <select v-if="boot.digitization?.allowed" class="input !w-auto !min-h-0" aria-label="Chế độ làm việc" :value="workMode" @change="setWorkMode($event.target.value)">
+          <option value="exploitation">Khai thác</option>
+          <option value="digitization">Số hóa</option>
+        </select>
         <button v-if="canSearch" class="btn hidden !min-h-0 gap-2 !py-1.5 text-ink-muted sm:inline-flex" type="button" aria-label="Tìm nhanh (Ctrl K)" @click="paletteOpen = true">
           <Icon name="search" :size="15" /> Tìm nhanh <kbd class="rounded border border-line px-1.5 text-xs">Ctrl K</kbd>
         </button>
         <button v-if="canSearch" class="btn btn-ghost btn-icon sm:hidden" type="button" aria-label="Tìm nhanh" @click="paletteOpen = true"><Icon name="search" /></button>
+        <NotificationBell />
         <button class="btn btn-ghost btn-icon" type="button" :aria-label="theme === 'dark' ? 'Chuyển sang giao diện sáng' : 'Chuyển sang giao diện tối'" @click="toggleTheme">
           <Icon :name="theme === 'dark' ? 'sun' : 'moon'" />
         </button>

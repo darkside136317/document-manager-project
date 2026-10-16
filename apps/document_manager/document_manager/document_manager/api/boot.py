@@ -2,6 +2,7 @@
 """Everything the staff SPA needs at start-up: who the user is and what the sidebar shows."""
 
 import frappe
+from frappe.utils import cint
 
 from document_manager.document_manager.constants import (
     ARCHIVE_SCREENS,
@@ -23,6 +24,7 @@ from document_manager.document_manager.constants import (
     UPLOAD_MAX_MB,
 )
 from document_manager.document_manager.permissions import capabilities_of, display_name, has_capability, is_staff
+from document_manager.document_manager.policy import is_admin
 
 
 def _can_read(doctype) -> bool:
@@ -100,6 +102,7 @@ def _admin_nav() -> list:
         items += [
             {"label": "Người dùng", "route": "/dashboard/quan-tri/nguoi-dung", "icon": "users"},
             {"label": "Phân quyền", "route": "/dashboard/quan-tri/phan-quyen", "icon": "shield-check"},
+            {"label": "Cấu hình trường dữ liệu", "route": "/dashboard/quan-tri/truong-du-lieu", "icon": "list-filter"},
         ]
     if has_capability("logs.view"):
         items.append({"label": "Nhật ký hệ thống", "route": "/dashboard/quan-tri/nhat-ky", "icon": "scroll-text"})
@@ -138,9 +141,12 @@ def build_boot() -> dict:
         if _can_read(doctype):
             legacy.setdefault(group, []).append({"label": label, "href": href})
     user = frappe.session.user
+    digitization_enabled = bool(cint(frappe.db.get_single_value("Document Manager Settings", "digitization_enabled")))
+    digitization_allowed = digitization_enabled and any(has_capability(code) for code in
+        ("digitization.edit", "digitization.review", "digitization.extract"))
     return {
         "user": {"name": user, "full_name": display_name(user), "roles": frappe.get_roles(user),
-                 "capabilities": sorted(capabilities_of(user))},
+                 "capabilities": sorted(capabilities_of(user)), "is_admin": is_admin(user)},
         "org": frappe.db.get_single_value("Organization Info", "org_name") or "Trung tâm Lưu trữ",
         "org_configured": bool(frappe.db.get_single_value("Organization Info", "org_name")),
         "nav": nav,
@@ -152,6 +158,7 @@ def build_boot() -> dict:
         "inventory": _with_permissions([e for e in INVENTORY_SCREENS if _can_read(e["doctype"])]),
         "admin": _with_permissions([e for e in ADMIN_SCREENS if _can_read(e["doctype"])]),
         "upload": {"extensions": UPLOAD_EXTENSIONS, "max_mb": UPLOAD_MAX_MB},
+        "digitization": {"enabled": digitization_enabled, "allowed": digitization_allowed},
     }
 
 

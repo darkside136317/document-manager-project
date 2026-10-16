@@ -1,9 +1,9 @@
 // Icons the server may name (constants.py) plus the ones the shell uses. Listing them keeps the
 // bundle small: importing the whole icon set would add hundreds of KB.
 import {
-  AlertTriangle, Archive, BookA, BookOpenText, Building2, Check, ChevronDown, ChevronLeft, ChevronRight,
+  AlertTriangle, Archive, Bell, BookA, BookOpenText, Building2, Check, ChevronDown, ChevronLeft, ChevronRight,
   CircleCheck, ClipboardList, Database, ExternalLink, Eye, FileText, FileType, Folder, FolderOpen, FolderTree,
-  Gauge, HardDrive, Inbox, Info, KeyRound, Layers, LayoutDashboard, Library, Loader2, LogOut, Menu, Moon,
+  Gauge, HardDrive, Inbox, Info, KeyRound, Layers, LayoutDashboard, Library, ListFilter, Loader2, LogOut, Menu, Moon,
   Network, Pencil, Plus, RefreshCw, Save, ScrollText, Search, Settings, ShieldCheck, Sun, Trash2, Users,
   Warehouse, X, Upload, UserPlus, Copy, Link2, MessageSquare, Undo2, CalendarPlus, PackageCheck, Send, Clock, Printer, Download, SlidersHorizontal, Bookmark, Command, FileImage, FileSpreadsheet, File, CornerDownLeft,
   ChartBar, ClipboardCheck, ArrowLeftRight, TrendingUp, FileCode, Play, Ban, History, FileDown, Server, Activity, LockKeyhole,
@@ -12,6 +12,7 @@ import {
 export const icons = {
   "alert-triangle": AlertTriangle,
   archive: Archive,
+  bell: Bell,
   "book-a": BookA,
   "book-open-text": BookOpenText,
   "building-2": Building2,
@@ -37,6 +38,7 @@ export const icons = {
   layers: Layers,
   "layout-dashboard": LayoutDashboard,
   library: Library,
+  "list-filter": ListFilter,
   loader: Loader2,
   "log-out": LogOut,
   menu: Menu,

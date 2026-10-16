@@ -1,5 +1,14 @@
 # Optional production object storage. Loaded only when MINIO_MODE is auto or manual.
+x-host-gateway: &host-gateway
+  - "host.docker.internal:host-gateway"
+
 services:
+  # Keep the search image explicit in the production stack with MinIO enabled.
+  meilisearch:
+    image: getmeili/meilisearch:v1.12
+    expose:
+      - "7700"
+
   backend:
     depends_on:
       minio-backfill:
@@ -17,12 +26,15 @@ services:
     environment: *minio-app-env
 
   queue-short:
+    # Manual MinIO may run on the same Docker host.
+    extra_hosts: *host-gateway
     depends_on:
       minio-backfill:
         condition: service_completed_successfully
     environment: *minio-app-env
 
   scheduler:
+    extra_hosts: *host-gateway
     depends_on:
       minio-backfill:
         condition: service_completed_successfully
@@ -38,6 +50,8 @@ services:
       dockerfile: Dockerfile.server
     restart: always
     command: server /data --console-address :9001
+    expose:
+      - "9000"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-}
@@ -53,6 +67,7 @@ services:
       context: minio
       dockerfile: Dockerfile.mc
     restart: "no"
+    extra_hosts: *host-gateway
     entrypoint: ["/bin/sh", "-ec"]
     command:
       - |
@@ -103,6 +118,7 @@ services:
   minio-backfill:
     image: docmanager-custom:${ERPNEXT_VERSION:?}
     restart: "no"
+    extra_hosts: *host-gateway
     command:
       - bash
       - -ec

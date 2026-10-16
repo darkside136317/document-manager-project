@@ -119,9 +119,17 @@ def _suggestions(entry: dict) -> dict:
     return {field: kind for field, kind in wanted.items() if frappe.db.exists("Dictionary Type", kind)}
 
 
-def describe(doctype: str) -> dict:
+def describe(doctype: str, mode: str = "exploitation") -> dict:
     assert_master(doctype)
     entry = REGISTRY[doctype]
+    if mode not in ("exploitation", "digitization"):
+        frappe.throw("Chế độ làm việc không hợp lệ")
+    if mode == "digitization":
+        from document_manager.document_manager.policy import has_capability
+        if not cint(frappe.db.get_single_value("Document Manager Settings", "digitization_enabled")) or not any(
+            has_capability(code) for code in ("digitization.edit", "digitization.review", "digitization.extract")
+        ):
+            frappe.throw("Bạn không có quyền vào chế độ số hóa", frappe.PermissionError)
     meta = frappe.get_meta(doctype)
     perms = permissions_of(doctype)
     if not perms["read"]:
@@ -164,6 +172,8 @@ def describe(doctype: str) -> dict:
     by_name = {f["fieldname"]: f for f in fields}
     configured = [f for f in (entry.get("list_fields") or []) if f in valid_columns(meta)]
     list_fields = configured or [f["fieldname"] for f in fields if f["in_list_view"]][:MAX_LIST_COLUMNS]
+    if mode == "digitization" and doctype == "Archive Document":
+        list_fields = [*list_fields[:MAX_LIST_COLUMNS - 1], "ai_extraction_state"]
     if not list_fields:
         list_fields = [f["fieldname"] for f in fields if f["fieldtype"] not in no_value_fields][:4]
     # Columns may include fields the form hides (size, index status): describe them from the raw meta.
@@ -177,6 +187,20 @@ def describe(doctype: str) -> dict:
     if not search_fields and title_field in valid_columns(meta):
         search_fields = [title_field]
 
+    if frappe.utils.cint(frappe.db.get_single_value("Document Manager Settings", "digitization_enabled")):
+        from document_manager.document_manager.services.digitization_fields import fields_for_mode
+        fields = fields_for_mode(doctype, mode, fields)
+    visible = {field["fieldname"]: field for field in fields}
+    order = {field["fieldname"]: index for index, field in enumerate(fields)}
+    layout = _layout(kept)
+    for section in layout:
+        section["columns"] = [sorted((name for name in column if name in visible), key=order.get)
+                              for column in section["columns"]]
+        section["columns"] = [column for column in section["columns"] if column]
+    layout = [section for section in layout if section["columns"]]
+    for column in columns:
+        if column["fieldname"] in visible:
+            column["label"] = visible[column["fieldname"]]["label"]
     return {
         "doctype": doctype,
         "label": entry["label"],
@@ -192,6 +216,6 @@ def describe(doctype: str) -> dict:
         "list_fields": list_fields,
         "columns": columns,
         "fields": fields,
-        "layout": _layout(kept),
+        "layout": layout,
         "permissions": perms,
     }

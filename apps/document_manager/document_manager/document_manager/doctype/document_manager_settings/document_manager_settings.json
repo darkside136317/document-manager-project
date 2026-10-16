@@ -7,6 +7,24 @@
   "track_changes": 1,
   "fields": [
     {
+      "fieldname": "section_digitization",
+      "fieldtype": "Section Break",
+      "label": "Số hóa và AI"
+    },
+    {
+      "fieldname": "digitization_enabled",
+      "fieldtype": "Check",
+      "label": "Bật chế độ số hóa",
+      "default": "0"
+    },
+    {
+      "fieldname": "digitization_fields_json",
+      "fieldtype": "Long Text",
+      "label": "Cấu hình trường số hóa",
+      "hidden": 1,
+      "default": "{}"
+    },
+    {
       "fieldname": "section_backup",
       "fieldtype": "Section Break",
       "label": "Sao lưu tự động"

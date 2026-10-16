@@ -49,10 +49,13 @@ services:
         bench set-config -g redis_cache "redis://$$REDIS_CACHE";
         bench set-config -g redis_queue "redis://$$REDIS_QUEUE";
         bench set-config -g redis_socketio "redis://$$REDIS_QUEUE";
-        bench set-config -g meilisearch_host "$$MEILISEARCH_HOST";
+        bench set-config -g meilisearch_host "http://meilisearch:7700";
         bench set-config -g meilisearch_master_key "$$MEILISEARCH_MASTER_KEY";
         bench set-config -g mongodb_atlas_uri "$$MONGODB_ATLAS_URI";
         bench set-config -g mongodb_database "$$MONGODB_DATABASE";
+        bench set-config -g pdfluent_api_url "$$PDFLUENT_API_URL";
+        bench set-config -g pdfluent_api_key "$$PDFLUENT_API_KEY";
+        bench set-config -g ai_callback_api_key "$$AI_CALLBACK_API_KEY";
         if [ -n "$$PUBLIC_URL" ]; then bench set-config -g host_name "$$PUBLIC_URL"; fi;
         bench set-config -gp socketio_port $$SOCKETIO_PORT;
     environment:
@@ -60,10 +63,12 @@ services:
       DB_PORT: "${DB_PORT:-3306}"
       REDIS_CACHE: ${REDIS_CACHE:-redis-cache:6379}
       REDIS_QUEUE: ${REDIS_QUEUE:-redis-queue:6379}
-      MEILISEARCH_HOST: ${MEILISEARCH_HOST:-http://meilisearch:7700}
       MEILISEARCH_MASTER_KEY: ${MEILISEARCH_MASTER_KEY:?}
       MONGODB_ATLAS_URI: ${MONGODB_ATLAS_URI:-}
       MONGODB_DATABASE: ${MONGODB_DATABASE:-docmanager_files}
+      PDFLUENT_API_URL: ${PDFLUENT_API_URL:-}
+      PDFLUENT_API_KEY: ${PDFLUENT_API_KEY:-}
+      AI_CALLBACK_API_KEY: ${AI_CALLBACK_API_KEY:-}
       PUBLIC_URL: ${PUBLIC_URL:-}
       SOCKETIO_PORT: "9000"
     volumes:
@@ -265,6 +270,8 @@ services:
     image: getmeili/meilisearch:v1.12
     networks:
       - frappe_network
+    expose:
+      - "7700"
     restart: on-failure
     environment:
       MEILI_MASTER_KEY: ${MEILISEARCH_MASTER_KEY:?set MEILISEARCH_MASTER_KEY in .env}
@@ -282,8 +289,8 @@ services:
       start_period: 10s
 
   # ---------------------------------------------------------------------------
-  # NOTE: File Storage uses MongoDB Atlas (cloud) via GridFS.
-  # No local container needed — connection via MONGODB_ATLAS_URI in .env
+  # File storage defaults to Frappe's private sites volume. Production may
+  # add MinIO through docker-compose.prod.minio.yml; legacy GridFS is optional.
   # ---------------------------------------------------------------------------
 
 # =============================================================================

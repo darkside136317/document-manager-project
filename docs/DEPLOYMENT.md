@@ -74,7 +74,7 @@ Với `disabled`, giữ bốn khóa MinIO và `MINIO_ENDPOINT` rỗng như tệp
 Để bật `manual`, dùng cấu hình dưới đây. Mọi lệnh production phải chạy qua `scripts/prod_compose.py` để chỉ nạp
 Compose overlay MinIO khi chế độ này được bật.
 
-Ở chế độ `manual`, endpoint phải truy cập được từ các container qua mạng Docker. Dùng HTTPS khi kết nối qua mạng không tin cậy.
+Ở chế độ `manual`, endpoint phải truy cập được từ các container qua mạng Docker. Nếu MinIO có sẵn chạy trên cùng host, dùng `MINIO_ENDPOINT=http://host.docker.internal:9000`; production overlay đã ánh xạ host gateway cho các tiến trình ứng dụng, kiểm tra bucket và chuyển dữ liệu. Giới hạn cổng 9000 bằng firewall. Dùng HTTPS khi kết nối qua mạng không tin cậy.
 Kiểm tra bucket và quyền của tài khoản ứng dụng trước khi triển khai; `minio-init` sẽ thử liệt kê, ghi, đọc và xóa một đối tượng
 kiểm tra rồi mới cho ứng dụng khởi động, nhưng không tạo hay sửa tài khoản, bucket hoặc policy trên MinIO có sẵn.
 
@@ -214,3 +214,27 @@ khi đang ở thư mục `docker/`.
 | HTTP 500 khi nhiều người cùng ghi | Kiểm tra `docker/mariadb/my_custom.cnf` còn `innodb_snapshot_isolation=OFF` |
 | Redis dừng, trang báo 502 | `$C up -d` rồi `$C restart frontend` |
 | Tìm văn bản báo "mất quá nhiều thời gian" | Meilisearch đang hỏng nên hệ thống tìm bằng cơ sở dữ liệu; sửa Meilisearch hoặc thu hẹp điều kiện tìm |
+
+## 10. Tích hợp AI số hóa với PDFluent
+
+Tính năng mặc định **tắt**. Bật `Số hóa` trong **Quản trị → Thiết lập hệ thống** sau khi hai hệ thống đã kết nối. Chỉ quản trị viên cấu hình tên, thứ tự và chế độ hiển thị của các trường tại **Quản trị → Cấu hình trường dữ liệu**. Các trường thuộc cây Phông → Khối → Mục lục → Hồ sơ → Văn bản được đánh dấu `Số hóa` hoặc `Cả hai` tạo thành schema bất biến của từng job.
+
+### Cấu hình dev trên cùng máy
+
+Trong `docker/.env.dev`, đặt `PDFLUENT_API_URL=http://host.docker.internal:8000`, `PDFLUENT_API_KEY` là khóa bắt đầu bằng `sk_live_` (ít nhất 24 ký tự), và `AI_CALLBACK_API_KEY` là một khóa ngẫu nhiên riêng. Compose dev ánh xạ `host.docker.internal` cho backend và worker gửi job. PDFluent phải lắng nghe trên `0.0.0.0:8000` để nhận kết nối từ container.
+
+Trong `.env` của PDFluent, đặt `ERP_INTEGRATION_API_KEY` bằng `PDFLUENT_API_KEY`, `ERP_NOTIFICATION_MODE=frappe_callback`, `ERP_CALLBACK_API_KEY` bằng `AI_CALLBACK_API_KEY`, và `ERP_CALLBACK_URL=http://localhost:8888/api/method/document_manager.document_manager.api.ai_integration.receive_status` khi PDFluent chạy trực tiếp trên máy host. Địa chỉ callback phải truy cập được từ nơi chạy worker PDFluent. Sau khi điền env, chạy lại ERP `configurator`, khởi động lại API/worker PDFluent, rồi chạy migration hai bên như hướng dẫn dưới đây. Giữ các khóa ngoài Git.
+
+Nếu chưa chạy PDFluent, để trống ba biến AI trong `docker/.env.dev` và giữ chế độ số hóa tắt; các chức năng khai thác hiện tại vẫn hoạt động.
+
+Trong `.env.prod` của ERP, đặt `PDFLUENT_API_URL` là URL FastAPI mà container ERP truy cập được, `PDFLUENT_API_KEY` là khóa dạng `sk_live_...`, và `AI_CALLBACK_API_KEY` là một khóa ngẫu nhiên khác. Nếu PDFluent chạy trên cùng server, dùng `http://host.docker.internal:8000`; `docker-compose.prod.yml` đã ánh xạ tên này cho backend và `queue-long`. Giới hạn cổng PDFluent bằng firewall. Nếu chạy trên server khác, dùng URL mạng riêng hoặc HTTPS. Chạy lại `configurator` để ghi các giá trị vào Frappe site config. Không đặt hai khóa trong mã nguồn.
+
+Trong `.env` của PDFluent, đặt `ERP_INTEGRATION_API_KEY` bằng `PDFLUENT_API_KEY`, `ERP_NOTIFICATION_MODE=frappe_callback`, `ERP_CALLBACK_API_KEY` bằng `AI_CALLBACK_API_KEY`, và `ERP_CALLBACK_URL` bằng URL đầy đủ của Frappe:
+
+```text
+https://<domain-erp>/api/method/document_manager.document_manager.api.ai_integration.receive_status
+```
+
+Chạy Alembic migration của PDFluent và `bench --site <site> migrate` của ERP trước khi khởi động lại API/worker. PDFluent cần worker Celery trên hàng đợi `summarize` và `maintenance`, cùng Celery Beat. Nếu tắt callback, cán bộ có thể dùng **Làm mới trạng thái AI** để lấy JSON và đồng bộ job; nếu bật callback, Frappe nhận các sự kiện theo thứ tự và gửi thông báo cho người duyệt.
+
+Job hiện nhận tối đa 100 văn bản có tệp PDF, PNG, JPG/JPEG hoặc WebP. Các định dạng Office/TIFF cần chuyển sang PDF trước khi bóc tách. Kết quả AI luôn gắn với mã văn bản ERP, phiên bản và SHA-256 nguồn; người có quyền duyệt xác nhận từng trường trước khi dữ liệu được ghi vào hồ sơ.

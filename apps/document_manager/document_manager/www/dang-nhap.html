@@ -21,6 +21,15 @@
           <button class="btn" type="button" @click="show = !show" :aria-pressed="show" aria-label="Hiện hoặc ẩn mật khẩu">{{ icon("eye") }}</button>
         </div>
       </div>
+      {% if digitization_enabled %}
+      <div class="field">
+        <label for="work-mode">Chế độ làm việc của cán bộ</label>
+        <select id="work-mode" class="input" x-model="mode">
+          <option value="exploitation">Khai thác (mặc định)</option>
+          <option value="digitization">Số hóa</option>
+        </select>
+      </div>
+      {% endif %}
       <button class="btn btn-primary btn-block" type="submit" :disabled="busy">
         <span x-show="busy" x-cloak>{{ icon("loader", "spin") }}</span> Đăng nhập
       </button>

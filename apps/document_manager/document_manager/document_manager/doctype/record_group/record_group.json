@@ -103,7 +103,24 @@
       "role": "Reader",
       "read": 1
     },
-    {"role": "Archive Leader", "read": 1}
+    {
+      "role": "Archive Leader",
+      "read": 1
+    },
+    {
+      "role": "Digitization Editor",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "delete": 0
+    },
+    {
+      "role": "Digitization Reviewer",
+      "read": 1,
+      "write": 0,
+      "create": 0,
+      "delete": 0
+    }
   ],
   "sort_field": "modified",
   "sort_order": "DESC",

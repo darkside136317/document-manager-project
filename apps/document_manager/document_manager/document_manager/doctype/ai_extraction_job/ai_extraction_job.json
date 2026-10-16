@@ -1,0 +1,25 @@
+{
+  "name": "AI Extraction Job",
+  "module": "Document Manager",
+  "doctype": "DocType",
+  "engine": "InnoDB",
+  "autoname": "field:job_id",
+  "track_changes": 1,
+  "fields": [
+    {"fieldname": "job_id", "fieldtype": "Data", "label": "Mã job", "reqd": 1, "unique": 1, "read_only": 1},
+    {"fieldname": "record_group", "fieldtype": "Link", "options": "Record Group", "label": "Khối tài liệu", "reqd": 1, "read_only": 1},
+    {"fieldname": "fonds", "fieldtype": "Link", "options": "Fonds", "label": "Phông", "read_only": 1},
+    {"fieldname": "status", "fieldtype": "Select", "label": "Trạng thái AI", "options": "waiting\nprocessing\ndone\nfailed", "default": "waiting", "read_only": 1},
+    {"fieldname": "selection", "fieldtype": "Select", "label": "Phạm vi", "options": "all\nunprocessed", "read_only": 1},
+    {"fieldname": "schema_hash", "fieldtype": "Data", "label": "Phiên bản schema", "read_only": 1},
+    {"fieldname": "schema_json", "fieldtype": "Long Text", "label": "Schema", "read_only": 1},
+    {"fieldname": "manifest_json", "fieldtype": "Long Text", "label": "Danh sách văn bản", "read_only": 1},
+    {"fieldname": "result_json", "fieldtype": "Long Text", "label": "Kết quả", "read_only": 1},
+    {"fieldname": "event_seq", "fieldtype": "Int", "label": "Số sự kiện", "default": "0", "read_only": 1},
+    {"fieldname": "error", "fieldtype": "Small Text", "label": "Lỗi", "read_only": 1}
+  ],
+  "permissions": [
+    {"role": "Document Admin", "read": 1},
+    {"role": "System Manager", "read": 1}
+  ]
+}

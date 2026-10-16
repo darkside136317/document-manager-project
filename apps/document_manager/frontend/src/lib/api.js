@@ -1,5 +1,6 @@
 // Thin client for Frappe's /api/method/... : CSRF header, JSON, readable errors.
 import { csrfToken } from "./boot.js";
+import { workMode } from "./workMode.js";
 
 export class ApiError extends Error {
   constructor(message, { status = 0, excType = "", messages = [] } = {}) {
@@ -114,10 +115,10 @@ const BASE = "document_manager.document_manager.api";
 export const api = {
   boot: () => call(`${BASE}.boot.get_staff_boot`),
   summary: () => call(`${BASE}.dashboard.get_workspace_summary`),
-  describe: (doctype) => call(`${BASE}.meta.get_doctype_ui`, { doctype }),
-  list: (doctype, params = {}) => call(`${BASE}.crud.get_list`, { doctype, ...params }),
-  get: (doctype, name) => call(`${BASE}.crud.get`, { doctype, name }),
-  save: (doctype, values, name = null) => call(`${BASE}.crud.save`, { doctype, values, name }, { post: true }),
+  describe: (doctype) => call(`${BASE}.meta.get_doctype_ui`, { doctype, mode: workMode.value }),
+  list: (doctype, params = {}) => call(`${BASE}.crud.get_list`, { doctype, mode: workMode.value, ...params }),
+  get: (doctype, name) => call(`${BASE}.crud.get`, { doctype, name, mode: workMode.value }),
+  save: (doctype, values, name = null) => call(`${BASE}.crud.save`, { doctype, values, name, mode: workMode.value }, { post: true }),
   remove: (doctype, name) => call(`${BASE}.crud.delete`, { doctype, name }, { post: true }),
   linkSearch: (doctype, txt = "", filters = null) => call(`${BASE}.crud.link_search`, { doctype, txt, filters }),
   treeChildren: (doctype, parent = null, filters = null) =>

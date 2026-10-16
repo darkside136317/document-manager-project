@@ -10,6 +10,10 @@ services:
   backend:
     image: docmanager-custom:${ERPNEXT_VERSION:?}
     restart: always
+    # Allows PDFLUENT_API_URL=http://host.docker.internal:8000 when PDFluent
+    # runs on the same server. External HTTPS endpoints work without this.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     deploy:
       resources:
         limits:
@@ -36,6 +40,9 @@ services:
   queue-long:
     image: docmanager-custom:${ERPNEXT_VERSION:?}
     restart: always
+    # AI jobs are dispatched by this worker, so it needs the same route.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     deploy:
       resources:
         limits:
@@ -63,10 +70,18 @@ services:
           memory: 2G
 
   meilisearch:
+    # Search index persists on the named volume from the base Compose file.
+    # Keep the API private to frappe_network; do not publish port 7700.
+    image: getmeili/meilisearch:v1.12
+    expose:
+      - "7700"
     restart: always
     environment:
+      MEILI_MASTER_KEY: ${MEILISEARCH_MASTER_KEY:?set MEILISEARCH_MASTER_KEY in .env.prod}
       MEILI_ENV: production
-      MEILI_MAX_INDEXING_MEMORY: 1GiB
+      MEILI_MAX_INDEXING_MEMORY: 512MiB
+    volumes:
+      - meilisearch-data:/meili_data
     deploy:
       resources:
         limits:

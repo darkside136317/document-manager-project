@@ -67,9 +67,9 @@ def _count(doctype, filters, or_filters=None) -> int:
 
 
 @frappe.whitelist()
-def get_list(doctype, search=None, filters=None, order_by=None, page=1, page_size=20):
+def get_list(doctype, search=None, filters=None, order_by=None, page=1, page_size=20, mode="exploitation"):
     """One page of records: {data, total, page, page_size}."""
-    info = describe(doctype)  # also checks the registry and read permission
+    info = describe(doctype, mode)  # also checks the registry and read permission
     meta = frappe.get_meta(doctype)
     page = max(1, cint(page) or 1)
     page_size = min(MAX_PAGE_SIZE, max(1, cint(page_size) or 20))
@@ -121,8 +121,8 @@ def _table_rows(field, rows) -> list:
 
 
 @frappe.whitelist()
-def get(doctype, name):
-    info = describe(doctype)
+def get(doctype, name, mode="exploitation"):
+    info = describe(doctype, mode)
     doc = frappe.get_doc(doctype, name)
     doc.check_permission("read")
     return {**_record(doc, info), "_rights": _rights(doc)}
@@ -141,18 +141,18 @@ def _rights(doc) -> dict:
 
 
 @frappe.whitelist(methods=["POST"])
-def save(doctype, values, name=None):
+def save(doctype, values, name=None, mode="exploitation"):
     """Create (no `name`) or update a record; only fields the user may write are applied.
 
     Send back the `modified` you loaded: a concurrent edit is then reported instead of overwritten.
     When a background job commits a change to the same row between this request's read and write,
     MariaDB aborts the write (1020); the whole save is then repeated on fresh data.
     """
-    return retry_on_deadlock(lambda: _save(doctype, values, name))
+    return retry_on_deadlock(lambda: _save(doctype, values, name, mode))
 
 
-def _save(doctype, values, name):
-    info = describe(doctype)
+def _save(doctype, values, name, mode="exploitation"):
+    info = describe(doctype, mode)
     values = _parse(values, {})
     writable = {f["fieldname"] for f in info["fields"] if not f["read_only"]}
     if name:

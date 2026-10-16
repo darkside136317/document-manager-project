@@ -18,6 +18,9 @@ x-app-mounts: &app-mounts
 
 services:
   backend:
+    # PDFluent started on this Linux host is reachable through this gateway name.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes: *app-mounts
     command:
       - /home/frappe/frappe-bench/env/bin/gunicorn
@@ -40,9 +43,11 @@ services:
       - logs:/home/frappe/frappe-bench/logs
       - ../apps/document_manager:/home/frappe/frappe-bench/apps/document_manager
     ports:
-      - "${HTTP_PUBLISH_PORT:-8888}:8080"
+      - "127.0.0.1:${HTTP_PUBLISH_PORT:-8888}:8080"
 
   queue-long:
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes: *app-mounts
     command:
       - /home/frappe/frappe-bench/env/bin/python
@@ -71,6 +76,7 @@ services:
       - schedule
 
   meilisearch:
+    image: getmeili/meilisearch:v1.12
     ports:
       - "127.0.0.1:7700:7700"   # debugging only; never exposed beyond the host
 

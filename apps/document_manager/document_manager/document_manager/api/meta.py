@@ -7,6 +7,6 @@ from document_manager.document_manager.services.ui import describe
 
 
 @frappe.whitelist()
-def get_doctype_ui(doctype):
+def get_doctype_ui(doctype, mode="exploitation"):
     """Fields (limited to what the user may read/write), layout, list columns and permissions."""
-    return describe(doctype)
+    return describe(doctype, mode)

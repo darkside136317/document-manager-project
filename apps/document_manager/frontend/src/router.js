@@ -6,6 +6,8 @@ import DocumentPage from "./pages/DocumentPage.vue";
 import ExchangePage from "./pages/ExchangePage.vue";
 import FilePage from "./pages/FilePage.vue";
 import MasterPage from "./pages/MasterPage.vue";
+import FieldConfig from "./pages/FieldConfig.vue";
+import AiJobPage from "./pages/AiJobPage.vue";
 import NotFound from "./pages/NotFound.vue";
 import FeedbackPage from "./pages/FeedbackPage.vue";
 import GroupsPage from "./pages/GroupsPage.vue";
@@ -25,6 +27,7 @@ import SearchPage from "./pages/SearchPage.vue";
 export const routes = [
   { path: "/", name: "home", component: DashboardHome, meta: { title: "Tổng quan" } },
   { path: "/bien-muc", name: "archive", component: ArchiveBrowser, meta: { title: "Biên mục hồ sơ, văn bản" } },
+  { path: "/so-hoa/jobs/:id", name: "ai-job", component: AiJobPage, meta: { title: "Kết quả AI bóc tách" } },
   { path: "/ho-so/:name", name: "file", component: FilePage, meta: { title: "Hồ sơ" } },
   { path: "/van-ban/:name", name: "document", component: DocumentPage, meta: { title: "Văn bản" } },
   { path: "/tim-kiem", name: "search", component: SearchPage, meta: { title: "Tìm kiếm" } },
@@ -43,6 +46,7 @@ export const routes = [
   { path: "/bao-quan/khoi-phuc", name: "restores", component: PreservationPage, props: { kind: "restore" }, meta: { title: "Khôi phục" } },
   { path: "/quan-tri/nguoi-dung", name: "users", component: UsersPage, meta: { title: "Người dùng" } },
   { path: "/quan-tri/phan-quyen", name: "roles", component: RolesPage, meta: { title: "Phân quyền" } },
+  { path: "/quan-tri/truong-du-lieu", name: "field-config", component: FieldConfig, meta: { title: "Cấu hình trường dữ liệu" } },
   { path: "/quan-tri/nhat-ky", name: "logs", component: LogsPage, meta: { title: "Nhật ký hệ thống" } },
   { path: "/quan-tri/giam-sat", name: "monitor", component: MonitorPage, meta: { title: "Giám sát hệ thống" } },
   { path: "/quan-tri/nhom-can-bo", name: "groups", component: GroupsPage, meta: { title: "Nhóm cán bộ" } },

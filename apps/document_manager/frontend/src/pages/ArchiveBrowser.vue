@@ -9,6 +9,9 @@ import PageHeader from "../components/PageHeader.vue";
 import PaginationBar from "../components/PaginationBar.vue";
 import RecordDrawer from "../components/RecordDrawer.vue";
 import { api } from "../lib/api.js";
+import { call } from "../lib/api.js";
+import { boot } from "../lib/boot.js";
+import { workMode } from "../lib/workMode.js";
 import { describe } from "../lib/doctype.js";
 import { debounce } from "../lib/format.js";
 import { pageTitle } from "../lib/page.js";
@@ -21,6 +24,12 @@ const router = useRouter();
 const tree = useArchiveTree();
 const metas = reactive({});
 const selected = ref(null); // {doctype, name, title}
+const aiSelection = ref("unprocessed");
+const aiLatest = ref(null);
+const aiBusy = ref(false);
+const aiError = ref("");
+const canExtract = computed(() => workMode.value === "digitization" && boot.digitization?.allowed && boot.user?.is_admin);
+const canViewAi = computed(() => workMode.value === "digitization" && boot.digitization?.allowed);
 const PAGE_SIZE = 20;
 const files = reactive({ rows: [], total: 0, page: 1, search: "", sort: "modified desc", loading: true, error: "" });
 const drawer = reactive({ open: false, doctype: "Archival File", name: null, defaults: {} });
@@ -58,6 +67,25 @@ function select(node) {
   files.page = 1;
   router.replace({ path: "/bien-muc", query: node ? { node: nodeKey(node) } : {} });
   loadFiles();
+  loadAiLatest();
+}
+
+async function loadAiLatest() {
+  aiLatest.value = null; aiError.value = "";
+  if (!canViewAi.value || selected.value?.doctype !== "Record Group") return;
+  try { aiLatest.value = await call("document_manager.document_manager.api.ai_integration.latest", { record_group: selected.value.name }); }
+  catch (e) { aiError.value = e.message; }
+}
+
+async function startAi() {
+  if (!selected.value || !window.confirm(`Gửi ${selected.value.title} cho AI bóc tách (${aiSelection.value === 'all' ? 'toàn bộ tệp' : 'tệp chưa xử lý'})?`)) return;
+  aiBusy.value = true; aiError.value = "";
+  try {
+    const result = await call("document_manager.document_manager.api.ai_integration.start",
+      { record_group: selected.value.name, selection: aiSelection.value }, { post: true });
+    router.push(`/so-hoa/jobs/${encodeURIComponent(result.job_id)}`);
+  } catch (e) { aiError.value = e.message; }
+  finally { aiBusy.value = false; }
 }
 
 /** ?node=Catalog:CAT-1 -> open the tree down to it and select it. */
@@ -82,6 +110,7 @@ async function selectFromQuery() {
     selected.value = null;
   }
   await loadFiles();
+  await loadAiLatest();
 }
 
 onMounted(async () => {
@@ -163,6 +192,16 @@ const linkFilters = (field, record) => (field.fieldname === "record_group" && re
         <button v-if="selected.doctype !== 'Catalog' && can(selected.doctype === 'Fonds' ? 'Record Group' : 'Catalog', 'create')" class="btn" type="button" @click="addChildNode">
           <Icon name="plus" :size="16" /> {{ selected.doctype === "Fonds" ? "Thêm khối tài liệu" : "Thêm mục lục" }}
         </button>
+      </div>
+      <div v-if="canViewAi && selected?.doctype === 'Record Group'" class="card mb-4 p-4">
+        <h2 class="m-0 text-base font-semibold">AI bóc tách khối tài liệu</h2>
+        <p v-if="aiError" class="text-sm text-danger" role="alert">{{ aiError }}</p>
+        <div class="mt-3 flex flex-wrap items-center gap-2">
+          <select v-if="canExtract" v-model="aiSelection" class="input !w-auto" aria-label="Phạm vi bóc tách"><option value="unprocessed">Chỉ tệp chưa xử lý</option><option value="all">Toàn bộ tệp</option></select>
+          <button v-if="canExtract" class="btn btn-primary" type="button" :disabled="aiBusy" @click="startAi">AI bóc tách</button>
+          <RouterLink v-if="aiLatest?.job_id" class="btn no-underline" :to="`/so-hoa/jobs/${encodeURIComponent(aiLatest.job_id)}`">Job gần nhất: {{ aiLatest.status }}</RouterLink>
+          <button class="btn" type="button" @click="loadAiLatest">Làm mới</button>
+        </div>
       </div>
 
       <div class="card overflow-hidden">
