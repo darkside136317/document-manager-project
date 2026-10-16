@@ -22,6 +22,7 @@ export function truncate(text, length = 80) {
 /** What a list cell shows for a value of the given field. */
 export function displayValue(field, value) {
   if (value === null || value === undefined || value === "") return "";
+  if (field.fieldname?.endsWith("_year")) return String(value);
   switch (field.fieldtype) {
     case "Date":
       return formatDate(value);

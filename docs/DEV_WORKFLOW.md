@@ -28,7 +28,9 @@ docker compose --env-file .env.dev -f docker-compose.yml -f docker-compose.dev.y
   /home/frappe/frappe-bench/env/bin/python - up < ../scripts/demo/seed_user_guide.py
 ```
 
-Script tạo một tài khoản độc giả giả `demo.reader@example.com`; mật khẩu ngẫu nhiên chỉ được in ở lần tạo đầu. Có thể đặt lại mật khẩu từ giao diện quản trị nếu cần. Các văn bản mẫu chỉ chứa thông tin mô tả, chưa có tệp đính kèm. Để gỡ dữ liệu mẫu, chạy lại lệnh với `down` thay cho `up`.
+Script tạo một tài khoản độc giả giả `demo.reader@example.com`, một đăng ký giả đang chờ xử lý và hai phiếu giả đã gửi. Mật khẩu độc giả ngẫu nhiên chỉ được in ở lần tạo đầu; có thể đặt lại từ giao diện quản trị nếu cần. Các văn bản mẫu chỉ chứa thông tin mô tả, chưa có tệp đính kèm. Để gỡ dữ liệu mẫu, chạy lại lệnh với `down` thay cho `up`.
+
+Sau khi nạp dữ liệu, có thể cập nhật 32 ảnh minh họa trong tài liệu hướng dẫn bằng `DM_GUIDE_READER_PASSWORD='<mật khẩu độc giả mẫu>' node scripts/demo/capture_guide.mjs` từ thư mục dự án. Không ghi mật khẩu vào mã nguồn hoặc commit. Xuất DOCX bằng `python3 scripts/build_user_guide.py` khi đã cài LibreOffice Writer.
 
 Mã nguồn `apps/document_manager` được bind-mount vào backend, **frontend (nginx phục vụ JS/CSS)**, worker, scheduler và dịch vụ `dev-watcher`. Sau khi lưu file, vài giây sau thay đổi có hiệu lực:
 

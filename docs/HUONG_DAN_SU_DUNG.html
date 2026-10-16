@@ -22,11 +22,11 @@ tr { page-break-inside: avoid; }
 .cover .rule { height: 5pt; width: 110pt; background: #d5ad34; margin: 22pt auto; }
 .cover .sub { color: #4d697d; font-size: 15pt; }
 .cover .meta { margin-top: 150pt; color: #647b8b; }
-.note { background: #eef5fa; border-left: 4pt solid #3e80a8; padding: 8pt 11pt; margin: 10pt 0; }
-.warn { background: #fff8e7; border-left: 4pt solid #d5ad34; padding: 8pt 11pt; margin: 10pt 0; }
+.note { background: #eef5fa; border-left: 4pt solid #3e80a8; padding: 8pt 11pt; margin: 10pt 0; page-break-inside: avoid; }
+.warn { background: #fff8e7; border-left: 4pt solid #d5ad34; padding: 8pt 11pt; margin: 10pt 0; page-break-inside: avoid; }
 .path { font-weight: bold; color: #134973; }
 .figure { text-align: center; margin: 12pt 0; page-break-inside: avoid; }
-.figure img { width: 11cm; max-width: 100%; border: 1px solid #cbd7df; }
+.figure img { width: 15.5cm; max-width: 100%; border: 1px solid #cbd7df; }
 .caption { font-size: 8.5pt; color: #647b8b; margin-top: 4pt; }
 .small { font-size: 9pt; color: #526b7d; }
 .pagebreak { page-break-before: always; }
@@ -39,7 +39,7 @@ code { font-family: "Liberation Mono", monospace; color: #153d5e; }
   <h1>HƯỚNG DẪN SỬ DỤNG<br>HỆ THỐNG QUẢN LÝ<br>TÀI LIỆU LƯU TRỮ</h1>
   <div class="rule"></div>
   <div class="sub">Hai chế độ: Nhân viên/Cán bộ và Độc giả</div>
-  <p class="meta">Phiên bản tài liệu 1.0 · Tháng 10 năm 2026<br>Biên soạn theo giao diện dev và mã nguồn hiện hành</p>
+  <p class="meta">Phiên bản tài liệu 1.1 · Tháng 10 năm 2026<br>Biên soạn theo giao diện dev và mã nguồn hiện hành</p>
 </div>
 
 <h1 class="pagebreak">Thông tin tài liệu</h1>
@@ -100,6 +100,9 @@ code { font-family: "Liberation Mono", monospace; color: #153d5e; }
   <li>Chỉ sửa <span class="path">Danh mục → Mức độ mật</span> khi được cấp quyền. Mức mật ảnh hưởng trực tiếp đến tra cứu, xem trước, tải xuống và sao chụp.</li>
 </ol>
 <div class="note"><strong>Chế độ khai thác phông:</strong> “Công khai” cho độc giả đủ điều kiện nhìn thấy; “Theo cấp phép” cần cấp quyền riêng hoặc theo nhóm; “Nội bộ” không mở cho độc giả. Trạng thái hồ sơ/văn bản và mức mật vẫn được kiểm tra thêm ở từng lần truy cập.</div>
+<div class="figure"><img src="assets/huong-dan-su-dung/danh-muc-co-quan.png" alt="Danh sách cơ quan lưu trữ"><p class="caption">Hình 3. Màn hình Cơ quan lưu trữ: dùng ô tìm kiếm để kiểm tra đã có cơ quan trước khi bấm Thêm mới.</p></div>
+<div class="figure"><img src="assets/huong-dan-su-dung/danh-muc-phong.png" alt="Danh sách phông lưu trữ"><p class="caption">Hình 4. Màn hình Phông lưu trữ: đối chiếu tên phông, cơ quan hình thành và cột Chế độ khai thác trước khi mở bản ghi.</p></div>
+<p class="small"><strong>Cần nhìn trong ảnh:</strong> Phông “HD MẪU - UBND tỉnh Minh Hòa” có chế độ <strong>Công khai</strong>; phông “HD MẪU - Sở Giáo dục Minh Hòa” có chế độ <strong>Theo cấp phép</strong>. Chọn chế độ theo quy định của đơn vị trước khi độc giả tra cứu.</p>
 
 <h2>2.3. Biên mục: từ phông đến văn bản</h2>
 <p>Mở <span class="path">Biên mục → Biên mục hồ sơ, văn bản</span> (<code>/dashboard/bien-muc</code>). Cây bên trái có thứ tự <strong>Phông → Khối tài liệu → Mục lục tài liệu</strong>; danh sách hồ sơ ở bên phải. Hồ sơ thuộc một mục lục; văn bản thuộc một hồ sơ.</p>
@@ -112,7 +115,11 @@ code { font-family: "Liberation Mono", monospace; color: #153d5e; }
   <li>Bấm <strong>Thêm văn bản</strong> để tạo bản ghi mô tả trước, hoặc <strong>Tải tệp lên</strong> để đưa một hay nhiều tệp vào hồ sơ. Mỗi tệp tải lên tạo một văn bản.</li>
   <li>Mở văn bản để sửa tiêu đề, số ký hiệu, ngày, tác giả/cơ quan ban hành, mức mật, mô tả; bấm <strong>Lưu</strong>. Dùng <strong>Thay tệp</strong> khi cần cập nhật bản số và được cấp quyền.</li>
 </ol>
-<div class="figure"><img width="415" src="assets/huong-dan-su-dung/bien-muc.png" alt="Cây biên mục và danh sách hồ sơ"><p class="caption">Hình 3. Màn hình Biên mục: chọn cấp ở cây trái, quản lý hồ sơ và văn bản ở vùng nội dung.</p></div>
+<div class="figure"><img width="415" src="assets/huong-dan-su-dung/bien-muc.png" alt="Cây biên mục và danh sách hồ sơ"><p class="caption">Hình 5. Màn hình Biên mục: chọn cấp ở cây trái, quản lý hồ sơ và văn bản ở vùng nội dung.</p></div>
+<p class="small"><strong>Cần nhìn trong ảnh:</strong> Mục lục “Chương trình văn hóa 2024” đang được chọn. Vùng bên phải chỉ hiển thị hai hồ sơ thuộc mục lục này; đây là dấu hiệu bạn đã chọn đúng nơi để tạo hồ sơ mới.</p>
+<div class="figure"><img src="assets/huong-dan-su-dung/tao-muc-luc.png" alt="Biểu mẫu tạo mục lục tài liệu"><p class="caption">Hình 6. Biểu mẫu Thêm mục lục: điền Tên mục lục tài liệu (bắt buộc), Số mục lục và kiểm tra Khối tài liệu đang chọn trước khi Lưu.</p></div>
+<div class="figure"><img src="assets/huong-dan-su-dung/tao-ho-so.png" alt="Biểu mẫu tạo hồ sơ với mục lục đã chọn"><p class="caption">Hình 7. Biểu mẫu Thêm hồ sơ: điền Tiêu đề hồ sơ; trường Mục lục tài liệu đã lấy mục lục vừa chọn ở cây trái và phải đúng trước khi Lưu.</p></div>
+<p class="small"><strong>Trường có dấu *:</strong> phải điền trước khi lưu. Trong hai ảnh, mục lục được tạo trước; sau đó biểu mẫu hồ sơ mới có giá trị ở trường Mục lục tài liệu.</p>
 <table>
   <tr><th>Cấp</th><th>Ví dụ trên môi trường dev</th><th>Việc cần làm trước khi sang cấp sau</th></tr>
   <tr><td>Phông</td><td>HD MẪU - UBND tỉnh Minh Hòa</td><td>Đã tạo phông và chọn cơ quan hình thành phông.</td></tr>
@@ -122,6 +129,10 @@ code { font-family: "Liberation Mono", monospace; color: #153d5e; }
   <tr><td>Văn bản</td><td>HD MẪU - Kế hoạch tổ chức ngày hội đọc sách</td><td>Văn bản nằm trong hồ sơ vừa chọn.</td></tr>
 </table>
 <p>Tệp hỗ trợ: <strong>PDF, DOC, DOCX, XLS, XLSX, JPG, JPEG, PNG, TIF, TIFF</strong>; giới hạn hiện tại <strong>100 MB/tệp</strong>. Sau khi tải, hệ thống xử lý và lập chỉ mục tìm kiếm nền. Trang hồ sơ cho biết tổng số văn bản và số bản đã lập chỉ mục; trang văn bản hiển thị trạng thái tệp và nút <strong>Xử lý lại tệp</strong> nếu xử lý lỗi.</p>
+<div class="figure"><img src="assets/huong-dan-su-dung/chi-tiet-ho-so.png" alt="Chi tiết hồ sơ có hai văn bản"><p class="caption">Hình 8. Chi tiết hồ sơ: kiểm tra đường dẫn Phông → Khối → Mục lục ở đầu trang, rồi đối chiếu số văn bản và danh sách bên dưới.</p></div>
+<div class="figure"><img src="assets/huong-dan-su-dung/tai-tep-ho-so.png" alt="Khung tải tệp lên hồ sơ"><p class="caption">Hình 9. Khung Tải tệp lên: kéo tệp vào vùng nét đứt hoặc bấm để chọn tệp; nút Tải lên chỉ sáng khi đã chọn tệp hợp lệ.</p></div>
+<div class="figure"><img src="assets/huong-dan-su-dung/chi-tiet-van-ban.png" alt="Chi tiết văn bản và siêu dữ liệu"><p class="caption">Hình 10. Chi tiết văn bản: bên trái là vùng xem trước; bên phải là tiêu đề, hồ sơ, mục lục, khối, phông và mức mật.</p></div>
+<p class="small"><strong>Dữ liệu mẫu:</strong> Dòng “Văn bản chưa có tệp” là đúng vì bản ghi HD MẪU chỉ có mô tả. Sau khi tải tệp thật, quay lại vùng này để kiểm tra bản xem trước và trạng thái xử lý.</p>
 <div class="warn"><strong>Lưu ý dữ liệu:</strong> Không xóa phông/khối/mục lục đang có dữ liệu con. Hồ sơ hoặc phông “Đã đóng” và hồ sơ “Đã tiêu hủy” bị khóa; chỉ người có quyền đặc biệt mới sửa được. Khi đổi vị trí hồ sơ sang mục lục khác, kiểm tra quyền ở cả phông cũ và phông mới.</div>
 
 <h2>2.4. Tìm kiếm và xem tài liệu</h2>
@@ -133,7 +144,7 @@ code { font-family: "Liberation Mono", monospace; color: #153d5e; }
   <li>Mở kết quả để xem hồ sơ/văn bản. Trang văn bản cho phép xem trước tệp theo quyền, kiểm tra siêu dữ liệu và tình trạng xử lý.</li>
 </ol>
 <p>Tìm theo nội dung chỉ có hiệu lực sau khi văn bản được trích xuất và lập chỉ mục. Kết quả cũng bị giới hạn bởi quyền phông và mức mật của người dùng.</p>
-<div class="figure"><img width="415" src="assets/huong-dan-su-dung/tim-kiem-can-bo.png" alt="Kết quả tìm kiếm dữ liệu mẫu"><p class="caption">Hình 4. Ví dụ gõ “HD MẪU” ở thẻ Văn bản: hệ thống trả về 7 văn bản mô tả.</p></div>
+<div class="figure"><img width="415" src="assets/huong-dan-su-dung/tim-kiem-can-bo.png" alt="Kết quả tìm kiếm dữ liệu mẫu"><p class="caption">Hình 11. Ví dụ gõ “HD MẪU” ở thẻ Văn bản: hệ thống trả về 7 văn bản mô tả.</p></div>
 
 <h3>Ví dụ đầy đủ: tìm một văn bản theo tên</h3>
 <table>
@@ -154,6 +165,9 @@ code { font-family: "Liberation Mono", monospace; color: #153d5e; }
   <li>Vào <span class="path">Độc giả → Danh sách độc giả</span> để cập nhật hồ sơ, trạng thái hoạt động, nhóm độc giả và quyền khai thác phông riêng. Cấp phép phông “Theo cấp phép” phải có hiệu lực và ngày hết hạn phù hợp.</li>
 </ol>
 <p>Mục <strong>Nhóm độc giả</strong> cấu hình quyền tra cứu, xem trước, tải tệp, lập phiếu và mức mật. Mục <strong>Thiết lập độc giả</strong> quyết định việc cho phép tự đăng ký, yêu cầu duyệt, biểu mẫu và giới hạn phiếu. Các thay đổi này ảnh hưởng trực tiếp đến cổng độc giả.</p>
+<div class="figure"><img src="assets/huong-dan-su-dung/duyet-dang-ky.png" alt="Hàng đợi đăng ký độc giả"><p class="caption">Hình 12. Hàng đợi đăng ký: chọn Chờ xử lý, mở dòng người gửi rồi kiểm tra thông tin trước khi Duyệt hoặc Từ chối.</p></div>
+<div class="figure"><img src="assets/huong-dan-su-dung/danh-sach-doc-gia.png" alt="Danh sách hồ sơ độc giả"><p class="caption">Hình 13. Danh sách độc giả: sau khi duyệt, tìm tên/email tại đây để kiểm tra nhóm, trạng thái hoạt động và cấp phép phông.</p></div>
+<p class="small"><strong>Ví dụ trong ảnh:</strong> “HD MẪU - Trần Minh Anh” là đăng ký giả đang ở trạng thái Mới. Không duyệt tài khoản thật chỉ dựa vào thông tin hiển thị; cần thực hiện kiểm tra theo quy trình của đơn vị.</p>
 
 <h2>2.6. Xử lý phiếu sử dụng và phiếu sao chụp</h2>
 <p>Hai hàng đợi ở <span class="path">Khai thác tài liệu → Phiếu yêu cầu sử dụng</span> và <span class="path">Phiếu sao chụp</span>. Nút <strong>Lập phiếu cho độc giả</strong> cho phép cán bộ tạo phiếu thay khi được cấp quyền.</p>
@@ -165,10 +179,16 @@ code { font-family: "Liberation Mono", monospace; color: #153d5e; }
   <li>Với phiếu sao chụp, kiểm tra số bản, hình thức (bản giấy/bản số), trang cần sao và quy định sao chụp của mức mật trước khi duyệt.</li>
 </ol>
 <p>Các nút hiện ra theo trạng thái và quyền của tài khoản, nên không phải phiếu nào cũng có cùng thao tác. Quyền khai thác của độc giả được kiểm tra lại khi gửi, duyệt và giao; một cấp phép đã hết hạn có thể làm phiếu không xử lý tiếp được.</p>
+<div class="figure"><img src="assets/huong-dan-su-dung/hang-doi-phieu-su-dung.png" alt="Hàng đợi phiếu sử dụng"><p class="caption">Hình 14. Hàng đợi Phiếu yêu cầu sử dụng: chọn nhóm trạng thái Chờ tiếp nhận rồi mở một phiếu để xem nội dung.</p></div>
+<div class="figure"><img src="assets/huong-dan-su-dung/xu-ly-phieu-su-dung.png" alt="Chi tiết phiếu sử dụng đang chờ duyệt"><p class="caption">Hình 15. Chi tiết phiếu sử dụng: kiểm tra độc giả, mục đích và từng dòng hồ sơ; chọn quyết định cho từng dòng rồi bấm Lưu quyết định trước khi xử lý toàn phiếu.</p></div>
+<div class="figure"><img src="assets/huong-dan-su-dung/xu-ly-phieu-sao-chup.png" alt="Chi tiết phiếu sao chụp"><p class="caption">Hình 16. Chi tiết phiếu sao chụp: ngoài các bước duyệt, kiểm tra số bản, hình thức và trang cần sao tại từng dòng.</p></div>
+<p class="small"><strong>Cần nhìn trong ảnh:</strong> Nhãn <strong>Chờ duyệt</strong> ở đầu phiếu là trạng thái của cả phiếu; cột Kết quả ở từng dòng là quyết định đối với tài liệu đó. Hai thông tin này có thể khác nhau trong lúc cán bộ đang xử lý.</p>
 
 <h2>2.7. Báo cáo, kiểm kê và in ấn</h2>
 <p>Mở <span class="path">Thống kê, báo cáo → Báo cáo, thống kê</span>. Chọn báo cáo theo phông, mục lục, hồ sơ, văn bản, độc giả hoặc phiếu; đặt điều kiện, chạy báo cáo rồi xuất <strong>CSV/XLSX</strong> hoặc in. Dữ liệu báo cáo theo phạm vi quyền của người đang xem. Mở <span class="path">Tổng kiểm kê phông</span> để lập kỳ kiểm kê, lấy số liệu hệ thống, nhập số thực tế và xem chênh lệch trước khi hoàn thành kỳ.</p>
 <p>Ở trang chi tiết hồ sơ, menu <strong>In</strong> cho phép mở mẫu in hoặc tải PDF theo các mẫu được cài. Phiếu độc giả cũng có nút in theo đúng loại phiếu.</p>
+<div class="figure"><img src="assets/huong-dan-su-dung/bao-cao.png" alt="Trang chọn báo cáo"><p class="caption">Hình 17. Trang Báo cáo: chọn đúng loại báo cáo theo câu hỏi cần trả lời; mỗi thẻ mở màn hình điều kiện lọc và xuất kết quả.</p></div>
+<div class="figure"><img src="assets/huong-dan-su-dung/kiem-ke.png" alt="Trang tổng kiểm kê"><p class="caption">Hình 18. Tổng kiểm kê phông: bắt đầu một kỳ kiểm kê và đối chiếu số hệ thống với số đếm thực tế theo từng phông.</p></div>
 
 <h2>2.8. Xuất/nhập XML và bảo quản dữ liệu</h2>
 <p>Chức năng này dành cho vai trò được cấp quyền. Mở <span class="path">Trao đổi dữ liệu → Xuất, nhập XML</span>.</p>
@@ -178,11 +198,15 @@ code { font-family: "Liberation Mono", monospace; color: #153d5e; }
 </ol>
 <p>Tệp XML chỉ chứa mô tả/siêu dữ liệu, <strong>không chứa tệp đính kèm hoặc nội dung văn bản đã trích xuất</strong>. Không dùng XML như bản sao lưu đầy đủ của kho tệp.</p>
 <p>Nhóm <strong>Bảo quản</strong> gồm <strong>Sao lưu</strong>, <strong>Kiểm tra toàn vẹn</strong> và <strong>Khôi phục</strong>. Người có quyền có thể tạo lượt sao lưu, kiểm tra tệp/siêu dữ liệu, xem phát hiện và yêu cầu khôi phục phù hợp. Thao tác khôi phục CSDL có kiểm soát riêng; chỉ thực hiện theo quy trình quản trị của đơn vị.</p>
+<div class="figure"><img src="assets/huong-dan-su-dung/trao-doi-xml.png" alt="Trang xuất dữ liệu XML"><p class="caption">Hình 19. Xuất XML: chọn cấp dữ liệu, đặt bộ lọc và bấm Xem trước số lượng trước khi xuất.</p></div>
+<div class="figure"><img src="assets/huong-dan-su-dung/kiem-tra-toan-ven.png" alt="Trang kiểm tra toàn vẹn"><p class="caption">Hình 20. Kiểm tra toàn vẹn: xem danh sách đợt đã chạy; nút Kiểm tra mới tạo một đợt kiểm tra theo quyền được cấp.</p></div>
 
 <h2>2.9. Quản trị tài khoản và giám sát</h2>
 <p>Quản trị viên mở <span class="path">Quản trị → Người dùng</span> để tạo tài khoản cán bộ, gán vai trò/nhóm, đặt phạm vi phông, khóa/mở khóa và cấp liên kết đặt mật khẩu. Tài khoản độc giả được quản lý ở nhóm <strong>Độc giả</strong>, không tạo lẫn vào danh sách cán bộ.</p>
 <p>Mở <span class="path">Quản trị → Phân quyền</span> để xem ma trận quyền theo nhóm; có thể tạo nhóm mới, nhân bản nhóm, lưu thay đổi hoặc khôi phục mặc định đối với nhóm dựng sẵn được phép chỉnh. Mở <strong>Nhật ký hệ thống</strong> để tra lịch sử hành động; <strong>Giám sát hệ thống</strong> để xem tình trạng dịch vụ, chỉ mục và hàng đợi; <strong>Thiết lập hệ thống</strong> để chỉnh các quy tắc vận hành.</p>
 <div class="warn"><strong>Trước khi sửa quyền:</strong> kiểm tra tác động đến phông, mức mật, độc giả và các phiếu đang xử lý. Nút bị ẩn thường phản ánh thiếu quyền hoặc trạng thái dữ liệu bị khóa; không nên khắc phục bằng cách đổi vai trò rộng hơn mức cần thiết.</div>
+<div class="figure"><img src="assets/huong-dan-su-dung/phan-quyen.png" alt="Ma trận phân quyền cán bộ"><p class="caption">Hình 21. Ma trận Phân quyền: chọn nhóm ở cột trái, sau đó xem quyền Xem/Thêm/Sửa/Xóa/In/Xuất của từng loại dữ liệu.</p></div>
+<div class="figure"><img src="assets/huong-dan-su-dung/giam-sat.png" alt="Giám sát hệ thống"><p class="caption">Hình 22. Giám sát hệ thống: kiểm tra trạng thái dịch vụ và hàng đợi khi một thao tác tải tệp hoặc lập chỉ mục xử lý chậm.</p></div>
 
 <h2>2.10. Bài thực hành cho biên mục viên: thêm một hồ sơ hoàn chỉnh</h2>
 <p><strong>Tình huống:</strong> Bạn nhận một hồ sơ mới về hoạt động đọc sách năm 2024. Phông và khối đã có; cần xác định mục lục trước khi nhập hồ sơ. Thực hành trên dữ liệu HD MẪU ở dev. Nếu quyền của bạn không có nút thêm, nhờ quản trị viên kiểm tra vai trò và phạm vi sửa phông.</p>
@@ -205,7 +229,7 @@ code { font-family: "Liberation Mono", monospace; color: #153d5e; }
   <li>Bấm <strong>Gửi đăng ký</strong>. Nếu đơn vị yêu cầu duyệt, chờ cán bộ phòng đọc xem xét và nhận liên kết đặt mật khẩu qua kênh liên hệ của đơn vị.</li>
   <li>Mở liên kết một lần, đặt mật khẩu và đăng nhập tại <span class="path">/dang-nhap</span>. Nếu đơn vị tắt tự đăng ký, liên hệ trực tiếp theo thông tin trên trang.</li>
 </ol>
-<div class="figure"><img width="415" src="assets/huong-dan-su-dung/dang-ky-doc-gia.png" alt="Trang đăng ký độc giả"><p class="caption">Hình 5. Biểu mẫu đăng ký độc giả; các trường bổ sung có thể do đơn vị cấu hình.</p></div>
+<div class="figure"><img width="415" src="assets/huong-dan-su-dung/dang-ky-doc-gia.png" alt="Trang đăng ký độc giả"><p class="caption">Hình 23. Biểu mẫu đăng ký độc giả; các trường bổ sung có thể do đơn vị cấu hình.</p></div>
 
 <h2>3.2. Tra cứu hồ sơ và văn bản</h2>
 <ol>
@@ -216,6 +240,9 @@ code { font-family: "Liberation Mono", monospace; color: #153d5e; }
 </ol>
 <p>Trang hồ sơ liệt kê những văn bản trong hồ sơ mà bạn có quyền xem. Trang văn bản hiển thị thông tin mô tả, bản xem trước và nút <strong>Tải tệp gốc</strong> nếu nhóm độc giả của bạn được cấp quyền tương ứng. Việc không thấy nút là dấu hiệu quyền chưa được cấp hoặc tài liệu không cho phép thao tác đó.</p>
 <div class="note"><strong>Vì sao không thấy tài liệu?</strong> Phông có thể chưa công khai/chưa được cấp phép, cấp phép đã hết hạn, hồ sơ chưa ở trạng thái công bố hoặc mức mật vượt quyền của nhóm độc giả. Liên hệ phòng đọc để được kiểm tra; hệ thống không hiển thị tài liệu ngoài phạm vi được phép.</div>
+<div class="figure"><img src="assets/huong-dan-su-dung/tra-cuu-doc-gia.png" alt="Kết quả tra cứu của độc giả"><p class="caption">Hình 24. Tra cứu độc giả: chọn Hồ sơ, nhập “ngày hội đọc sách”, bấm Tìm kiếm; tại kết quả có Xem chi tiết, Phiếu sử dụng và Phiếu sao chụp.</p></div>
+<div class="figure"><img src="assets/huong-dan-su-dung/chi-tiet-ho-so-doc-gia.png" alt="Chi tiết hồ sơ trên cổng độc giả"><p class="caption">Hình 25. Chi tiết hồ sơ: đối chiếu tiêu đề, số hồ sơ và danh sách văn bản trước khi thêm vào phiếu.</p></div>
+<div class="figure"><img src="assets/huong-dan-su-dung/chi-tiet-van-ban-doc-gia.png" alt="Chi tiết văn bản trên cổng độc giả"><p class="caption">Hình 26. Chi tiết văn bản: kiểm tra số ký hiệu, ngày và cơ quan ban hành; bản xem trước chỉ xuất hiện khi văn bản có tệp và bạn có quyền xem.</p></div>
 
 <h2>3.3. Lập phiếu yêu cầu sử dụng</h2>
 <ol>
@@ -226,6 +253,9 @@ code { font-family: "Liberation Mono", monospace; color: #153d5e; }
   <li>Theo dõi trạng thái trong danh sách và trang chi tiết phiếu. Khi phiếu được duyệt, đến phòng đọc theo hướng dẫn của đơn vị để nhận tài liệu.</li>
 </ol>
 <p>Phiếu nháp có thể <strong>Hủy bản nháp</strong>. Phiếu đã gửi có thể có nút <strong>Hủy phiếu</strong> ở một số trạng thái; thao tác được hệ thống kiểm tra theo quy tắc hiện hành. Khi tài liệu đã giao, trang phiếu hiển thị hạn trả và số lần gia hạn. Nếu cần thêm thời gian, liên hệ phòng đọc.</p>
+<div class="figure"><img src="assets/huong-dan-su-dung/phieu-su-dung-doc-gia.png" alt="Danh sách phiếu sử dụng của độc giả"><p class="caption">Hình 27. Danh sách Phiếu yêu cầu sử dụng: mở số phiếu để xem chi tiết; các thẻ trạng thái giúp lọc phiếu cần theo dõi.</p></div>
+<div class="figure"><img src="assets/huong-dan-su-dung/theo-doi-phieu-su-dung.png" alt="Tiến trình phiếu sử dụng"><p class="caption">Hình 28. Chi tiết phiếu đã gửi: thanh tiến trình cho biết phiếu đang ở bước Chờ duyệt; phần bên dưới ghi mục đích và từng hồ sơ.</p></div>
+<p class="small"><strong>Lưu ý:</strong> Ảnh là phiếu mẫu đang chờ cán bộ phòng đọc. Khi trạng thái chuyển sang Đã duyệt hoặc Đang sử dụng, hãy đọc thông báo và hạn trả trên chính phiếu của bạn.</p>
 
 <h2>3.4. Lập phiếu sao chụp</h2>
 <ol>
@@ -235,13 +265,17 @@ code { font-family: "Liberation Mono", monospace; color: #153d5e; }
   <li>Nhập mục đích sao chụp, rà soát và bấm <strong>Gửi yêu cầu</strong>. Theo dõi kết quả từng mục trong phiếu.</li>
 </ol>
 <p>Quyền sao chụp được kiểm tra riêng với quyền xem hoặc tải tệp. Một văn bản có thể xem được nhưng không được sao chụp vì quy định mức mật hoặc chính sách của nhóm độc giả.</p>
+<div class="figure"><img src="assets/huong-dan-su-dung/theo-doi-phieu-sao-chup.png" alt="Theo dõi phiếu sao chụp"><p class="caption">Hình 29. Phiếu sao chụp: mở số phiếu để kiểm tra tài liệu yêu cầu, trạng thái từng dòng và kết quả xử lý.</p></div>
 
 <h2>3.5. Theo dõi thông báo và gửi góp ý</h2>
 <p>Mở biểu tượng chuông hoặc <span class="path">/portal/thong-bao</span> để xem thông báo về phiếu và phản hồi. Có thể mở thông báo để đến đúng phiếu, hoặc chọn <strong>Đánh dấu đã đọc tất cả</strong>.</p>
 <p>Vào <span class="path">/portal/gop-y</span>, nhập <strong>Tiêu đề</strong> và <strong>Nội dung</strong>, bấm <strong>Gửi góp ý</strong>. Danh sách bên dưới cho biết trạng thái và phản hồi của đơn vị. Không đưa mật khẩu hoặc thông tin đăng nhập vào nội dung góp ý.</p>
+<div class="figure"><img src="assets/huong-dan-su-dung/gop-y-doc-gia.png" alt="Gửi góp ý cho phòng đọc"><p class="caption">Hình 30. Góp ý: viết tiêu đề ngắn, mô tả vấn đề cụ thể và bấm Gửi góp ý; phản hồi sẽ xuất hiện trong danh sách của bạn.</p></div>
+<div class="figure"><img src="assets/huong-dan-su-dung/thong-bao-doc-gia.png" alt="Danh sách thông báo độc giả"><p class="caption">Hình 31. Thông báo: mở từng thông báo để đi tới phiếu hoặc phản hồi liên quan; kiểm tra thường xuyên khi có phiếu đang chờ.</p></div>
 
 <h2>3.6. Quản lý tài khoản cá nhân</h2>
 <p>Mở menu tên ở góc trên phải → <strong>Tài khoản của tôi</strong> hoặc <span class="path">/portal/tai-khoan</span>. Tại đây có thể cập nhật điện thoại, cơ quan, chức vụ, địa chỉ rồi bấm <strong>Lưu thông tin</strong>; đổi mật khẩu bằng mật khẩu hiện tại và mật khẩu mới; xem nhóm độc giả và danh sách phông được khai thác cùng thời hạn cấp phép. Họ tên và email đăng nhập có thể ở chế độ chỉ đọc; liên hệ phòng đọc nếu cần điều chỉnh.</p>
+<div class="figure"><img src="assets/huong-dan-su-dung/tai-khoan-doc-gia.png" alt="Tài khoản và quyền của độc giả"><p class="caption">Hình 32. Tài khoản của tôi: cột trái sửa thông tin liên hệ; cột phải đổi mật khẩu và xem quyền khai thác của nhóm độc giả.</p></div>
 
 <h2>3.7. Bài thực hành cho độc giả: tra cứu và gửi một phiếu</h2>
 <p><strong>Tình huống:</strong> Bạn muốn sử dụng hồ sơ “Tổ chức ngày hội đọc sách 2024”. Bài tập dùng dữ liệu giả của phông công khai; điều kiện hiển thị vẫn phụ thuộc tài khoản đã được kích hoạt và nhóm độc giả được phép tìm kiếm/lập phiếu.</p>

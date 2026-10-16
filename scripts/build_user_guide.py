@@ -8,6 +8,7 @@ from tempfile import TemporaryDirectory
 from urllib.parse import unquote, urlparse
 import re
 import shutil
+import struct
 import subprocess
 import xml.etree.ElementTree as ET
 import zipfile
@@ -20,18 +21,32 @@ ASSETS = ROOT / "docs/assets/huong-dan-su-dung"
 RELS = "word/_rels/document.xml.rels"
 REL_NS = "http://schemas.openxmlformats.org/package/2006/relationships"
 IMAGE_REL = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"
-IMAGE_WIDTH_EMU = 3_960_000  # 11 cm; LibreOffice ignores HTML/CSS image width on import
+IMAGE_WIDTH_EMU = 5_580_000  # 15.5 cm; LibreOffice ignores HTML/CSS image width on import
+PORTRAIT_WIDTH_EMU = 4_320_000  # 12 cm; keep a full form and its caption on one A4 page
 
 
-def fit_images(document_xml: bytes, image_count: int) -> bytes:
-    def resize(match: re.Match) -> bytes:
-        original_width, original_height = int(match.group(2)), int(match.group(3))
-        height = round(original_height * IMAGE_WIDTH_EMU / original_width)
-        return b"<" + match.group(1) + f' cx="{IMAGE_WIDTH_EMU}" cy="{height}"/>'.encode()
+def fit_images(document_xml: bytes, widths: dict[str, int]) -> bytes:
+    def resize_drawing(match: re.Match) -> bytes:
+        drawing = match.group(0)
+        relation = re.search(rb'r:embed="([^"]+)"', drawing)
+        if not relation:
+            raise RuntimeError("Ảnh không có relationship")
+        image_id = relation.group(1).decode()
+        width = widths[image_id]
 
-    document_xml, count = re.subn(rb'<(wp:extent|a:ext) cx="(\d+)" cy="(\d+)"/>', resize, document_xml)
-    if count != image_count * 2:
-        raise RuntimeError(f"Cần {image_count} ảnh minh họa, tìm thấy {count // 2}")
+        def resize_extent(extent: re.Match) -> bytes:
+            original_width, original_height = int(extent.group(2)), int(extent.group(3))
+            height = round(original_height * width / original_width)
+            return b"<" + extent.group(1) + f' cx="{width}" cy="{height}"/>'.encode()
+
+        drawing, count = re.subn(rb'<(wp:extent|a:ext) cx="(\d+)" cy="(\d+)"/>', resize_extent, drawing)
+        if count != 2:
+            raise RuntimeError(f"Ảnh {image_id} có {count} kích thước, cần 2")
+        return drawing
+
+    document_xml, count = re.subn(rb'<wp:inline\b.*?</wp:inline>', resize_drawing, document_xml, flags=re.S)
+    if count != len(widths):
+        raise RuntimeError(f"Cần {len(widths)} ảnh minh họa, tìm thấy {count}")
     return document_xml
 
 
@@ -49,6 +64,7 @@ def embed_images(converted: Path, output: Path) -> int:
     """LibreOffice links HTML images externally; package them inside the DOCX."""
     images = {}
     image_ids = []
+    widths = {}
     with zipfile.ZipFile(converted) as source:
         relationships = ET.fromstring(source.read(RELS))
         for relation in relationships.findall(f"{{{REL_NS}}}Relationship"):
@@ -60,8 +76,14 @@ def embed_images(converted: Path, output: Path) -> int:
             target = f"media/{path.name}"
             relation.set("Target", target)
             relation.attrib.pop("TargetMode", None)
-            images[f"word/{target}"] = path.read_bytes()
-            image_ids.append(relation.attrib["Id"])
+            data = path.read_bytes()
+            if data[:8] != b"\x89PNG\r\n\x1a\n":
+                raise RuntimeError(f"Ảnh minh họa phải là PNG: {path}")
+            width_px, height_px = struct.unpack(">II", data[16:24])
+            image_id = relation.attrib["Id"]
+            images[f"word/{target}"] = data
+            image_ids.append(image_id)
+            widths[image_id] = PORTRAIT_WIDTH_EMU if height_px > width_px else IMAGE_WIDTH_EMU
 
         if not images:
             raise RuntimeError("Không tìm thấy ảnh minh họa trong DOCX")
@@ -70,7 +92,7 @@ def embed_images(converted: Path, output: Path) -> int:
             for item in source.infolist():
                 data = ET.tostring(relationships, encoding="utf-8", xml_declaration=True) if item.filename == RELS else source.read(item)
                 if item.filename == "word/document.xml":
-                    data = fit_images(link_to_embed(data, image_ids), len(image_ids))
+                    data = fit_images(link_to_embed(data, image_ids), widths)
                 document.writestr(item, data)
             for name, data in images.items():
                 document.writestr(name, data, compress_type=zipfile.ZIP_DEFLATED)

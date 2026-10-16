@@ -13,12 +13,14 @@ The generated reader password is printed only when the account is first created.
 
 import secrets
 import sys
+import json
 
 import frappe
 
 SITE = "docmanager.local"
 PREFIX = "HD MẪU"
 READER_EMAIL = "demo.reader@example.com"
+APPLICANT_EMAIL = "demo.applicant@example.com"
 
 ARCHIVES = [
     {
@@ -26,6 +28,7 @@ ARCHIVES = [
         "fonds": "HD MẪU - UBND tỉnh Minh Hòa",
         "code": "HD-UBND",
         "mode": "Công khai",
+        "years": (2023, 2024),
         "groups": [
             ("HD MẪU - Hành chính và tổ chức", "HD-HC", [
                 ("HD MẪU - Công tác tổ chức 2023", "01", [
@@ -56,6 +59,7 @@ ARCHIVES = [
         "fonds": "HD MẪU - Sở Giáo dục Minh Hòa",
         "code": "HD-SGD",
         "mode": "Theo cấp phép",
+        "years": (2024, 2024),
         "groups": [
             ("HD MẪU - Kế hoạch đào tạo", "HD-DT", [
                 ("HD MẪU - Kế hoạch năm học 2024", "01", [
@@ -84,7 +88,11 @@ def seed():
         agency = ensure("Archival Agency", "agency_name", entry["agency"], is_active=1)
         fonds = ensure("Fonds", "fonds_name", entry["fonds"], archival_agency=agency,
                        fonds_code=entry["code"], access_mode=entry["mode"], status="Đã hoàn thành",
+                       start_year=entry["years"][0], end_year=entry["years"][1],
                        description="Dữ liệu giả phục vụ hướng dẫn sử dụng trên môi trường dev.")
+        if not frappe.db.get_value("Fonds", fonds, "start_year"):
+            frappe.db.set_value("Fonds", fonds, {"start_year": entry["years"][0],
+                                              "end_year": entry["years"][1]})
         counts["fonds"] += 1
         for group_title, group_code, catalogs in entry["groups"]:
             group = ensure("Record Group", "group_title", group_title, fonds=fonds,
@@ -117,13 +125,44 @@ def seed():
         ensure("Reader", "full_name", "HD MẪU - Nguyễn Thị Lan", user=READER_EMAIL,
                email=READER_EMAIL, max_confidentiality_priority=1, is_active=1,
                organization="Trường THPT Minh Hòa", phone="0900000000")
+    if not frappe.db.get_value("Reader Registration", {"email": APPLICANT_EMAIL}, "name"):
+        frappe.get_doc({"doctype": "Reader Registration", "request_type": "Đăng ký tài khoản",
+                        "status": "Mới", "full_name": "HD MẪU - Trần Minh Anh",
+                        "email": APPLICANT_EMAIL, "phone": "0900000001",
+                        "organization": "Thư viện Minh Hòa",
+                        "purpose": "Nghiên cứu hoạt động văn hóa đọc."}).insert(ignore_permissions=True)
+    reader = frappe.db.get_value("Reader", {"user": READER_EMAIL}, "name")
+    demo_file = frappe.db.get_value("Archival File", {"file_title": "HD MẪU - Tổ chức ngày hội đọc sách 2024"}, "name")
+    from document_manager.document_manager.api.requests import save_request
+
+    for doctype, purpose, item in [
+        ("Usage Request", "HD MẪU - Nghiên cứu văn hóa đọc", {"archival_file": demo_file}),
+        ("Copy Request", "HD MẪU - Sao chụp tư liệu ngày hội đọc sách",
+         {"archival_file": demo_file, "copy_count": 1, "copy_form": "Bản số"}),
+    ]:
+        if not frappe.db.get_value(doctype, {"reader": reader, "purpose": purpose}, "name"):
+            frappe.set_user(READER_EMAIL)
+            try:
+                save_request(doctype, json.dumps({"purpose": purpose, "items": [item]}), submit=1)
+            finally:
+                frappe.set_user("Administrator")
     print("Đã bảo đảm dữ liệu mẫu:", counts)
 
 
 def remove():
     reader = frappe.db.get_value("Reader", {"user": READER_EMAIL}, "name")
     if reader:
+        for doctype in ("Usage Request", "Copy Request"):
+            for name in frappe.get_all(doctype, filters={"reader": reader, "purpose": ["like", PREFIX + "%"]}, pluck="name"):
+                doc = frappe.get_doc(doctype, name)
+                if doc.docstatus == 1:
+                    doc.flags.ignore_permissions = True
+                    doc.cancel()
+                frappe.delete_doc(doctype, name, force=True, ignore_permissions=True)
         frappe.delete_doc("Reader", reader, force=True, ignore_permissions=True)
+    registration = frappe.db.get_value("Reader Registration", {"email": APPLICANT_EMAIL}, "name")
+    if registration:
+        frappe.delete_doc("Reader Registration", registration, force=True, ignore_permissions=True)
     if frappe.db.exists("User", READER_EMAIL):
         frappe.delete_doc("User", READER_EMAIL, force=True, ignore_permissions=True)
     for doctype, field in [
