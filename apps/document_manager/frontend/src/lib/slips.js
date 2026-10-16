@@ -15,11 +15,42 @@ export const kindOf = (value) => KINDS[value] || KINDS.usage;
 
 export const CONDITIONS = ["Tốt", "Hư hỏng nhẹ", "Thiếu trang", "Hư hỏng nặng"];
 
-/** How a workflow action looks as a button: primary (moves the slip on), danger (turns it down), plain. */
-export function actionStyle(action) {
-  if (["Duyệt", "Giao tài liệu", "Nhận trả", "Hoàn thành", "Chuyển lãnh đạo", "Gửi duyệt"].includes(action)) return "btn-primary";
-  if (["Từ chối", "Hủy phiếu"].includes(action)) return "btn-danger";
+const MAIN_ACTIONS = ["Duyệt", "Giao tài liệu", "Nhận trả", "Hoàn thành", "Gửi duyệt"];
+const DANGER_ACTIONS = ["Từ chối", "Hủy phiếu"];
+
+/** How a workflow action looks as a button: primary (the usual next step), danger (turns the slip down), plain.
+ *  "Chuyển lãnh đạo" is the usual next step only when the officer cannot approve the slip themselves. */
+export function actionStyle(action, actions = []) {
+  if (MAIN_ACTIONS.includes(action)) return "btn-primary";
+  if (action === "Chuyển lãnh đạo" && !actions.includes("Duyệt")) return "btn-primary";
+  if (DANGER_ACTIONS.includes(action)) return "btn-danger";
   return "";
+}
+
+/** The usual next step first, the others after it, the ones that turn the slip down last. */
+export function sortActions(actions = []) {
+  const rank = (a) => ({ "btn-primary": 0, "": 1, "btn-danger": 2 })[actionStyle(a, actions)];
+  return [...actions].sort((a, b) => rank(a) - rank(b));
+}
+
+/** One sentence under the actions: what the officer is expected to do now, and why a button is missing. */
+export function actionHint(slip) {
+  const actions = slip?.actions || [];
+  if (slip?.state === "Chờ duyệt" && actions.includes("Chuyển lãnh đạo") && !actions.includes("Duyệt")) {
+    return "Phiếu có hồ sơ, văn bản cần lãnh đạo duyệt (theo mức độ mật hoặc quy định của nhóm độc giả): quyết định từng dòng rồi bấm Chuyển lãnh đạo.";
+  }
+  if (actions.includes("Duyệt")) return "Dòng chưa quyết định sẽ được duyệt cùng phiếu; dòng từ chối cần ghi lý do. Từ chối cả phiếu khi không duyệt được dòng nào.";
+  if (actions.includes("Giao tài liệu")) return "In phiếu lấy tài liệu để lấy hồ sơ trong kho, rồi bấm Giao tài liệu khi độc giả nhận. Hạn trả tính từ hôm nay.";
+  if (actions.includes("Hoàn thành")) return "Bấm Hoàn thành khi đã sao chụp xong và giao bản sao cho độc giả.";
+  return "";
+}
+
+/** Set every row to approved (rows turned down lose their reason), or back to undecided. */
+export function decideAll(items, status) {
+  for (const item of items) {
+    item.item_status = status;
+    if (status !== "Từ chối") item.decision_note = "";
+  }
 }
 
 /** Actions that need a written reason before they run. */

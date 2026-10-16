@@ -22,7 +22,7 @@ const PAGE_SIZE = 20;
 
 const info = computed(() => kindOf(props.kind));
 const state = reactive({ rows: [], total: 0, page: 1, view: "", views: [], summary: null, search: "", loading: true, error: "", newOpen: false });
-const canCreate = computed(() => boot.user.roles.some((r) => ["Reading Room Officer", "Document Admin"].includes(r)));
+const canCreate = computed(() => (boot.user.capabilities || []).includes("slips.receive")); // the reading room files slips for readers
 let ticket = 0;
 
 const countFor = (view) => state.summary?.[props.kind]?.[view] ?? 0;

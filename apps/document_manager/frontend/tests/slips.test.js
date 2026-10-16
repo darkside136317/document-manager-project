@@ -3,8 +3,8 @@ import { describe, expect, it } from "vitest";
 import TableInput from "../src/components/TableInput.vue";
 import { blankRecord, blankRow, isoDate, isVisible, missingRequired } from "../src/lib/doctype.js";
 import {
-  actionStyle, approvedCount, confirmText, counter, daysLate, decisionsFrom, dueText, kindOf, needsConfirm, needsReason, pickView,
-  rejectedWithoutReason,
+  actionHint, actionStyle, approvedCount, confirmText, counter, daysLate, decideAll, decisionsFrom, dueText, kindOf, needsConfirm, needsReason, pickView,
+  rejectedWithoutReason, sortActions,
 } from "../src/lib/slips.js";
 import { toneFor } from "../src/lib/tone.js";
 
@@ -19,6 +19,30 @@ describe("slip helpers", () => {
     for (const a of ["Duyệt", "Giao tài liệu", "Nhận trả", "Chuyển lãnh đạo"]) expect(actionStyle(a)).toBe("btn-primary");
     for (const a of ["Từ chối", "Hủy phiếu"]) expect(actionStyle(a)).toBe("btn-danger");
     expect(actionStyle("Trả lại phòng đọc")).toBe("");
+  });
+
+  it("puts the usual next step first: approving when the officer may, sending to the leader when not", () => {
+    const own = ["Chuyển lãnh đạo", "Duyệt", "Từ chối"];
+    expect(actionStyle("Chuyển lãnh đạo", own)).toBe("");
+    expect(sortActions(own)).toEqual(["Duyệt", "Chuyển lãnh đạo", "Từ chối"]);
+    const leader = ["Chuyển lãnh đạo", "Từ chối"];
+    expect(actionStyle("Chuyển lãnh đạo", leader)).toBe("btn-primary");
+    expect(sortActions(["Từ chối", "Trả lại phòng đọc", "Duyệt"])).toEqual(["Duyệt", "Trả lại phòng đọc", "Từ chối"]);
+  });
+
+  it("says why only 'Chuyển lãnh đạo' is offered, and what to do next", () => {
+    expect(actionHint({ state: "Chờ duyệt", actions: ["Chuyển lãnh đạo", "Từ chối"] })).toMatch(/cần lãnh đạo duyệt/);
+    expect(actionHint({ state: "Chờ duyệt", actions: ["Chuyển lãnh đạo", "Duyệt", "Từ chối"] })).toMatch(/chưa quyết định sẽ được duyệt/);
+    expect(actionHint({ state: "Đã duyệt", actions: ["Giao tài liệu"] })).toMatch(/phiếu lấy tài liệu/);
+    expect(actionHint({ state: "Đã trả", actions: [] })).toBe("");
+  });
+
+  it("decides every row at once", () => {
+    const items = [{ item_status: "Chờ duyệt" }, { item_status: "Từ chối", decision_note: "mất trang" }];
+    decideAll(items, "Đã duyệt");
+    expect(items).toEqual([{ item_status: "Đã duyệt", decision_note: "" }, { item_status: "Đã duyệt", decision_note: "" }]);
+    decideAll(items, "Chờ duyệt");
+    expect(items.every((i) => i.item_status === "Chờ duyệt")).toBe(true);
   });
 
   it("asks for a reason only when turning a slip down, and confirms the actions that cannot be undone", () => {

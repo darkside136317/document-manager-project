@@ -1,5 +1,5 @@
 {% extends "templates/reader/base.html" %}
-{% from "templates/reader/macros.html" import icon, pager %}
+{% from "templates/reader/macros.html" import icon, pager, add_to_slip %}
 
 {% block main %}{% autoescape true %}
 <ol class="breadcrumb"><li><a href="/portal">Tra cứu</a></li><li aria-current="page">Hồ sơ {{ file.name }}</li></ol>
@@ -10,8 +10,8 @@
     <p>{{ icon("folder") }} Hồ sơ {{ file.name }}</p>
   </div>
   <div class="cluster no-print" x-data>
-    {% if can_add.usage %}<button class="btn btn-primary" type="button" @click="$store.basket.add('file', {{ file.name | tojson | forceescape }}, 'usage')" :disabled="$store.basket.busy">{{ icon("plus") }} Thêm vào phiếu sử dụng</button>{% endif %}
-    {% if can_add.copy %}<button class="btn" type="button" @click="$store.basket.add('file', {{ file.name | tojson | forceescape }}, 'copy')" :disabled="$store.basket.busy">{{ icon("copy") }} Thêm vào phiếu sao chụp</button>{% endif %}
+    {% if can_add.usage %}{{ add_to_slip("file", file.name, "usage", "btn btn-primary") }}{% endif %}
+    {% if can_add.copy %}{{ add_to_slip("file", file.name, "copy") }}{% endif %}
   </div>
 </div>
 
@@ -40,7 +40,7 @@
             <td>{{ d.author or "" }}</td>
             <td>{{ d.file_type or "" }}</td>
             <td class="right nowrap no-print" x-data>
-              {% if can_add.usage %}<button class="btn btn-sm" type="button" @click="$store.basket.add('document', {{ d.name | tojson | forceescape }}, 'usage')" :disabled="$store.basket.busy" aria-label="Thêm {{ d.document_title or d.name }} vào phiếu sử dụng">{{ icon("plus") }} Phiếu</button>{% endif %}
+              {% if can_add.usage %}{{ add_to_slip("document", d.name, "usage", "btn btn-sm", short=True) }}{% endif %}
             </td>
           </tr>
         {% endfor %}

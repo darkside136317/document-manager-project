@@ -28,3 +28,16 @@
 {% endif %}
 {% endautoescape %}
 {%- endmacro %}
+
+{#- A button that puts a hồ sơ / văn bản in the reader's draft slip, or opens the draft when it is already in it.
+    `kind` "file" | "document", `target` "usage" | "copy"; `short` for the narrow rows of a table. -#}
+{% macro add_to_slip(kind, name, target, classes="btn", short=False) -%}
+{%- set noun = "phiếu sử dụng" if target == "usage" else "phiếu sao chụp" -%}
+{%- set key = "$store.basket.has('" ~ target ~ "', '" ~ kind ~ "', " ~ (name | tojson) ~ ")" -%}
+<button class="{{ classes }}" type="button" :class="{ 'btn-added': {{ key | forceescape }} }" :disabled="$store.basket.busy"
+        @click="$store.basket.addOrOpen('{{ kind }}', {{ name | tojson | forceescape }}, '{{ target }}')"
+        :aria-label="{{ key | forceescape }} ? 'Đã có trong {{ noun }}: mở phiếu' : 'Thêm vào {{ noun }}'">
+  <span x-show="!{{ key | forceescape }}">{{ icon("plus" if target == "usage" else "copy") }} {{ "Thêm vào phiếu" if short else "Thêm vào " ~ noun }}</span>
+  <span x-show="{{ key | forceescape }}" x-cloak>{{ icon("check") }} {{ "Đã trong phiếu" if short else "Đã có trong " ~ noun }}</span>
+</button>
+{%- endmacro %}

@@ -247,3 +247,66 @@ class TestSlipQueue(IntegrationTestCase):
         for user in (OFFICER, LEADER, ADMIN):
             frappe.set_user(user)
             self.assertIn("usage", slips.queue_summary())
+
+    # ---- easier slips: the draft saves itself, the basket knows what it holds, limits are told beforehand
+    def test_the_draft_saves_the_readers_fields_in_place_and_keeps_rows_added_from_another_tab(self):
+        frappe.set_user(READER)
+        draft = basket_api.add_to_basket("file", self.file_ok, "copy")["request"]
+        row = frappe.get_doc("Copy Request", draft).items[0].name
+        basket_api.add_to_basket("file", self.file_two, "copy")  # another tab, while the draft page is open
+        request_api.save_request("Copy Request", json.dumps({
+            "purpose": "SQ tự lưu", "item_updates": [{"row": row, "copy_count": 3, "page_range": "1-2", "archival_file": self.file_two},
+                                                     {"row": "not-a-row", "copy_count": 9}]}), name=draft)
+        doc = frappe.get_doc("Copy Request", draft)
+        self.assertEqual(doc.purpose, "SQ tự lưu")
+        self.assertEqual([(r.name == row, r.archival_file, r.copy_count, r.page_range or "") for r in doc.items],
+                         [(True, self.file_ok, 3, "1-2"), (False, self.file_two, 1, "")])  # the row kept its name and its file
+
+    def test_the_basket_tells_which_results_are_already_in_a_draft(self):
+        frappe.set_user(READER)
+        basket_api.add_to_basket("file", self.file_ok, "usage")
+        added = basket_api.add_to_basket("document", self.doc_ok, "usage")
+        self.assertEqual(set(added["keys"]), {f"file:{self.file_ok}", f"document:{self.doc_ok}"})
+        summary = basket_api.get_basket()
+        self.assertEqual(set(summary["usage"]["keys"]), set(added["keys"]))
+        self.assertEqual(summary["copy"]["keys"], [])
+        doc = frappe.get_doc("Usage Request", added["request"])
+        left = basket_api.remove_from_basket("Usage Request", doc.name, doc.items[0].name)
+        self.assertEqual(left["keys"], [f"document:{self.doc_ok}"])
+
+    def test_the_readers_limits_are_told_before_sending_and_still_enforced(self):
+        from document_manager.document_manager.services import lifecycle as lc
+
+        frappe.db.set_single_value("Reader Settings", "max_items_per_request", 1)
+        frappe.db.set_single_value("Reader Settings", "max_requests_per_day", 3)
+        frappe.clear_document_cache("Reader Settings", "Reader Settings")
+        frappe.set_user(READER)
+        basket_api.add_to_basket("file", self.file_ok, "usage")
+        draft = basket_api.add_to_basket("file", self.file_two, "usage")["request"]
+        quota = lc.quota(frappe.get_doc("Usage Request", draft))
+        self.assertTrue(any("tối đa 1" in p for p in quota.problems), quota)
+        self.assertIn("Hôm nay còn gửi được 3 phiếu yêu cầu sử dụng", quota.notes)
+        with self.assertRaisesRegex(frappe.ValidationError, "tối đa 1"):
+            request_api.save_request("Usage Request", json.dumps({"purpose": "SQ"}), name=draft, submit=1)
+
+    def test_filing_for_a_reader_shows_titles_and_checks_each_item_against_the_readers_rights(self):
+        licensed = _seed_archive(n=1, access_mode="Theo cấp phép")  # a fonds this reader was never granted
+        closed_file = _names(licensed, "Archival File")[0]
+        frappe.set_user(OFFICER)
+        result = slips.prepare_slip("usage", self.profile, json.dumps([
+            {"archival_file": self.file_ok}, {"archive_document": self.doc_ok}, {"archival_file": closed_file}]))
+        titles = {i["archival_file"] if not i["archive_document"] else i["archive_document"]: i for i in result["items"]}
+        self.assertEqual(titles[self.file_ok]["title"], frappe.db.get_value("Archival File", self.file_ok, "file_title"))
+        self.assertEqual(titles[self.doc_ok]["kind"], "Văn bản")
+        self.assertEqual(titles[self.doc_ok]["archival_file"], self.file_ok)  # the file of the document is filled in
+        self.assertEqual((titles[self.file_ok]["problem"], titles[self.doc_ok]["problem"]), ("", ""))
+        self.assertIn("không được khai thác", titles[closed_file]["problem"])
+        self.assertEqual(result["reader"]["full_name"], "SQ Người đọc")
+        self.assertTrue(result["reader"]["fonds"])
+        self.assertIsInstance(result["purposes"], list)
+        # without a reader yet: titles, no verdict
+        self.assertEqual(slips.prepare_slip("usage", None, json.dumps([{"archival_file": closed_file}]))["items"][0]["problem"], "")
+        for user in (READER, PRESERVER, LEADER):
+            frappe.set_user(user)
+            with self.assertRaises(frappe.PermissionError, msg=user):
+                slips.prepare_slip("usage", self.profile, "[]")

@@ -127,7 +127,9 @@ try {
     await visible(page.getByRole("heading", { level: 1, name: new RegExp(usageNormal) }));
     await visible(page.getByText(`${TAG} Hồ sơ A`).first());
     await visible(page.getByText(/Giá G7/));
-    await visible(page.getByRole("link", { name: /In phiếu lấy tài liệu/ }));
+    await page.getByRole("button", { name: /^In/ }).click(); // the print menu
+    await visible(page.getByRole("menuitem", { name: /In phiếu lấy tài liệu/ }));
+    await page.keyboard.press("Escape");
     await page.screenshot({ path: `${OUT}/slips_detail.png` });
   });
 
@@ -247,6 +249,8 @@ try {
     await page.locator("#ns-purpose").fill(`${TAG} lập tại quầy`);
     await page.locator("#ns-file").fill(TAG);
     await page.getByRole("option", { name: new RegExp(`${TAG} Hồ sơ B`) }).click();
+    await visible(page.locator("table").getByText(`${TAG} Hồ sơ B`)); // the picked file is shown by its title, not its code
+    await visible(page.getByText(/Phông được khai thác:/)); // who the reader is and what they may use
     await page.getByRole("button", { name: "Gửi duyệt" }).click();
     await page.waitForURL(/\/phieu-su-dung\/UR-/);
     await visible(page.locator("h1").getByText("Chờ duyệt", { exact: true }));

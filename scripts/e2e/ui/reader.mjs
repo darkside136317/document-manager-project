@@ -231,9 +231,10 @@ try {
     const result = page.locator(".result").filter({ hasText: `${TAG} Hồ sơ hiến chương` });
     await visible(result);
     await page.screenshot({ path: `${OUT}/reader_results.png` });
-    await result.getByRole("button", { name: "Phiếu sử dụng" }).click();
+    await result.getByRole("button", { name: "Thêm vào phiếu sử dụng" }).click();
     await visible(page.locator(".toast").filter({ hasText: "Đã thêm" }));
     await expect_badge("clipboard-list", "1");
+    await visible(result.getByRole("button", { name: /Đã có trong phiếu sử dụng/ })); // the result says it is in the draft
   });
 
   async function expect_badge(_icon, text) {
@@ -242,10 +243,13 @@ try {
     expect(shown === text, `basket badge shows ${shown}, expected ${text}`);
   }
 
-  await run("adding the same file twice changes nothing", async () => {
-    await page.locator(".result").first().getByRole("button", { name: "Phiếu sử dụng" }).click();
-    await visible(page.locator(".toast").filter({ hasText: "Đã có trong" }));
+  await run("a result already in the draft opens the draft instead of adding it twice", async () => {
+    const searchUrl = page.url();
+    await page.locator(".result").first().getByRole("button", { name: /Đã có trong phiếu sử dụng/ }).click();
+    await page.waitForURL(/\/portal\/phieu\/UR-/);
     await expect_badge("clipboard-list", "1");
+    await visible(page.getByText(/Bản nháp được lưu tự động|Đã lưu tự động/)); // the draft says it saves itself
+    await page.goto(searchUrl, { waitUntil: "networkidle" });
   });
 
   await run("a file above the reader's clearance is invisible in search and by address", async () => {
@@ -268,7 +272,7 @@ try {
     await page.getByRole("button", { name: "Tìm kiếm" }).click();
     const result = page.locator(".result").filter({ hasText: `${TAG} Công văn số 12` });
     await visible(result);
-    await result.getByRole("button", { name: "Phiếu sao chụp" }).click();
+    await result.getByRole("button", { name: "Thêm vào phiếu sao chụp" }).click();
     await visible(page.locator(".toast").filter({ hasText: "phiếu sao chụp" }));
     expect(page.url().includes("k=documents"), "the search is not kept in the address");
   });

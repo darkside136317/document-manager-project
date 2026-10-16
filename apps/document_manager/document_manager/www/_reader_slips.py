@@ -11,7 +11,8 @@ from frappe.utils import cint, format_date, format_datetime, getdate, nowdate
 
 from document_manager.document_manager.api.requests import get_actions
 from document_manager.document_manager.policy import get_reader_scope
-from document_manager.document_manager.services import templates
+from document_manager.document_manager.services import basket, templates
+from document_manager.document_manager.services import lifecycle as lc
 from document_manager.document_manager.services.web import inline_json
 from document_manager.www._reader_ui import page_context, require_reader
 
@@ -63,11 +64,23 @@ def _title(doctype: str, name: str, field: str) -> str:
     return frappe.db.get_value(doctype, name, field) or name
 
 
+def _meta(doctype: str, name: str) -> dict:
+    """Number, fonds and level of a readable item, shown under its title so the reader knows which one it is."""
+    if not name or not frappe.has_permission(doctype, "read", doc=name):
+        return {"unavailable": bool(name)}
+    number_field = "document_number" if doctype == "Archive Document" else "file_number"
+    values = frappe.db.get_value(doctype, name, [number_field, "fonds", "confidentiality_level"], as_dict=True) or {}
+    return {"number": values.get(number_field) or "", "level": values.get("confidentiality_level") or "",
+            "fonds_name": frappe.db.get_value("Fonds", values.get("fonds"), "fonds_name") if values.get("fonds") else "",
+            "unavailable": False}
+
+
 def _item_rows(doc) -> list[dict]:
     rows = []
     for row in doc.items:
         is_doc = bool(row.archive_document)
-        rows.append({
+        meta = _meta("Archive Document", row.archive_document) if is_doc else _meta("Archival File", row.archival_file)
+        rows.append({**meta,
             "row": row.name, "archival_file": row.archival_file, "archive_document": row.archive_document,
             "kind": "Văn bản" if is_doc else "Hồ sơ", "item_status": row.get("item_status") or "",
             "decision_note": row.get("decision_note") or "",
@@ -99,6 +112,7 @@ def slip_context(context, key: str):
         actions = {a["action"] for a in get_actions(cfg["doctype"], name)}
         options = templates.slip_options_for(cfg["doctype"])
         items = _item_rows(doc)
+        slip_quota = lc.quota(doc) if editable else frappe._dict(problems=[], notes=[])
         context.update({
             "doc": doc, "state": state, "steps": _steps(cfg, state, bool(cint(doc.requires_leader))), "editable": editable, "items": items,
             "reader_name": doc.reader_name or frappe.db.get_value("Reader", doc.reader, "full_name") or doc.reader,
@@ -112,9 +126,12 @@ def slip_context(context, key: str):
                 (cfg["date_label"], format_datetime(doc.get(cfg["date_field"]), "dd/MM/yyyy HH:mm") if doc.get(cfg["date_field"]) else ""),
             ) if text],
             "options": options,
+            "quota": slip_quota,
             "editor_config": inline_json({
                 "doctype": cfg["doctype"], "name": doc.name, "purpose": doc.purpose or "", "notes": doc.notes or "",
                 "items": items, "listUrl": cfg["base"], "target": key, "requirePurpose": options.require_purpose,
+                "purposes": options.purposes or [], "maxItems": lc.get_limits(doc.reader).max_items_per_request,
+                "blocked": bool(slip_quota.problems),
             }),
             "title": f"{cfg['title']} {doc.name}",
         })
@@ -124,14 +141,23 @@ def slip_context(context, key: str):
     status = frappe.form_dict.get("status") or ""
     filters = {"workflow_state": status} if status in cfg["states"] else {}
     total = frappe.get_list(cfg["doctype"], filters=filters, fields=[{"COUNT": "name", "as": "c"}])[0].c
-    rows = frappe.get_list(cfg["doctype"], filters=filters, fields=["name", "workflow_state", "request_date", "purpose", "docstatus"],
+    fields = ["name", "workflow_state", "request_date", "purpose", "docstatus"] + (["due_date", "is_overdue"] if cfg["in_use"] else [])
+    rows = frappe.get_list(cfg["doctype"], filters=filters, fields=fields,
                            order_by="modified desc", start=(page - 1) * PAGE_SIZE, page_length=PAGE_SIZE)
+    for r in rows:
+        if r.get("due_date") and r.workflow_state == "Đang sử dụng":
+            r.due_text = format_date(r.due_date, "dd/MM/yyyy")
+            r.overdue = getdate(r.due_date) < getdate(nowdate())
+    state_counts = {r.workflow_state or "Nháp": r.c for r in frappe.get_list(
+        cfg["doctype"], fields=["workflow_state", {"COUNT": "name", "as": "c"}], group_by="workflow_state")}
     counts = {}
     if rows:
         counts = {r.parent: r.c for r in frappe.get_all(
             cfg["item_doctype"], filters={"parent": ["in", [r.name for r in rows]], "parenttype": cfg["doctype"]},
             fields=["parent", {"COUNT": "name", "as": "c"}], group_by="parent", parent_doctype=cfg["doctype"])}
+    draft = basket.summary(scope.profile).get(key) if scope.profile else None
     context.update({
+        "draft": draft if draft and draft.get("name") else None, "state_counts": state_counts,
         "rows": rows, "counts": counts, "status": status, "page": page, "pages": max(1, -(-total // PAGE_SIZE)),
         "total": total, "can_create": bool(scope.profile and scope.get("can_request_usage" if key == "usage" else "can_request_copy")),
         "base_query": f"{cfg['base']}?" + (f"status={status}&" if status else ""),

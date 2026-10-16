@@ -68,33 +68,47 @@ def overdue_count(profile: str) -> int:
                                    "due_date": ["<", nowdate()]})
 
 
-def check_quota(doc) -> None:
-    """Refuse a slip the reader's limits do not allow. Raises ValidationError with the reason."""
+def quota(doc) -> frappe._dict:
+    """Where the reader stands against their limits for `doc` (a draft or a slip being sent):
+    `problems` are what would refuse the slip now, `notes` the limits worth knowing beforehand."""
     limits = get_limits(doc.reader)
-    if limits.max_items_per_request and len(doc.items) > limits.max_items_per_request:
-        frappe.throw(_("Một phiếu có tối đa {0} hồ sơ/văn bản (phiếu này có {1})").format(
-            limits.max_items_per_request, len(doc.items)))
+    problems, notes = [], []
+    if limits.max_items_per_request:
+        notes.append(_("Mỗi phiếu tối đa {0} hồ sơ/văn bản").format(limits.max_items_per_request))
+        if len(doc.items) > limits.max_items_per_request:
+            problems.append(_("Một phiếu có tối đa {0} hồ sơ/văn bản (phiếu này có {1})").format(
+                limits.max_items_per_request, len(doc.items)))
 
     per_day = limits.max_requests_per_day if doc.doctype == USAGE else limits.max_copy_requests_per_day
     if per_day:
+        noun = _("phiếu yêu cầu sử dụng") if doc.doctype == USAGE else _("phiếu sao chụp")
         today_start = get_datetime(f"{nowdate()} 00:00:00")
         used = frappe.db.count(doc.doctype, {
             "reader": doc.reader, "docstatus": 1, "submitted_on": [">=", today_start],
             "workflow_state": ["!=", STATE_CANCELLED], "name": ["!=", doc.name]})
         if used >= per_day:
-            frappe.throw(_("Mỗi ngày chỉ lập tối đa {0} {1}. Hôm nay bạn đã gửi {2}.").format(
-                per_day, _("phiếu yêu cầu sử dụng") if doc.doctype == USAGE else _("phiếu sao chụp"), used))
+            problems.append(_("Mỗi ngày chỉ lập tối đa {0} {1}. Hôm nay bạn đã gửi {2}.").format(per_day, noun, used))
+        else:
+            notes.append(_("Hôm nay còn gửi được {0} {1}").format(per_day - used, noun))
 
     if limits.max_open_requests:
         open_slips = sum(frappe.db.count(dt, {"reader": doc.reader, "docstatus": 1,
                                               "workflow_state": ["in", list(OPEN_STATES)], "name": ["!=", doc.name]})
                          for dt in SLIP_DOCTYPES)
         if open_slips >= limits.max_open_requests:
-            frappe.throw(_("Bạn đang có {0} phiếu chưa xử lý xong (tối đa {1}). Hãy đợi phiếu được xử lý hoặc hủy bớt.").format(
+            problems.append(_("Bạn đang có {0} phiếu chưa xử lý xong (tối đa {1}). Hãy đợi phiếu được xử lý hoặc hủy bớt.").format(
                 open_slips, limits.max_open_requests))
 
     if doc.doctype == USAGE and limits.block_when_overdue and overdue_count(doc.reader):
-        frappe.throw(_("Bạn còn tài liệu quá hạn chưa trả. Vui lòng trả tài liệu trước khi lập phiếu mới."))
+        problems.append(_("Bạn còn tài liệu quá hạn chưa trả. Vui lòng trả tài liệu trước khi lập phiếu mới."))
+    return frappe._dict(problems=problems, notes=notes)
+
+
+def check_quota(doc) -> None:
+    """Refuse a slip the reader's limits do not allow. Raises ValidationError with the reason."""
+    problems = quota(doc).problems
+    if problems:
+        frappe.throw(problems[0])
 
 
 def due_date_for(profile: str, start=None, doc=None):

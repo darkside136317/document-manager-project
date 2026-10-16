@@ -42,17 +42,23 @@ def _draft_name(profile: str, doctype: str) -> str | None:
     return rows[0] if rows else None
 
 
+def item_key(row) -> str:
+    """"document:DOC-1" for a document, "file:AF-1" for a whole file: how the reader site tells what is in a draft."""
+    return f"document:{row.get('archive_document')}" if row.get("archive_document") else f"file:{row.get('archival_file')}"
+
+
 def summary(profile: str | None = None) -> dict:
-    """{usage: {name, count}, copy: {name, count}} — what the header badge shows."""
+    """{usage: {name, count, keys}, copy: {name, count, keys}}: the header badge, and which results are already in a draft."""
     profile = profile or get_reader_profile()
-    out = {key: {"name": None, "count": 0, "route": spec["route"]} for key, spec in TARGETS.items()}
+    out = {key: {"name": None, "count": 0, "keys": [], "route": spec["route"]} for key, spec in TARGETS.items()}
     if not profile:
         return out
     for key, spec in TARGETS.items():
         name = _draft_name(profile, spec["doctype"])
         if name:
-            out[key]["name"] = name
-            out[key]["count"] = frappe.db.count(f"{spec['doctype']} Item", {"parent": name, "parenttype": spec["doctype"]})
+            rows = frappe.get_all(f"{spec['doctype']} Item", filters={"parent": name, "parenttype": spec["doctype"]},
+                                  fields=["archival_file", "archive_document"], parent_doctype=spec["doctype"])
+            out[key].update(name=name, count=len(rows), keys=[item_key(r) for r in rows])
     return out
 
 
@@ -85,6 +91,7 @@ def add_item(kind: str, name: str, target: str) -> dict:
         if any((r.archival_file or "") == (row.get("archival_file") or "")
                and (r.archive_document or "") == (row.get("archive_document") or "") for r in doc.items):
             return {"added": False, "request": doc.name, "target": target, "count": len(doc.items),
+                    "keys": [item_key(r) for r in doc.items],
                     "route": f"{spec['route']}/{doc.name}", "message": _("Đã có trong {0}").format(spec["label"])}
         doc.append("items", row)
         doc.save()
@@ -92,6 +99,7 @@ def add_item(kind: str, name: str, target: str) -> dict:
         doc = frappe.get_doc({"doctype": spec["doctype"], "items": [row]})
         doc.insert()
     return {"added": True, "request": doc.name, "target": target, "count": len(doc.items),
+            "keys": [item_key(r) for r in doc.items],
             "route": f"{spec['route']}/{doc.name}", "message": _("Đã thêm vào {0}").format(spec["label"])}
 
 
@@ -112,12 +120,12 @@ def remove_item(doctype: str, name: str, row: str) -> dict:
     doc.set("items", [r for r in doc.items if r.name != row])
     if not doc.items:
         frappe.delete_doc(doctype, name, ignore_permissions=True)
-        return {"request": None, "count": 0}
+        return {"request": None, "count": 0, "keys": []}
     doc.save()
-    return {"request": doc.name, "count": len(doc.items)}
+    return {"request": doc.name, "count": len(doc.items), "keys": [item_key(r) for r in doc.items]}
 
 
 def discard_draft(doctype: str, name: str) -> dict:
     _own_draft(doctype, name)
     frappe.delete_doc(doctype, name, ignore_permissions=True)
-    return {"request": None}
+    return {"request": None, "count": 0, "keys": []}
