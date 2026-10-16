@@ -250,7 +250,7 @@ Tài liệu chi tiết bằng tiếng Việt trong thư mục `docs/`:
 |---|---|
 | [TAI_LIEU_KY_THUAT.md](docs/TAI_LIEU_KY_THUAT.md) | Tài liệu kỹ thuật: kiến trúc, mã nguồn, dữ liệu, phân quyền, luồng xử lý, API, mở rộng |
 | [DEPLOYMENT.md](docs/DEPLOYMENT.md) | Triển khai sản xuất, TLS, cập nhật, xử lý sự cố |
-| [KICH_BAN_DEMO_CHUC_NANG_VA_PHAN_QUYEN.md](docs/KICH_BAN_DEMO_CHUC_NANG_VA_PHAN_QUYEN.md) | Kịch bản demo và danh sách nghiệm thu phân quyền |
+| [KICH_BAN_DEMO_DAY_DU.md](docs/KICH_BAN_DEMO_DAY_DU.md) | Kịch bản demo đầy đủ chức năng (đối chiếu Phụ lục 03) và danh sách nghiệm thu phân quyền |
 | [UI_CUSTOMIZATION.md](docs/UI_CUSTOMIZATION.md) | Đổi nhận diện giao diện |
 | [TRACEABILITY.md](docs/TRACEABILITY.md) | Từng dòng của Phụ lục 03 → màn hình, API, kiểm thử |
 | [SAO_LUU_KHOI_PHUC.md](docs/SAO_LUU_KHOI_PHUC.md) | Vận hành sao lưu, kiểm tra toàn vẹn, khôi phục |
