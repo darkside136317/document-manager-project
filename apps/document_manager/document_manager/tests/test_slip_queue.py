@@ -15,7 +15,7 @@ from document_manager.document_manager.api import basket as basket_api
 from document_manager.document_manager.api import requests as request_api
 from document_manager.document_manager.api import slips
 from document_manager.document_manager.setup import install
-from document_manager.tests.test_request_workflow import _names, _reader, _seed_archive, _user
+from document_manager.tests.test_request_workflow import _names, _reader, _seed_archive, _user, site_limits_only
 
 TAG = frappe.generate_hash(length=5).lower()
 READER = f"sq.reader.{TAG}@example.com"
@@ -71,6 +71,7 @@ class TestSlipQueue(IntegrationTestCase):
         for field in ("max_requests_per_day", "max_copy_requests_per_day", "max_items_per_request", "max_open_requests"):
             frappe.db.set_single_value("Reader Settings", field, 0)
         frappe.clear_document_cache("Reader Settings", "Reader Settings")
+        site_limits_only()
 
     def tearDown(self):
         frappe.set_user("Administrator")
@@ -405,3 +406,29 @@ class TestSlipQueue(IntegrationTestCase):
         draft = basket_api.add_to_basket("file", self.file_ok, "usage")["request"]
         lines = lc.terms(frappe.get_doc("Usage Request", draft))
         self.assertTrue(any("giữ tại phòng đọc" in line for line in lines), lines)
+
+    def test_on_the_reader_site_a_staff_account_with_a_reader_profile_finds_only_what_that_profile_may_use(self):
+        from document_manager.document_manager import policy
+
+        officer_profile = _reader(OFFICER, "SQ Cán bộ cũng là độc giả")
+        frappe.db.set_value("Archival File", self.file_two, "status", "Nháp")  # not published: no reader may use it
+        licensed = _seed_archive(n=1, access_mode="Theo cấp phép")  # a fonds this profile was never granted
+        closed_file = _names(licensed, "Archival File")[0]
+        readers_slip = self._send()
+        self.addCleanup(lambda: setattr(frappe.local, "dm_reader_view", False))
+
+        frappe.set_user(OFFICER)
+        mine = set(frappe.get_list("Archival File", pluck="name", limit_page_length=0))
+        self.assertTrue({self.file_ok, self.file_two, closed_file} <= mine)  # the staff app: staff rights
+        self.assertIn(readers_slip, frappe.get_list("Usage Request", pluck="name", limit_page_length=0))
+
+        policy.enter_reader_view()  # the reader site
+        seen = set(frappe.get_list("Archival File", pluck="name", limit_page_length=0))
+        self.assertIn(self.file_ok, seen)
+        self.assertFalse({self.file_two, closed_file} & seen)
+        self.assertFalse(frappe.has_permission("Archival File", "read", doc=self.file_two))
+        self.assertEqual(policy.get_access().kind, "reader")
+        self.assertEqual(policy.get_reader_scope().profile, officer_profile)
+        self.assertNotIn(readers_slip, frappe.get_list("Usage Request", pluck="name", limit_page_length=0))
+        with self.assertRaises(frappe.PermissionError):
+            basket_api.add_to_basket("file", self.file_two, "usage")

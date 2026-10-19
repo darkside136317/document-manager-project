@@ -78,6 +78,7 @@ describe("call", () => {
     expect(url).toBe("/api/method/x.y?a=1&d=%7B%22z%22%3A1%7D");
     expect(init.method).toBe("GET");
     expect(init.headers["X-Frappe-CSRF-Token"]).toBe("tok");
+    expect(init.headers["X-DM-View"]).toBe("reader"); // a staff account with a reader profile is held to it here
   });
 
   it("sends writes as JSON POST", async () => {

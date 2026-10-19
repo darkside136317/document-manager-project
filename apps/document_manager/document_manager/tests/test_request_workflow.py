@@ -30,11 +30,15 @@ def relax_limits():
     for field in LIMIT_FIELDS:
         frappe.db.set_single_value("Reader Settings", field, 0)
     frappe.clear_document_cache("Reader Settings", "Reader Settings")
+    groups = {g.name: g for g in frappe.get_all("Reader Group", filters={"is_default": 1}, fields=["name", *GROUP_LIMITS])}
+    site_limits_only()  # the default group's own limits would win over the settings
 
     def restore():
         for field, value in old.items():
             frappe.db.set_single_value("Reader Settings", field, value or 0)
         frappe.clear_document_cache("Reader Settings", "Reader Settings")
+        for name, values in groups.items():
+            frappe.db.set_value("Reader Group", name, {f: values.get(f) or 0 for f in GROUP_LIMITS}, update_modified=False)
     return restore
 
 
@@ -47,6 +51,16 @@ def _user(email, roles, user_type):
     })
     doc.flags.no_welcome_mail = True
     doc.insert(ignore_permissions=True)
+
+
+GROUP_LIMITS = ("max_requests_per_day", "max_copy_requests_per_day", "max_items_per_request", "max_open_requests", "hold_days", "max_renewals")
+
+
+def site_limits_only():
+    """The default reader group's own limits win over Reader Settings: clear them so a test's settings apply,
+    whatever an administrator set on the site (the test's savepoint puts them back)."""
+    for group in frappe.get_all("Reader Group", filters={"is_default": 1}, pluck="name"):
+        frappe.db.set_value("Reader Group", group, {field: 0 for field in GROUP_LIMITS}, update_modified=False)
 
 
 def _seed_archive(n=2, access_mode="Công khai"):

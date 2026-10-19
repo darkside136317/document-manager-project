@@ -171,10 +171,39 @@ def _default_group_name() -> str | None:
     return frappe.db.get_value("Reader Group", {"is_default": 1, "is_active": 1}, "name")
 
 
+READER_VIEW_HEADER = "X-DM-View"
+
+
+def enter_reader_view() -> None:
+    """The request comes from the reader site: a staff account that also has a reader profile is held to that profile's
+    rights there (it finds only the fonds, files and documents the profile is licensed for)."""
+    frappe.local.dm_reader_view = True
+
+
+def read_view_header() -> None:
+    """before_request hook: the reader site's script marks its calls; the mark can only narrow what the caller sees."""
+    request = getattr(frappe.local, "request", None)
+    if request is not None and (request.headers.get(READER_VIEW_HEADER) or "").lower() == "reader":
+        enter_reader_view()
+
+
+def reader_view(user: str | None = None) -> str | None:
+    """The reader profile whose rights apply right now to a staff account (on the reader site), else None."""
+    user = user or frappe.session.user
+    if not getattr(frappe.local, "dm_reader_view", False) or user != frappe.session.user or user in ("Guest", "Administrator"):
+        return None
+    memo = _memo().setdefault("reader_view", {})
+    if user not in memo:
+        memo[user] = frappe.db.get_value("Reader", {"user": user}, "name") if is_staff(user) else None
+    return memo[user]
+
+
 def get_reader_scope(user: str | None = None) -> frappe._dict:
     user = user or frappe.session.user
     if user == "Guest":
         return _scope(user=user)
+    if reader_view(user):
+        return reader_scope_of(reader_view(user))
     if is_staff(user):
         return _scope(user=user, is_staff=True, allowed=True, max_priority=UNLIMITED_PRIORITY,
                       **{f: True for f in FEATURES})
@@ -304,7 +333,7 @@ def get_access(user: str | None = None) -> frappe._dict:
     if user == "Guest":
         return frappe._dict(user=user, kind="guest", read_fonds=[], write_fonds=[], max_priority=0,
                             capabilities=frozenset(), reader=None)
-    if is_staff(user):
+    if is_staff(user) and not reader_view(user):
         if is_admin(user):
             return frappe._dict(user=user, kind="admin", read_fonds=None, write_fonds=None, max_priority=UNLIMITED_PRIORITY,
                                 capabilities=capabilities_of(user), reader=None)

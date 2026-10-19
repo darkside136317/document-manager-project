@@ -79,7 +79,8 @@
   function call(method, args, options) {
     args = args || {};
     options = options || {};
-    var headers = { Accept: "application/json", "X-Frappe-CSRF-Token": BOOT.csrf || "" };
+    // X-DM-View: a staff account that also has a reader profile is held to that profile on the reader site
+    var headers = { Accept: "application/json", "X-Frappe-CSRF-Token": BOOT.csrf || "", "X-DM-View": "reader" };
     var url = "/api/method/" + method;
     var init = { method: options.post ? "POST" : "GET", headers: headers, credentials: "same-origin" };
     if (options.post) {

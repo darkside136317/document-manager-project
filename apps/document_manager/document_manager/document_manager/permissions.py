@@ -291,8 +291,15 @@ def has_catalog_permission(doc, ptype="read", user=None):
 # === Reader-owned records (Usage Request, Copy Request, Reader Feedback, Reader) ===
 # Staff are limited by DocPerm only; a Reader only ever sees records tied to their own profile.
 
+def _staff_view(user: str | None = None) -> bool:
+    """Staff rights apply: a staff account, unless it is on the reader site with a reader profile of its own."""
+    from document_manager.document_manager.policy import reader_view
+
+    return is_staff(user) and not reader_view(user)
+
+
 def _reader_scope_query(doctype: str) -> str:
-    if is_staff():
+    if _staff_view():
         return ""
     profile = get_reader_profile()
     if not profile:
@@ -304,7 +311,7 @@ def _reader_scope_permission(doc, user, ptype="read") -> bool:
     user = user or frappe.session.user
     if user == "Guest":
         return False
-    if is_staff(user):
+    if _staff_view(user):
         return True
     if ptype == "create" or doc.is_new():
         return True  # the controller binds `reader` to the session user before saving
@@ -327,7 +334,7 @@ def reader_feedback_query(user):
 
 
 def reader_query(user):
-    if is_staff():
+    if _staff_view():
         return ""
     return f"`tabReader`.`user` = {frappe.db.escape(frappe.session.user)}"
 
