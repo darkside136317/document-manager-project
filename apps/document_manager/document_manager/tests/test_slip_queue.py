@@ -415,7 +415,7 @@ class TestSlipQueue(IntegrationTestCase):
         licensed = _seed_archive(n=1, access_mode="Theo cấp phép")  # a fonds this profile was never granted
         closed_file = _names(licensed, "Archival File")[0]
         readers_slip = self._send()
-        self.addCleanup(lambda: setattr(frappe.local, "dm_reader_view", False))
+        self.addCleanup(policy.leave_reader_view)
 
         frappe.set_user(OFFICER)
         mine = set(frappe.get_list("Archival File", pluck="name", limit_page_length=0))
@@ -432,3 +432,7 @@ class TestSlipQueue(IntegrationTestCase):
         self.assertNotIn(readers_slip, frappe.get_list("Usage Request", pluck="name", limit_page_length=0))
         with self.assertRaises(frappe.PermissionError):
             basket_api.add_to_basket("file", self.file_two, "usage")
+        frappe.set_user(READER)  # the mark belongs to who set it: another account is not held by it
+        policy.enter_reader_view()
+        frappe.set_user(OFFICER)
+        self.assertEqual(policy.get_access().kind, "admin" if policy.is_admin() else "staff")

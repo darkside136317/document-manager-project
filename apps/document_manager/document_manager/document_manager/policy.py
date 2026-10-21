@@ -174,10 +174,20 @@ def _default_group_name() -> str | None:
 READER_VIEW_HEADER = "X-DM-View"
 
 
+def _view_owner() -> tuple:
+    """Who and which request a reader-site mark belongs to: it never outlives them (a test process keeps frappe.local
+    from one test to the next, a web request or a job gets a fresh one)."""
+    return (frappe.session.user, id(getattr(frappe.local, "request", None)))
+
+
 def enter_reader_view() -> None:
     """The request comes from the reader site: a staff account that also has a reader profile is held to that profile's
     rights there (it finds only the fonds, files and documents the profile is licensed for)."""
-    frappe.local.dm_reader_view = True
+    frappe.local.dm_reader_view = _view_owner()
+
+
+def leave_reader_view() -> None:
+    frappe.local.dm_reader_view = None
 
 
 def read_view_header() -> None:
@@ -190,7 +200,7 @@ def read_view_header() -> None:
 def reader_view(user: str | None = None) -> str | None:
     """The reader profile whose rights apply right now to a staff account (on the reader site), else None."""
     user = user or frappe.session.user
-    if not getattr(frappe.local, "dm_reader_view", False) or user != frappe.session.user or user in ("Guest", "Administrator"):
+    if getattr(frappe.local, "dm_reader_view", None) != _view_owner() or user != frappe.session.user             or user in ("Guest", "Administrator"):
         return None
     memo = _memo().setdefault("reader_view", {})
     if user not in memo:
