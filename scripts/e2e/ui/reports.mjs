@@ -9,6 +9,7 @@
 // reported with its differences. The archive data created for the run is removed at the end.
 import { chromium } from "playwright";
 import fs from "node:fs";
+import { navLink, navOffers } from "./nav.mjs";
 
 const PW = process.env.DM_E2E_PASSWORD || (() => { throw new Error("Set DM_E2E_PASSWORD"); })();
 const OUT = process.env.OUT_DIR || "out";
@@ -38,7 +39,6 @@ async function run(name, fn) {
 }
 const expect = (cond, msg) => { if (!cond) throw new Error(msg); };
 const visible = (locator, timeout = 10000) => locator.first().waitFor({ state: "visible", timeout });
-const nav = () => page.getByRole("navigation", { name: "Điều hướng chính" });
 
 async function login(context, email) {
   const response = await context.request.post(`${BASE}/api/method/login`, { form: { usr: email, pwd: PW } });
@@ -81,8 +81,8 @@ try {
     await visible(page.getByRole("heading", { name: "Thống kê, báo cáo", level: 1 }));
     for (const group of ["Phông, mục lục, hồ sơ, văn bản", "Thống kê", "Độc giả và khai thác"]) await visible(page.getByRole("heading", { name: group }));
     expect((await page.locator("main a[href*='/dashboard/bao-cao/']").count()) >= 11, "fewer than 11 reports offered");
-    await visible(nav().getByRole("link", { name: "Báo cáo, thống kê" }));
-    await visible(nav().getByRole("link", { name: "Tổng kiểm kê phông" }));
+    await navLink(page, "Báo cáo, thống kê");
+    await navLink(page, "Tổng kiểm kê phông");
     await page.screenshot({ path: `${OUT}/reports_hub.png` });
   });
 
@@ -167,7 +167,7 @@ try {
     await page.getByLabel("Cả phiếu chưa đến hạn trả").check();
     await page.getByRole("button", { name: "Xem báo cáo" }).click();
     await page.waitForTimeout(800);
-    expect((await nav().getByRole("link", { name: "Tổng kiểm kê phông" }).count()) === 0, "the officer is offered the inventory");
+    expect((await navOffers(page, "Tổng kiểm kê phông")) === 0, "the officer is offered the inventory");
   });
 
   catalogerCtx = await newContext();

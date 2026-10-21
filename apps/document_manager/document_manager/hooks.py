@@ -130,6 +130,9 @@ for _doctype in _AUDITED:
         _existing = _events.get(_event)
         _events[_event] = [_existing, _AUDIT_HANDLER] if isinstance(_existing, str) else [*(_existing or []), _AUDIT_HANDLER]
 
+# Calls from the reader site carry X-DM-View: reader; a staff account with a reader profile is then held to that profile.
+before_request = ["document_manager.document_manager.policy.read_view_header"]
+
 on_login = "document_manager.document_manager.services.audit.on_login"
 on_logout = "document_manager.document_manager.services.audit.on_logout"
 

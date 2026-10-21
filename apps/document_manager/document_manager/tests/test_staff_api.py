@@ -10,7 +10,7 @@ from unittest.mock import patch
 import frappe
 from frappe.tests import IntegrationTestCase
 
-from document_manager.document_manager.api import boot, crud, meta
+from document_manager.document_manager.api import boot, crud, dashboard, meta
 from document_manager.document_manager.constants import MASTERS
 from document_manager.document_manager.setup import install
 from document_manager.tests.test_request_workflow import _user
@@ -122,7 +122,8 @@ class TestStaffApi(IntegrationTestCase):
         frappe.set_user(ADMIN)
         data = boot.build_boot()
         groups = {g["group"]: [i["label"] for i in g["items"]] for g in data["nav"]}
-        self.assertEqual(groups["Quản trị"][:4], ["Người dùng", "Phân quyền", "Nhật ký hệ thống", "Giám sát hệ thống"])
+        self.assertEqual(groups["Quản trị"][:5],
+                         ["Người dùng", "Phân quyền", "Cấu hình trường dữ liệu", "Nhật ký hệ thống", "Giám sát hệ thống"])
         for label in ("Thông tin đơn vị", "Cơ cấu tổ chức", "Nhóm cán bộ", "Thiết lập hệ thống"):
             self.assertIn(label, groups["Quản trị"])
         self.assertIn("Xuất, nhập XML", groups["Trao đổi dữ liệu"])
@@ -142,6 +143,31 @@ class TestStaffApi(IntegrationTestCase):
         frappe.set_user(PRESERVER)
         with self.assertRaises(frappe.PermissionError):
             meta.get_doctype_ui("Dictionary Type")
+
+    def test_a_form_is_described_in_a_known_working_mode_only(self):
+        info = meta.get_doctype_ui("Archival File")
+        self.assertTrue(info["fields"])
+        self.assertTrue(info["permissions"]["read"])
+        frappe.set_user(ADMIN)
+        with self.assertRaisesRegex(frappe.ValidationError, "Chế độ làm việc không hợp lệ"):
+            meta.get_doctype_ui("Archival File", "bogus")
+
+    def test_the_workspace_summary_counts_only_what_the_user_may_read(self):
+        frappe.set_user(ADMIN)
+        full = dashboard.get_workspace_summary()
+        self.assertLessEqual({"fonds", "archival_files", "documents", "readers", "indexed_documents", "index_percent",
+                              "pending_usage", "pending_copy", "integrity_errors", "recent_documents"}, set(full))
+        self.assertTrue(0 <= full["index_percent"] <= 100)
+        self.assertLessEqual(len(full["recent_documents"]), 5)
+        frappe.set_user(PRESERVER)
+        narrow = dashboard.get_workspace_summary()
+        hidden = [(key, doctype) for key, doctype in (("readers", "Reader"), ("pending_usage", "Usage Request"),
+                                                      ("pending_copy", "Copy Request"), ("fonds", "Fonds"))
+                  if not frappe.has_permission(doctype, "read")]
+        self.assertTrue(hidden, "the preservation officer should not read every kind of record")
+        for key, _doctype in hidden:
+            self.assertEqual(narrow[key], 0, key)
+        self.assertLessEqual(narrow["documents"], full["documents"])
 
     def test_layout_sections_cover_the_form_fields(self):
         info = meta.get_doctype_ui("Fonds")

@@ -19,7 +19,7 @@ from document_manager.document_manager.services import lifecycle as lc
 from document_manager.document_manager.services import notify, overdue
 from document_manager.document_manager.setup import install
 from document_manager.document_manager.setup_workflows import WORKFLOWS, setup_all
-from document_manager.tests.test_request_workflow import _names, _reader, _seed_archive, _user
+from document_manager.tests.test_request_workflow import _names, _reader, _seed_archive, _user, site_limits_only
 
 TAG = frappe.generate_hash(length=5).lower()
 READER_A = f"rl.a.{TAG}@example.com"
@@ -93,6 +93,7 @@ class TestRequestLifecycle(IntegrationTestCase):
         _settings(max_requests_per_day=0, max_copy_requests_per_day=0, max_items_per_request=0, max_open_requests=0,
                   max_renewals=2, renewal_days=7, document_hold_days=7, auto_return_overdue=1, reminder_days_before=1,
                   block_when_overdue=1)
+        site_limits_only()
 
     def tearDown(self):
         frappe.set_user("Administrator")

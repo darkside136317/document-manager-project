@@ -1,5 +1,5 @@
 {% extends "templates/reader/base.html" %}
-{% from "templates/reader/macros.html" import icon, pager, add_to_slip %}
+{% from "templates/reader/macros.html" import icon, pager, add_to_slip, leader_badge %}
 
 {% block main %}{% autoescape true %}
 <ol class="breadcrumb"><li><a href="/portal">Tra cứu</a></li><li aria-current="page">Hồ sơ {{ file.name }}</li></ol>
@@ -10,8 +10,8 @@
     <p>{{ icon("folder") }} Hồ sơ {{ file.name }}</p>
   </div>
   <div class="cluster no-print" x-data>
-    {% if can_add.usage %}{{ add_to_slip("file", file.name, "usage", "btn btn-primary") }}{% endif %}
-    {% if can_add.copy %}{{ add_to_slip("file", file.name, "copy") }}{% endif %}
+    {% if can_add.usage %}{{ add_to_slip("file", file.name, "usage", "btn btn-primary") }}{{ leader_badge(flags) }}{% endif %}
+    {% if can_add.copy %}{{ add_to_slip("file", file.name, "copy", blocked="" if flags.can_copy is not defined or flags.can_copy else "Không được sao chụp tài liệu này (theo mức độ mật hoặc quy định của phông)") }}{% endif %}
   </div>
 </div>
 

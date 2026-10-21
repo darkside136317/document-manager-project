@@ -78,6 +78,7 @@ describe("call", () => {
     expect(url).toBe("/api/method/x.y?a=1&d=%7B%22z%22%3A1%7D");
     expect(init.method).toBe("GET");
     expect(init.headers["X-Frappe-CSRF-Token"]).toBe("tok");
+    expect(init.headers["X-DM-View"]).toBe("reader"); // a staff account with a reader profile is held to it here
   });
 
   it("sends writes as JSON POST", async () => {
@@ -460,6 +461,73 @@ describe("slipEditor", () => {
     await pending;
     expect(fetch).toHaveBeenCalledTimes(1);
     expect(dm.nav.go).toHaveBeenCalledWith("/portal/phieu");
+  });
+});
+
+describe("filing logic for the reader", () => {
+  const editorConfig = (extra = {}) => ({
+    doctype: "Usage Request", name: "UR-1", purpose: "", notes: "", listUrl: "/portal/phieu", target: "usage",
+    other: { target: "copy", label: "phiếu sao chụp", allowed: true },
+    items: [
+      { row: "r1", archival_file: "AF-1", archive_document: "", copy_count: 1, notes: "", title: "Hồ sơ 1" },
+      { row: "r2", archival_file: "AF-2", archive_document: "", copy_count: 1, notes: "", title: "Hồ sơ 2" },
+    ],
+    ...extra,
+  });
+
+  it("moves a row to the other kind of slip and keeps both baskets right", async () => {
+    const fetch = mockFetch(reply({ message: {
+      added: true, request: "CR-1", target: "copy", count: 1, keys: ["file:AF-1"], route: "/portal/sao-chep/CR-1", message: "Đã chuyển sang phiếu sao chụp",
+      source: { target: "usage", request: "UR-1", count: 1, keys: ["file:AF-2"] } } }));
+    const editor = components.slipEditor(editorConfig());
+    await editor.moveItem(editor.items[0]);
+    expect(JSON.parse(fetch.mock.calls[0][1].body)).toMatchObject({ doctype: "Usage Request", name: "UR-1", row: "r1", target: "copy" });
+    expect(editor.items.map((i) => i.row)).toEqual(["r2"]);
+    expect(stores.basket.copy).toMatchObject({ name: "CR-1", count: 1, keys: ["file:AF-1"] });
+    expect(stores.basket.usage).toMatchObject({ name: "UR-1", count: 1, keys: ["file:AF-2"] });
+  });
+
+  it("follows the moved row when the draft it left is gone", async () => {
+    mockFetch(reply({ message: { added: true, request: "CR-1", target: "copy", count: 1, keys: [], route: "/portal/sao-chep/CR-1", message: "ok",
+      source: { target: "usage", request: null, count: 0, keys: [] } } }));
+    const editor = components.slipEditor(editorConfig({ items: [{ row: "r1", archival_file: "AF-1", archive_document: "", title: "Hồ sơ 1" }] }));
+    await editor.moveItem(editor.items[0]);
+    expect(dm.nav.go).toHaveBeenCalledWith("/portal/sao-chep/CR-1");
+  });
+
+  it("renews a slip online after the reader agrees, then shows the new due date", async () => {
+    const fetch = mockFetch(reply({ message: { due_date: "30/10/2026", renewal_count: 1 } }));
+    const actions = components.slipActions({ doctype: "Usage Request", name: "UR-9", listUrl: "/portal/phieu" });
+    let pending = actions.renew(7);
+    expect(stores.confirm.message).toMatch(/7 ngày/);
+    await Promise.resolve();
+    stores.confirm.answer(false);
+    await pending;
+    expect(fetch).not.toHaveBeenCalled();
+    pending = actions.renew(7);
+    await Promise.resolve();
+    stores.confirm.answer(true);
+    await pending;
+    expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({ name: "UR-9" });
+    expect(dm.nav.reload).toHaveBeenCalled();
+  });
+
+  it("starts a draft from an old slip and says which items could not come", async () => {
+    mockFetch(reply({ message: { added: 1, request: "CR-2", target: "copy", count: 1, keys: ["file:AF-1"], route: "/portal/sao-chep/CR-2",
+      message: "Đã đưa 1 hồ sơ, văn bản vào phiếu sao chụp", skipped: [{ title: "Hồ sơ mật", reason: "tài liệu mức Mật không được sao chụp" }] } }));
+    const actions = components.slipActions({ doctype: "Usage Request", name: "UR-9" });
+    await actions.startFrom("copy");
+    expect(stores.basket.copy).toMatchObject({ name: "CR-2", count: 1 });
+    const toast = stores.toast.items.at(-1);
+    expect(toast.message).toMatch(/Không đưa được 1 mục \(Hồ sơ mật: tài liệu mức Mật không được sao chụp\)/);
+    expect(toast.link).toBe("/portal/sao-chep/CR-2");
+  });
+
+  it("says on the result when a copy is refused by the rules", () => {
+    const page = components.searchPage({ canAdd: { usage: true, copy: true } });
+    expect(page.blocked({ can_copy: false }, "copy")).toBe(true);
+    expect(page.blocked({ can_copy: false }, "usage")).toBe(false);
+    expect(page.blocked({}, "copy")).toBe(false);
   });
 });
 

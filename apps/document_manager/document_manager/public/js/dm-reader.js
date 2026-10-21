@@ -79,7 +79,8 @@
   function call(method, args, options) {
     args = args || {};
     options = options || {};
-    var headers = { Accept: "application/json", "X-Frappe-CSRF-Token": BOOT.csrf || "" };
+    // X-DM-View: a staff account that also has a reader profile is held to that profile on the reader site
+    var headers = { Accept: "application/json", "X-Frappe-CSRF-Token": BOOT.csrf || "", "X-DM-View": "reader" };
     var url = "/api/method/" + method;
     var init = { method: options.post ? "POST" : "GET", headers: headers, credentials: "same-origin" };
     if (options.post) {
@@ -112,6 +113,9 @@
     addToBasket: function (kind, name, target) { return call(API + ".basket.add_to_basket", { kind: kind, name: name, target: target }, { post: true }); },
     removeFromBasket: function (doctype, name, row) { return call(API + ".basket.remove_from_basket", { doctype: doctype, name: name, row: row }, { post: true }); },
     discardDraft: function (doctype, name) { return call(API + ".basket.discard_draft", { doctype: doctype, name: name }, { post: true }); },
+    moveItem: function (doctype, name, row, target) { return call(API + ".basket.move_item", { doctype: doctype, name: name, row: row, target: target }, { post: true }); },
+    startFrom: function (doctype, name, target) { return call(API + ".basket.start_from", { doctype: doctype, name: name, target: target }, { post: true }); },
+    renewSlip: function (name) { return call(API + ".basket.renew_slip", { name: name }, { post: true }); },
     saveRequest: function (doctype, payload, name, submit) { return call(API + ".requests.save_request", { doctype: doctype, payload: payload, name: name, submit: submit ? 1 : 0 }, { post: true }); },
     applyAction: function (doctype, name, action, text) { return call(API + ".requests.apply_action", { doctype: doctype, name: name, action: action, text: text }, { post: true }); },
     submitFeedback: function (subject, content) { return call(API + ".requests.submit_feedback", { subject: subject, content: content }, { post: true }); },
@@ -307,6 +311,7 @@
       },
       itemKind: function () { return this.kind === "files" ? "file" : "document"; },
       inBasket: function (row, target) { return Alpine.store("basket").has(target, this.itemKind(), this.id(row)); },
+      blocked: function (row, target) { return target === "copy" && row.can_copy === false; },
       add: function (row, target) {
         var basket = Alpine.store("basket");
         if (this.inBasket(row, target)) { nav.go(basket.href(target)); return Promise.resolve(); }
@@ -449,6 +454,7 @@
       listUrl: config.listUrl,
       maxItems: config.maxItems || 0,
       blocked: !!config.blocked,
+      other: config.other || { target: "", label: "", allowed: false },
       busy: false,
       error: "",
       saveState: "saved", // saved | dirty | saving | error
@@ -565,6 +571,21 @@
           });
         });
       },
+      /** Move a row to the reader's draft of the other kind (usage <-> copy). */
+      moveItem: function (item) {
+        var self = this;
+        return this.flush().then(function () {
+          return self.work(api.moveItem(self.doctype, self.name, item.row, self.other.target), function (result) {
+            var basket = Alpine.store("basket");
+            basket.sync(result.target, result);
+            basket.sync(config.target, result.source);
+            Alpine.store("toast").show(result.message, { link: result.route, label: "Mở phiếu" });
+            if (!result.source.request) { self.saveState = "saved"; nav.go(result.route); return; }
+            self.items = self.items.filter(function (x) { return x.row !== item.row; });
+            self.busy = false;
+          });
+        });
+      },
       discard: function () {
         var self = this;
         return ask("Hủy bản nháp này? Các hồ sơ, văn bản trong phiếu sẽ bị bỏ.", { ok: "Hủy bản nháp", danger: true }).then(function (yes) {
@@ -582,6 +603,41 @@
         return ask("Hủy phiếu này? Phòng đọc sẽ không xử lý phiếu nữa.", { ok: "Hủy phiếu", danger: true }).then(function (yes) {
           if (!yes) return undefined;
           return self.work(api.applyAction(self.doctype, self.name, "Hủy phiếu"), function () { nav.reload(); });
+        });
+      },
+    };
+  };
+
+  /** What a reader may do with a sent slip: renew it online, file it again, ask for copies of what it gave. */
+  components.slipActions = function (config) {
+    return {
+      busy: false,
+      renew: function (days) {
+        var self = this;
+        return ask("Gia hạn phiếu thêm " + days + " ngày?", { ok: "Gia hạn" }).then(function (yes) {
+          if (!yes) return undefined;
+          self.busy = true;
+          return api.renewSlip(config.name).then(function (result) {
+            Alpine.store("toast").show("Đã gia hạn đến " + result.due_date + ".");
+            nav.reload();
+          }).catch(function (error) {
+            Alpine.store("toast").show(error.message, { error: true });
+            self.busy = false;
+          });
+        });
+      },
+      startFrom: function (target) {
+        var self = this;
+        this.busy = true;
+        return api.startFrom(config.doctype, config.name, target).then(function (result) {
+          Alpine.store("basket").sync(target, result);
+          var skipped = (result.skipped || []).map(function (s) { return s.title + ": " + s.reason; });
+          var message = result.message + (skipped.length ? ". Không đưa được " + skipped.length + " mục (" + skipped.join("; ") + ")" : "");
+          Alpine.store("toast").show(message, result.added || result.already ? { link: result.route, label: "Mở phiếu" } : { error: true });
+          self.busy = false;
+        }).catch(function (error) {
+          Alpine.store("toast").show(error.message, { error: true });
+          self.busy = false;
         });
       },
     };

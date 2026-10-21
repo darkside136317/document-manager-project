@@ -110,14 +110,17 @@
             <span x-show="kind === 'files' && row.total_documents" x-cloak>{{ icon("file-text") }} <span x-text="row.total_documents + ' văn bản'"></span></span>
             <span x-show="kind === 'documents' && row.file_type" x-cloak><span x-text="row.file_type"></span></span>
             <span class="badge badge-level" x-show="row.confidentiality_level" x-text="row.confidentiality_level" x-cloak></span>
+            <span class="badge badge-warning" x-show="canAdd.usage && row.needs_leader" x-cloak title="Tài liệu này cần lãnh đạo duyệt khi lập phiếu sử dụng">Cần lãnh đạo duyệt</span>
           </div>
           <p class="snippet" x-show="snippet(row)" x-html="snippet(row)" x-cloak></p>
           <div class="actions">
             <a class="btn btn-sm" :href="href(row)">{{ icon("eye") }} Xem chi tiết</a>
             {% for target in ("usage", "copy") %}{% set noun = "phiếu sử dụng" if target == "usage" else "phiếu sao chụp" %}
             <button class="btn btn-sm" type="button" x-show="canAdd.{{ target }}" x-cloak @click="add(row, '{{ target }}')" :class="{ 'btn-added': inBasket(row, '{{ target }}') }"
-                    :disabled="$store.basket.busy" :aria-label="inBasket(row, '{{ target }}') ? 'Đã có trong {{ noun }}: mở phiếu' : 'Thêm vào {{ noun }}'">
-              <span x-show="!inBasket(row, '{{ target }}')">{{ icon("plus" if target == "usage" else "copy") }} Thêm vào {{ noun }}</span>
+                    :disabled="$store.basket.busy || blocked(row, '{{ target }}')" :title="blocked(row, '{{ target }}') ? '{{ "Không được sao chụp tài liệu này (theo mức độ mật hoặc quy định của phông)" }}' : ''"
+                    :aria-label="blocked(row, '{{ target }}') ? '{{ "Không được sao chụp tài liệu này (theo mức độ mật hoặc quy định của phông)" }}' : (inBasket(row, '{{ target }}') ? 'Đã có trong {{ noun }}: mở phiếu' : 'Thêm vào {{ noun }}')">
+              <span x-show="blocked(row, '{{ target }}')" x-cloak>{{ icon("copy") }} Không được sao chụp</span>
+              <span x-show="!blocked(row, '{{ target }}') && !inBasket(row, '{{ target }}')">{{ icon("plus" if target == "usage" else "copy") }} Thêm vào {{ noun }}</span>
               <span x-show="inBasket(row, '{{ target }}')" x-cloak>{{ icon("check") }} Đã có trong {{ noun }}</span>
             </button>{% endfor %}
           </div>

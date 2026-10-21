@@ -9,6 +9,7 @@
 // reads the history. The archive data created for the run is removed at the end.
 import { chromium } from "playwright";
 import fs from "node:fs";
+import { navLink, navOffers } from "./nav.mjs";
 
 const PW = process.env.DM_E2E_PASSWORD || (() => { throw new Error("Set DM_E2E_PASSWORD"); })();
 const OUT = process.env.OUT_DIR || "out";
@@ -71,7 +72,6 @@ for (const [i, file] of files.entries()) {
   await make("Archive Document", { document_title: `${TAG} Văn bản ${i + 1}`, archival_file: file, document_number: `VB-${i + 1}`, author: `${TAG} Tác giả`, document_date: `1995-0${i + 1}-02` });
 }
 
-const nav = () => page.getByRole("navigation", { name: "Điều hướng chính" });
 let exported = "";
 let officerCtx;
 
@@ -81,7 +81,7 @@ try {
 
   await run("the sidebar and the three tabs of the exchange screen", async () => {
     await page.goto(`${BASE}/dashboard/trao-doi-du-lieu`, { waitUntil: "networkidle" });
-    await visible(nav().getByRole("link", { name: "Xuất, nhập XML" }));
+    await navLink(page, "Xuất, nhập XML");
     await visible(page.getByRole("heading", { name: "Xuất, nhập dữ liệu XML", level: 1 }));
     for (const tab of ["Xuất XML", "Nhập XML", "Lịch sử"]) await visible(page.getByRole("tab", { name: tab }));
     await visible(page.getByRole("tab", { name: "Xuất XML", selected: true }));
@@ -213,7 +213,7 @@ try {
   watch(page, "officer");
   await run("the reading room has no exchange screen", async () => {
     await page.goto(`${BASE}/dashboard`, { waitUntil: "networkidle" });
-    expect((await nav().getByRole("link", { name: "Xuất, nhập XML" }).count()) === 0, "the officer is offered the exchange");
+    expect((await navOffers(page, "Xuất, nhập XML")) === 0, "the officer is offered the exchange");
     await page.goto(`${BASE}/dashboard/trao-doi-du-lieu`, { waitUntil: "networkidle" });
     await visible(page.getByText("Không mở được chức năng trao đổi dữ liệu"));
   });

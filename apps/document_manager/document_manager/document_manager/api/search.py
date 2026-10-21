@@ -12,6 +12,22 @@ from document_manager.document_manager.permissions import assert_can_search
 from document_manager.document_manager.services import search_service
 
 
+def _with_flags(result: dict) -> dict:
+    """Tell a reader, on each result, what a slip will do with it: whether it can be copied and whether a leader has
+    to approve it (the same rules the slip applies when it is saved and decided)."""
+    from document_manager.document_manager.policy import get_reader_profile
+    from document_manager.document_manager.services import lifecycle as lc
+
+    profile = get_reader_profile()
+    rows = result.get("data") or []
+    if not profile or not rows:
+        return result
+    flags = lc.item_flags(rows, profile)
+    for row in rows:
+        row.update(flags.get((row.get("fonds"), row.get("confidentiality_level")), {}))
+    return result
+
+
 @frappe.whitelist()
 def search_archival_files(
     query=None,
@@ -36,7 +52,7 @@ def search_archival_files(
         dict: {data: [...], total: int, page: int, page_size: int}
     """
     assert_can_search()
-    return search_service.search_files(
+    return _with_flags(search_service.search_files(
         {
             "query": query, "fonds": fonds, "record_group": record_group, "catalog": catalog,
             "file_title": file_title, "file_number": file_number,
@@ -45,7 +61,7 @@ def search_archival_files(
             "start_date_to": start_date_to, "status": status, "sort_by": sort_by,
         },
         page, page_size,
-    )
+    ))
 
 
 @frappe.whitelist()
@@ -73,7 +89,7 @@ def search_documents(
         dict: {data: [...], total: int, page: int, page_size: int, engine: "meilisearch" | "database"}
     """
     assert_can_search()
-    return search_service.search_documents(
+    return _with_flags(search_service.search_documents(
         {
             "query": query, "archival_file": archival_file, "fonds": fonds, "record_group": record_group,
             "catalog": catalog, "file_type": file_type, "confidentiality_level": confidentiality_level,
@@ -81,7 +97,7 @@ def search_documents(
             "author": author, "date_from": date_from, "date_to": date_to, "sort_by": sort_by,
         },
         page, page_size,
-    )
+    ))
 
 
 @frappe.whitelist()

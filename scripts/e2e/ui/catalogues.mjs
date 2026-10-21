@@ -9,8 +9,9 @@
 // Screenshots land in OUT_DIR; every step prints PASS/FAIL and the exit code is non-zero on a failure.
 import { chromium } from "playwright";
 import fs from "node:fs";
+import { navLink } from "./nav.mjs";
 
-const PW = process.env.DM_E2E_PASSWORD || (() => { throw new Error("Set DM_E2E_PASSWORD"); })();
+const PW =process.env.DM_E2E_PASSWORD || (() => { throw new Error("Set DM_E2E_PASSWORD"); })();
 const OUT = process.env.OUT_DIR || "out";
 fs.mkdirSync(OUT, { recursive: true });
 const BASE = process.env.BASE_URL || "http://localhost:8888";
@@ -133,7 +134,7 @@ try {
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
     expect(!overflow, "page scrolls horizontally on a phone");
     await page.getByRole("button", { name: "Mở menu" }).click();
-    await page.getByRole("navigation", { name: "Điều hướng chính" }).getByRole("link", { name: "Từ điển nhập nhanh" }).waitFor();
+    await navLink(page, "Từ điển nhập nhanh");
     await page.screenshot({ path: `${OUT}/flow_mobile_menu.png` });
   });
 } finally {

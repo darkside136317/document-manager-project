@@ -76,7 +76,7 @@ Tám phân hệ theo Phụ lục 03:
 | 8 | Quản trị | `api/users.py`, `api/permissions.py`, `api/logs.py`, `api/admin.py`, `services/permission_matrix.py` |
 
 Quy mô mã (ước lượng): 50 DocType, 117 endpoint API, 11 báo cáo, 27 phép kiểm tra toàn vẹn bằng SQL, 23 trang và khoảng 40 thành phần Vue,
-22 module test Python (484 test), 191 test vitest, 8 luồng Playwright.
+24 module test Python (509 test), 205 test vitest, 8 luồng Playwright.
 
 ## 2. Kiến trúc triển khai
 
@@ -172,7 +172,7 @@ document-manager-project/
 │   │   ├── templates/                      khung Jinja của trang độc giả, mẫu in báo cáo
 │   │   ├── public/                         css/js trang độc giả; staff/ = bundle SPA (sinh ra khi build)
 │   │   ├── fixtures/role.json              6 vai trò
-│   │   └── tests/                          22 module test tích hợp
+│   │   └── tests/                          24 module test tích hợp
 │   └── frontend/                           mã nguồn SPA cán bộ (Vue 3 + Vite)
 │       ├── src/{pages,components,lib}/     trang, thành phần, logic thuần
 │       └── tests/                          vitest
@@ -457,12 +457,21 @@ stateDiagram-v2
 ```
 
 - **Giỏ** (`services/basket.py`): phiếu *Nháp* trên máy chủ, một phiếu mỗi loại mỗi độc giả; thêm/bớt mục bằng `api/basket.py`.
+  - Không giữ cùng lúc một hồ sơ và văn bản của chính hồ sơ đó: văn bản của hồ sơ đã có thì không thêm; thêm cả hồ sơ thì thay các văn bản của nó.
+  - `move_item` chuyển một dòng sang phiếu nháp loại kia (sử dụng ↔ sao chụp), giữ ghi chú; luật của phiếu đích (cho phép sao chụp) vẫn áp dụng.
+  - `start_from` tạo phiếu nháp từ một phiếu cũ: *Lập lại phiếu* (cùng loại) hoặc *Xin sao chụp* (các mục đã được duyệt của phiếu sử dụng);
+    mục không còn quyền hoặc không được sao bị bỏ qua và liệt kê kèm lý do.
+  - Phiếu nháp tự lưu: `save_request` nhận `item_updates` (sửa tại chỗ theo mã dòng) để không mất mục thêm từ tab khác.
+- **Biết trước**: `lifecycle.item_flags` cho mỗi kết quả tìm kiếm và mỗi dòng phiếu biết có sao chụp được không và có cần lãnh đạo duyệt không;
+  `lifecycle.quota` (hạn mức) và `lifecycle.terms` (cần lãnh đạo, số ngày giữ, gia hạn, hạn cấp phép) hiện trên phiếu nháp trước khi gửi.
 - **Gửi**: kiểm tính năng, hạn mức (`lifecycle.check_quota`: số phiếu/ngày, số mục/phiếu, số phiếu đang mở, chặn khi có phiếu quá hạn) và
   quyền của độc giả trên từng mục. `requires_leader` được tính theo `approval_mode` của nhóm độc giả và cờ `requires_leader_approval` của mức mật.
 - **Duyệt**: cán bộ phòng đọc quyết định **từng mục** (`api/slips.decide_items`: đồng ý hoặc từ chối có lý do), rồi thực hiện hành động
   workflow qua `api/requests.apply_action`. Mục hết quyền (cấp phép hết hạn hoặc bị thu hồi) chặn việc duyệt.
 - **Giao, trả, gia hạn**: `due_date` = ngày giao + số ngày giữ, không vượt ngày hết hạn cấp phép (`lifecycle.access_end`); gia hạn tối đa
-  `max_renewals` lần và cũng dừng ở ngày đó.
+  `max_renewals` lần và cũng dừng ở ngày đó (`lifecycle.renew`, dùng chung cho phòng đọc và độc giả).
+- **Độc giả tự gia hạn** (`api/basket.renew_slip`): cùng luật như tại quầy, thêm điều kiện phiếu chưa quá hạn và chưa chạm hạn cấp phép
+  (`lifecycle.can_self_renew`); chỉ ba trường gia hạn được đổi (`request_base.SELF_RENEWAL_FIELDS`), ghi nhật ký và báo cho người có `slips.receive`.
 - **Quá hạn** là cờ `is_overdue`, không phải trạng thái: job hằng ngày `overdue.mark_overdue_and_remind` đặt cờ và nhắc độc giả.
 - **Thông báo**: `services/notify.py` tạo Notification Log cho độc giả khi phiếu đổi trạng thái hoặc góp ý được trả lời; thông báo cho cán bộ
   gửi tới người có chức năng tương ứng (`notify_capability`).
@@ -983,14 +992,19 @@ Các sự cố khi vận hành: [DEPLOYMENT.md](DEPLOYMENT.md#9-xử-lý-sự-c�
 
 | Lớp | Vị trí | Quy mô | Cách chạy |
 |---|---|---|---|
-| Tích hợp Python (Frappe) | `document_manager/tests/test_*.py` | 22 module, 484 test | `bench --site <site> run-tests --app document_manager --module document_manager.tests.test_<tên>` |
-| Đơn vị giao diện | `frontend/tests/*.test.js` | 191 test | `cd apps/document_manager/frontend && npm test` |
-| HTTP đầu-cuối | `scripts/e2e/e2e_http.py` | 497 kiểm tra (ma trận người dùng × API, địa chỉ cũ) | `DM_E2E_PASSWORD=… python scripts/e2e/e2e_http.py` |
+| Tích hợp Python (Frappe) | `document_manager/tests/test_*.py` | 24 module, 509 test | `bench --site <site> run-tests --app document_manager --module document_manager.tests.test_<tên>` |
+| Đơn vị giao diện | `frontend/tests/*.test.js` | 205 test | `cd apps/document_manager/frontend && npm test` |
+| HTTP đầu-cuối | `scripts/e2e/e2e_http.py` | 502 kiểm tra (ma trận người dùng × API, địa chỉ cũ) | `DM_E2E_PASSWORD=… python scripts/e2e/e2e_http.py` |
 | Trình duyệt | `scripts/e2e/ui/*.mjs` (Playwright) | 8 luồng, 126 bước | `DM_E2E_PASSWORD=… OUT_DIR=out node <luồng>.mjs` |
 | Hiệu năng | `scripts/perf/volume_check.py` | 1 triệu văn bản | trên site thử có tên bắt đầu bằng `perf` |
 
 Quy ước test Python: `IntegrationTestCase`, mỗi test trong savepoint và rollback; dữ liệu thử tự tạo trong test (`_seed_archive(...)`). Test chạm
 Custom DocPerm phải xóa cache quyền sau rollback. Không sửa JSON DocType khi đang chạy test trên stack dev (trình theo dõi sẽ `migrate` giữa chừng).
+
+Luồng trình duyệt tìm liên kết thanh bên qua `scripts/e2e/ui/nav.mjs`: thanh bên gom liên kết thành nhóm thu gọn, `navLink` mở nhóm trước khi
+tìm, `navOffers` đếm cả liên kết đang ẩn (dùng cho mọi kiểm tra "không được thấy menu").
+
+Danh mục đầy đủ các test case và kết quả lần chạy gần nhất: `docs/BAO_CAO_KIEM_THU.md`.
 
 Tài khoản thử cho kiểm thử đầu-cuối: `scripts/e2e/accounts.py up` trước, `down` sau (xóa tài khoản và mọi dữ liệu có tiền tố `E2E-`).
 
@@ -998,7 +1012,7 @@ Tài khoản thử cho kiểm thử đầu-cuối: `scripts/e2e/accounts.py up` 
 
 1. *Static checks*: `compileall`, `ruff` (lỗi thật: E9, F63, F7, F82), JSON hợp lệ, cú pháp JS, `docker compose config` cho ba tổ hợp.
 2. *Staff UI*: vitest và build.
-3. *Frappe tests*: build image, tạo site sạch, `migrate`, chạy 22 module Python.
+3. *Frappe tests*: build image, tạo site sạch, `migrate`, chạy 23 module Python (mọi module trừ `test_object_storage`).
 4. *Build and publish image*: phát hành lên GHCR (chỉ `main` và tag).
 
 ## 17. Hướng dẫn mở rộng

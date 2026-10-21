@@ -15,7 +15,7 @@ from document_manager.document_manager.api import basket as basket_api
 from document_manager.document_manager.api import requests as request_api
 from document_manager.document_manager.api import slips
 from document_manager.document_manager.setup import install
-from document_manager.tests.test_request_workflow import _names, _reader, _seed_archive, _user
+from document_manager.tests.test_request_workflow import _names, _reader, _seed_archive, _user, site_limits_only
 
 TAG = frappe.generate_hash(length=5).lower()
 READER = f"sq.reader.{TAG}@example.com"
@@ -71,6 +71,7 @@ class TestSlipQueue(IntegrationTestCase):
         for field in ("max_requests_per_day", "max_copy_requests_per_day", "max_items_per_request", "max_open_requests"):
             frappe.db.set_single_value("Reader Settings", field, 0)
         frappe.clear_document_cache("Reader Settings", "Reader Settings")
+        site_limits_only()
 
     def tearDown(self):
         frappe.set_user("Administrator")
@@ -264,9 +265,9 @@ class TestSlipQueue(IntegrationTestCase):
 
     def test_the_basket_tells_which_results_are_already_in_a_draft(self):
         frappe.set_user(READER)
-        basket_api.add_to_basket("file", self.file_ok, "usage")
+        basket_api.add_to_basket("file", self.file_two, "usage")
         added = basket_api.add_to_basket("document", self.doc_ok, "usage")
-        self.assertEqual(set(added["keys"]), {f"file:{self.file_ok}", f"document:{self.doc_ok}"})
+        self.assertEqual(set(added["keys"]), {f"file:{self.file_two}", f"document:{self.doc_ok}"})
         summary = basket_api.get_basket()
         self.assertEqual(set(summary["usage"]["keys"]), set(added["keys"]))
         self.assertEqual(summary["copy"]["keys"], [])
@@ -310,3 +311,128 @@ class TestSlipQueue(IntegrationTestCase):
             frappe.set_user(user)
             with self.assertRaises(frappe.PermissionError, msg=user):
                 slips.prepare_slip("usage", self.profile, "[]")
+
+    # ---- the logic of filing a slip, from the reader's side
+    def test_a_file_and_its_documents_are_never_both_in_a_draft(self):
+        frappe.set_user(READER)
+        basket_api.add_to_basket("document", self.doc_ok, "usage")
+        whole = basket_api.add_to_basket("file", self.file_ok, "usage")
+        self.assertIn("thay cho 1 văn bản", whole["message"])
+        self.assertEqual(whole["keys"], [f"file:{self.file_ok}"])
+        again = basket_api.add_to_basket("document", self.doc_ok, "usage")
+        self.assertFalse(again["added"])
+        self.assertIn("Cả hồ sơ", again["message"])
+
+    def test_a_row_moves_to_the_other_kind_of_slip_unless_the_rules_refuse_it(self):
+        frappe.set_user(READER)
+        usage = basket_api.add_to_basket("file", self.file_ok, "usage")["request"]
+        row = frappe.get_doc("Usage Request", usage).items[0].name
+        moved = basket_api.move_item("Usage Request", usage, row, "copy")
+        self.assertEqual(moved["keys"], [f"file:{self.file_ok}"])
+        self.assertIsNone(moved["source"]["request"])  # the usage draft held only that row
+        self.assertFalse(frappe.db.exists("Usage Request", usage))
+        fonds = frappe.db.get_value("Archival File", self.file_two, "fonds")
+        frappe.set_user("Administrator")
+        frappe.db.set_value("Fonds", fonds, "allow_copy", 0)
+        frappe.set_user(READER)
+        usage = basket_api.add_to_basket("file", self.file_two, "usage")["request"]
+        row = frappe.get_doc("Usage Request", usage).items[0].name
+        with self.assertRaisesRegex(frappe.PermissionError, "không cho phép sao chụp"):
+            basket_api.move_item("Usage Request", usage, row, "copy")
+        self.assertEqual([r.archival_file for r in frappe.get_doc("Usage Request", usage).items], [self.file_two])
+
+    def test_a_finished_slip_is_filed_again_and_a_granted_one_asks_for_copies(self):
+        cancelled = self._send(items=[{"archival_file": self.file_ok}, {"archival_file": self.file_two}])
+        self._act(READER, cancelled, "Hủy phiếu")
+        frappe.set_user(READER)
+        again = basket_api.start_from("Usage Request", cancelled, "usage")
+        self.assertEqual((again["added"], set(again["keys"])), (2, {f"file:{self.file_ok}", f"file:{self.file_two}"}))
+        basket_api.discard_draft("Usage Request", again["request"])
+        granted = self._send(items=[{"archival_file": self.file_ok}, {"archival_file": self.file_two}])
+        self._act(OFFICER, granted, "Duyệt")
+        frappe.set_user("Administrator")
+        frappe.db.set_value("Fonds", frappe.db.get_value("Archival File", self.file_two, "fonds"), "allow_copy", 0)
+        frappe.set_user(READER)
+        copies = basket_api.start_from("Usage Request", granted, "copy")
+        self.assertEqual(copies["added"], 0)  # both files are in a fonds that refuses copies
+        self.assertEqual(len(copies["skipped"]), 2)
+        self.assertIn("sao chụp", copies["skipped"][0]["reason"])
+        frappe.set_user(OFFICER)  # not a reader
+        with self.assertRaises(frappe.PermissionError):
+            basket_api.start_from("Usage Request", granted, "usage")
+
+    def test_the_reader_renews_online_within_the_rules(self):
+        from document_manager.document_manager.services import lifecycle as lc
+
+        frappe.db.set_single_value("Reader Settings", "max_renewals", 1)
+        frappe.clear_document_cache("Reader Settings", "Reader Settings")
+        name = self._send()
+        self._act(OFFICER, name, "Duyệt")
+        self._act(OFFICER, name, "Giao tài liệu")
+        due = frappe.db.get_value("Usage Request", name, "due_date")
+        frappe.set_user(READER)
+        result = basket_api.renew_slip(name)
+        doc = frappe.get_doc("Usage Request", name)
+        self.assertEqual(doc.renewal_count, 1)
+        self.assertGreater(doc.due_date, due)
+        self.assertEqual(result["renewal_count"], 1)
+        with self.assertRaisesRegex(frappe.ValidationError, "tối đa 1"):
+            basket_api.renew_slip(name)
+        frappe.set_user("Administrator")
+        frappe.db.set_value("Usage Request", name, {"due_date": add_days(nowdate(), -2), "renewal_count": 0})
+        allowed, reason = lc.can_self_renew(frappe.get_doc("Usage Request", name))
+        self.assertFalse(allowed)
+        self.assertIn("quá hạn", reason)
+        frappe.set_user(OFFICER)
+        with self.assertRaises(frappe.PermissionError):
+            basket_api.renew_slip(name)
+
+    def test_results_and_drafts_tell_beforehand_what_the_slip_will_do(self):
+        from document_manager.document_manager.api import search as search_api
+        from document_manager.document_manager.services import lifecycle as lc
+
+        fonds = frappe.db.get_value("Archival File", self.file_ok, "fonds")
+        flags = lc.item_flags([{"fonds": fonds, "confidentiality_level": "Thường"}, {"fonds": fonds, "confidentiality_level": "Mật"}], self.profile)
+        self.assertEqual(flags[(fonds, "Thường")], {"can_copy": True, "needs_leader": False})
+        self.assertEqual(flags[(fonds, "Mật")], {"can_copy": False, "needs_leader": True})  # the seeded rules of "Mật"
+        from document_manager.www import _reader_slips
+        rows = [{"fonds": fonds, "level": "Mật"}, {"fonds": fonds, "level": "Thường"}, {"unavailable": True}]
+        _reader_slips._flag_items(rows, self.profile)  # the draft page marks its rows the same way
+        self.assertEqual([(r["needs_leader"], r["can_copy"]) for r in rows], [(True, False), (False, True), (False, True)])
+        frappe.set_user(READER)
+        title = frappe.db.get_value("Archival File", self.file_ok, "file_title")
+        rows = search_api.search_archival_files(file_title=title)["data"]
+        self.assertTrue(rows and all("can_copy" in r and "needs_leader" in r for r in rows))
+        draft = basket_api.add_to_basket("file", self.file_ok, "usage")["request"]
+        lines = lc.terms(frappe.get_doc("Usage Request", draft))
+        self.assertTrue(any("giữ tại phòng đọc" in line for line in lines), lines)
+
+    def test_on_the_reader_site_a_staff_account_with_a_reader_profile_finds_only_what_that_profile_may_use(self):
+        from document_manager.document_manager import policy
+
+        officer_profile = _reader(OFFICER, "SQ Cán bộ cũng là độc giả")
+        frappe.db.set_value("Archival File", self.file_two, "status", "Nháp")  # not published: no reader may use it
+        licensed = _seed_archive(n=1, access_mode="Theo cấp phép")  # a fonds this profile was never granted
+        closed_file = _names(licensed, "Archival File")[0]
+        readers_slip = self._send()
+        self.addCleanup(policy.leave_reader_view)
+
+        frappe.set_user(OFFICER)
+        mine = set(frappe.get_list("Archival File", pluck="name", limit_page_length=0))
+        self.assertTrue({self.file_ok, self.file_two, closed_file} <= mine)  # the staff app: staff rights
+        self.assertIn(readers_slip, frappe.get_list("Usage Request", pluck="name", limit_page_length=0))
+
+        policy.enter_reader_view()  # the reader site
+        seen = set(frappe.get_list("Archival File", pluck="name", limit_page_length=0))
+        self.assertIn(self.file_ok, seen)
+        self.assertFalse({self.file_two, closed_file} & seen)
+        self.assertFalse(frappe.has_permission("Archival File", "read", doc=self.file_two))
+        self.assertEqual(policy.get_access().kind, "reader")
+        self.assertEqual(policy.get_reader_scope().profile, officer_profile)
+        self.assertNotIn(readers_slip, frappe.get_list("Usage Request", pluck="name", limit_page_length=0))
+        with self.assertRaises(frappe.PermissionError):
+            basket_api.add_to_basket("file", self.file_two, "usage")
+        frappe.set_user(READER)  # the mark belongs to who set it: another account is not held by it
+        policy.enter_reader_view()
+        frappe.set_user(OFFICER)
+        self.assertEqual(policy.get_access().kind, "admin" if policy.is_admin() else "staff")

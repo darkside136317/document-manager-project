@@ -68,6 +68,9 @@ def require_reader():
     from document_manager.document_manager.permissions import require_portal_user
 
     require_portal_user(current_route())
+    from document_manager.document_manager.policy import enter_reader_view
+
+    enter_reader_view()  # a staff account with a reader profile sees here what that profile may use
 
 
 def page_context(context, title: str, active: str = "", description: str = "", public: bool = False):

@@ -69,7 +69,10 @@
       <h1>{{ cfg.title }} {{ doc.name }}</h1>
       <p>{{ state_badge(state) }} · Độc giả: {{ reader_name }}</p>
     </div>
-    <div class="cluster no-print">
+    <div class="cluster no-print"{% if not editable %} x-data="slipActions({{ actions_config | forceescape }})"{% endif %}>
+      {% if next_steps.renew and next_steps.renew.allowed %}<button class="btn btn-primary" type="button" @click="renew({{ next_steps.renew.days }})" :disabled="busy">{{ icon("calendar") }} Gia hạn thêm {{ next_steps.renew.days }} ngày</button>{% endif %}
+      {% if next_steps.copies %}<button class="btn" type="button" @click="startFrom('copy')" :disabled="busy">{{ icon("copy") }} Xin sao chụp các tài liệu này</button>{% endif %}
+      {% if next_steps.again %}<button class="btn" type="button" @click="startFrom('{{ key }}')" :disabled="busy">{{ icon("file-text") }} Lập lại phiếu</button>{% endif %}
       {% if not editable %}<button class="btn" type="button" onclick="window.print()">{{ icon("printer") }} In phiếu</button>{% endif %}
       {% if can_cancel and not editable %}
       <button class="btn btn-danger" type="button" x-data="slipEditor({{ editor_config | forceescape }})" @click="cancelSlip()">{{ icon("x") }} Hủy phiếu</button>
@@ -93,7 +96,9 @@
       {% elif state == "Đang sử dụng" %}
       <div class="alert {{ 'alert-danger' if overdue else 'alert-success' }}" style="margin-top: 16px">{{ icon("triangle-alert" if overdue else "clock") }}<div>
         {% if overdue %}Tài liệu đã <strong>quá hạn trả</strong> (hạn trả {{ due_date }}). Vui lòng trả cho phòng đọc sớm nhất.
-        {% else %}Tài liệu đã được giao. Hạn trả: <strong>{{ due_date }}</strong>{% if renewals %} (đã gia hạn {{ renewals }} lần){% endif %}. Cần thêm thời gian? Liên hệ phòng đọc để gia hạn.{% endif %}</div></div>
+        {% else %}Tài liệu đã được giao. Hạn trả: <strong>{{ due_date }}</strong>{% if renewals %} (đã gia hạn {{ renewals }} lần){% endif %}.
+          {% if next_steps.renew and next_steps.renew.allowed %}Cần thêm thời gian? Bấm <em>Gia hạn thêm {{ next_steps.renew.days }} ngày</em>.
+          {% elif next_steps.renew %}{{ next_steps.renew.reason }}. Cần thêm thời gian? Liên hệ phòng đọc.{% endif %}{% endif %}</div></div>
       {% endif %}
     </div>
   </section>
@@ -132,11 +137,16 @@
                 <td data-label="Tài liệu"><a :href="item.href" x-text="item.title"></a>
                   <div class="muted small" x-show="item.number || item.fonds_name || item.level" x-text="[item.number && ('Số ' + item.number), item.fonds_name, item.level].filter(Boolean).join(' · ')"></div>
                   <div class="muted small" x-show="item.parent_title" x-text="'Thuộc hồ sơ: ' + item.parent_title"></div>
-                  <div class="small text-danger" x-show="item.unavailable" x-cloak>{{ icon("triangle-alert") }} Không còn trong phạm vi khai thác của bạn: hãy bỏ mục này.</div></td>
+                  <div class="small text-danger" x-show="item.unavailable" x-cloak>{{ icon("triangle-alert") }} Không còn trong phạm vi khai thác của bạn: hãy bỏ mục này.</div>
+                  <div class="small" x-show="item.needs_leader" x-cloak><span class="badge badge-warning">Cần lãnh đạo duyệt</span></div>
+                  {% if cfg.copies %}<div class="small text-danger" x-show="item.can_copy === false" x-cloak>{{ icon("triangle-alert") }} Tài liệu này không được sao chụp: hãy bỏ, hoặc chuyển sang phiếu sử dụng.</div>{% endif %}</td>
                 {% if cfg.copies %}<td style="width: 110px" data-label="Số bản"><input class="input" type="number" min="1" max="999" x-model.number="item.copy_count" @input="changed()" :aria-label="'Số bản của ' + item.title"></td>
                 <td style="width: 130px" data-label="Hình thức"><select class="input" x-model="item.copy_form" @change="changed()" :aria-label="'Hình thức sao của ' + item.title"><option>Bản giấy</option><option>Bản số</option></select></td>
                 <td style="width: 160px" data-label="Trang"><input class="input" type="text" maxlength="60" placeholder="Toàn bộ, hoặc 1-5, 8" x-model="item.page_range" @input="changed()" :aria-label="'Trang cần sao của ' + item.title"></td>{% endif %}
-                <td class="right"><button class="btn btn-sm btn-danger" type="button" @click="removeItem(item)" :disabled="busy" :aria-label="'Bỏ ' + item.title">{{ icon("trash-2") }}</button></td>
+                <td class="right nowrap">
+                  <button class="btn btn-sm" type="button" x-show="other.allowed && (other.target !== 'copy' || item.can_copy !== false)" @click="moveItem(item)" :disabled="busy"
+                          :title="'Chuyển sang ' + other.label" :aria-label="'Chuyển ' + item.title + ' sang ' + other.label">{{ icon("arrow-right") }} {{ "Sang phiếu sao chụp" if key == "usage" else "Sang phiếu sử dụng" }}</button>
+                  <button class="btn btn-sm btn-danger" type="button" @click="removeItem(item)" :disabled="busy" :aria-label="'Bỏ ' + item.title">{{ icon("trash-2") }}</button></td>
               </tr>
             </template>
           </tbody>
@@ -145,6 +155,9 @@
       <div class="empty" x-show="!items.length" x-cloak>{{ icon("inbox") }}<h3>Phiếu chưa có tài liệu nào</h3></div>
     </section>
 
+    {% if terms %}
+    <div class="alert alert-info">{{ icon("info") }}<div><strong>Trước khi gửi</strong><ul class="tight">{% for line in terms %}<li>{{ line }}</li>{% endfor %}</ul></div></div>
+    {% endif %}
     <div class="cluster-between no-print">
       <button class="btn btn-danger" type="button" @click="discard()" :disabled="busy">{{ icon("trash-2") }} Hủy bản nháp</button>
       <div class="cluster">

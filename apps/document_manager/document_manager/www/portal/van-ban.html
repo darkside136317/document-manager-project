@@ -1,5 +1,5 @@
 {% extends "templates/reader/base.html" %}
-{% from "templates/reader/macros.html" import icon, add_to_slip %}
+{% from "templates/reader/macros.html" import icon, add_to_slip, leader_badge %}
 
 {% block main %}{% autoescape true %}
 <ol class="breadcrumb">
@@ -15,8 +15,8 @@
   </div>
   <div class="cluster no-print" x-data>
     {% if can_download %}<a class="btn btn-primary" href="{{ preview.download_url }}">{{ icon("download") }} Tải tệp gốc</a>{% endif %}
-    {% if can_add.usage %}{{ add_to_slip("document", doc.name, "usage") }}{% endif %}
-    {% if can_add.copy %}{{ add_to_slip("document", doc.name, "copy") }}{% endif %}
+    {% if can_add.usage %}{{ add_to_slip("document", doc.name, "usage") }}{{ leader_badge(flags) }}{% endif %}
+    {% if can_add.copy %}{{ add_to_slip("document", doc.name, "copy", blocked="" if flags.can_copy is not defined or flags.can_copy else "Không được sao chụp tài liệu này (theo mức độ mật hoặc quy định của phông)") }}{% endif %}
   </div>
 </div>
 

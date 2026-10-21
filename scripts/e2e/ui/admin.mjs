@@ -8,8 +8,9 @@
 // its members; the log is filtered, downloaded and cleaned (only the three old rows ../accounts.py plants); nobody else gets in.
 import { chromium } from "playwright";
 import fs from "node:fs";
+import { navLink, navOffers } from "./nav.mjs";
 
-const PW = process.env.DM_E2E_PASSWORD || (() => { throw new Error("Set DM_E2E_PASSWORD"); })();
+const PW =process.env.DM_E2E_PASSWORD || (() => { throw new Error("Set DM_E2E_PASSWORD"); })();
 const OUT = process.env.OUT_DIR || "out";
 fs.mkdirSync(OUT, { recursive: true });
 const BASE = process.env.BASE_URL || "http://localhost:8888";
@@ -58,7 +59,8 @@ const searchUsers = async (text) => {
   await page.getByLabel("Tìm người dùng").fill(text);
   await page.waitForTimeout(900);
 };
-const staffAdminEntries = ["Người dùng", "Phân quyền", "Nhật ký hệ thống", "Giám sát hệ thống", "Thông tin đơn vị", "Cơ cấu tổ chức", "Nhóm cán bộ", "Thiết lập hệ thống"];
+const staffAdminEntries = ["Người dùng", "Phân quyền", "Cấu hình trường dữ liệu", "Nhật ký hệ thống", "Giám sát hệ thống", "Thông tin đơn vị",
+  "Cơ cấu tổ chức", "Nhóm cán bộ", "Thiết lập hệ thống"];
 
 const admin = await newContext();
 await loginOk(admin, "e2e.admin@example.com");
@@ -69,9 +71,13 @@ try {
   watch(page, "admin");
 
   await run("the administration menu lists the screens of an administrator", async () => {
+    // control for the "is not offered" checks of this suite: a link in a closed group is still counted
+    await page.goto(`${BASE}/dashboard`, { waitUntil: "networkidle" });
+    expect((await nav().getByRole("link", { name: "Người dùng", exact: true }).count()) === 0, "the administration group starts open");
+    expect((await navOffers(page, "Người dùng", { exact: true })) > 0, "a link in a closed group is not counted");
     await page.goto(`${BASE}/dashboard/quan-tri/nguoi-dung`, { waitUntil: "networkidle" });
     await visible(page.getByRole("heading", { name: "Người dùng", level: 1 }));
-    for (const label of staffAdminEntries) await visible(nav().getByRole("link", { name: label, exact: true }));
+    for (const label of staffAdminEntries) await navLink(page, label, { exact: true });
     await page.screenshot({ path: `${OUT}/admin_users.png` });
   });
 
@@ -128,9 +134,8 @@ try {
     await p.getByRole("button", { name: "Lưu mật khẩu và đăng nhập" }).click();
     await p.waitForURL(/\/(dashboard|portal)/);
     await p.goto(`${BASE}/dashboard`, { waitUntil: "networkidle" });
-    const sidebar = p.getByRole("navigation", { name: "Điều hướng chính" });
-    await visible(sidebar.getByRole("link", { name: "Biên mục hồ sơ, văn bản" }));
-    expect((await sidebar.getByRole("link", { name: "Người dùng", exact: true }).count()) === 0, "a cataloguer is offered the users");
+    await navLink(p, "Biên mục hồ sơ, văn bản");
+    expect((await navOffers(p, "Người dùng", { exact: true })) === 0, "a cataloguer is offered the users");
     await p.goto(`${BASE}/dashboard/quan-tri/nguoi-dung`, { waitUntil: "networkidle" });
     await visible(p.getByText(/không có quyền/i));
     await p.close();
@@ -350,8 +355,8 @@ try {
       page = await ctx.newPage();
       watch(page, who);
       await page.goto(`${BASE}/dashboard`, { waitUntil: "networkidle" });
-      for (const label of ["Người dùng", "Phân quyền", "Nhật ký hệ thống", "Giám sát hệ thống"]) {
-        expect((await nav().getByRole("link", { name: label, exact: true }).count()) === 0, `${label} is offered to a ${who}`);
+      for (const label of ["Người dùng", "Phân quyền", "Cấu hình trường dữ liệu", "Nhật ký hệ thống", "Giám sát hệ thống"]) {
+        expect((await navOffers(page, label, { exact: true })) === 0, `${label} is offered to a ${who}`);
       }
       for (const slug of ["nguoi-dung", "nhat-ky", "giam-sat", "phan-quyen"]) {
         await page.goto(`${BASE}/dashboard/quan-tri/${slug}`, { waitUntil: "networkidle" });
