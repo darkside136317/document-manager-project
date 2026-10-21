@@ -122,7 +122,8 @@ jobs:
             bench --site $SITE run-tests --app document_manager --module document_manager.tests.test_volume_guards &&
             bench --site $SITE run-tests --app document_manager --module document_manager.tests.test_permission_profiles &&
             bench --site $SITE run-tests --app document_manager --module document_manager.tests.test_staff_scope &&
-            bench --site $SITE run-tests --app document_manager --module document_manager.tests.test_fonds_access"
+            bench --site $SITE run-tests --app document_manager --module document_manager.tests.test_fonds_access &&
+            bench --site $SITE run-tests --app document_manager --module document_manager.tests.test_digitization"
       - name: Logs on failure
         if: failure()
         run: docker compose --env-file .env.dev logs --no-color --tail=200
