@@ -10,6 +10,7 @@
 // The archive data and the batches created for the run are removed at the end.
 import { chromium } from "playwright";
 import fs from "node:fs";
+import { navLink, navOffers } from "./nav.mjs";
 import path from "node:path";
 
 const PW = process.env.DM_E2E_PASSWORD || (() => { throw new Error("Set DM_E2E_PASSWORD"); })();
@@ -42,7 +43,6 @@ async function run(name, fn) {
 }
 const expect = (cond, msg) => { if (!cond) throw new Error(msg); };
 const visible = (locator, timeout = 10000) => locator.first().waitFor({ state: "visible", timeout });
-const nav = () => page.getByRole("navigation", { name: "Điều hướng chính" });
 
 async function login(context, email) {
   const response = await context.request.post(`${BASE}/api/method/login`, { form: { usr: email, pwd: PW } });
@@ -94,7 +94,7 @@ try {
 
   await run("the preservation menu and the overview of the backups", async () => {
     await page.goto(`${BASE}/dashboard/bao-quan/sao-luu`, { waitUntil: "networkidle" });
-    for (const label of ["Sao lưu", "Kiểm tra toàn vẹn", "Khôi phục"]) await visible(nav().getByRole("link", { name: label, exact: true }));
+    for (const label of ["Sao lưu", "Kiểm tra toàn vẹn", "Khôi phục"]) await navLink(page, label, { exact: true });
     await visible(page.getByRole("heading", { name: "Sao lưu", level: 1 }));
     for (const tile of ["Bản sao lưu gần nhất", "Sao lưu theo lịch", "Kho tệp sao lưu", "Dung lượng đĩa còn trống"]) await visible(page.getByText(tile));
     await page.screenshot({ path: `${OUT}/preservation_backups.png` });
@@ -223,7 +223,7 @@ try {
   watch(page, "cataloger");
   await run("a cataloguer has no preservation menu and cannot open its pages", async () => {
     await page.goto(`${BASE}/dashboard`, { waitUntil: "networkidle" });
-    expect((await nav().getByRole("link", { name: "Kiểm tra toàn vẹn" }).count()) === 0, "preservation is offered to a cataloguer");
+    expect((await navOffers(page, "Kiểm tra toàn vẹn")) === 0, "preservation is offered to a cataloguer");
     await page.goto(`${BASE}/dashboard/bao-quan/sao-luu`, { waitUntil: "networkidle" });
     await visible(page.getByText(/không có quyền/i));
   });
@@ -235,7 +235,7 @@ try {
   await run("a preservation officer has the preservation menu and no administration of users", async () => {
     await page.goto(`${BASE}/dashboard/bao-quan/sao-luu`, { waitUntil: "networkidle" });
     await visible(page.getByRole("heading", { name: "Sao lưu", level: 1 }));
-    expect((await nav().getByRole("link", { name: "Người dùng", exact: true }).count()) === 0, "a preserver is offered the users");
+    expect((await navOffers(page, "Người dùng", { exact: true })) === 0, "a preserver is offered the users");
     await page.goto(`${BASE}/dashboard/bao-quan/kiem-tra`, { waitUntil: "networkidle" });
     await visible(page.getByRole("row", { name: new RegExp(checkName) }));
   });

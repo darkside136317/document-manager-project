@@ -475,8 +475,12 @@ def preservation_and_administration(c, api):
     check("it holds no reader, no system account", not ({"e2e.reader@example.com", "e2e.noprofile@example.com", "Administrator", "Guest"} & names), str(sorted(names))[:200])
     check("the one asking is marked", any(r["name"] == "e2e.admin@example.com" and r["is_me"] for r in rows))
     status, body = c["admin"].json(api + "users.roles_info")
-    roles = {r["role"] for r in body.get("message", [])}
-    check("the roles offered are the five staff roles", status == 200 and roles == {"Document Admin", "Cataloger", "Reading Room Officer", "Archive Leader", "Preservation Officer"}, str(roles))
+    offered = body.get("message", [])
+    builtin = {r["role"] for r in offered if r.get("is_builtin")}  # groups made by an administrator may be offered too
+    check("the roles offered are the built-in staff roles", status == 200 and builtin == {
+        "Document Admin", "Cataloger", "Reading Room Officer", "Archive Leader", "Preservation Officer",
+        "Digitization Editor", "Digitization Reviewer"}, str(builtin))
+    check("no system role is ever offered", not ({"System Manager", "Administrator", "Reader", "Guest"} & {r["role"] for r in offered}))
     status, body = c["admin"].json(api + "users.role_matrix")
     sections = {s["section"] for s in body.get("message", {}).get("sections", [])}
     check("the role matrix has its sections", status == 200 and {"Biên mục", "Danh mục", "Bảo quản", "Quản trị"} <= sections, str(sections))

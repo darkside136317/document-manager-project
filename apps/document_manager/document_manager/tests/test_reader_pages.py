@@ -142,7 +142,7 @@ class TestReaderPages(IntegrationTestCase):
 
     # ---- public pages
     def test_public_pages_open_for_guests(self):
-        with self._org(org_name="Trung tâm RP"):
+        with self._org(org_name="Trung tâm RP", introduction="<p>Trung tâm lưu giữ tài liệu của tỉnh.</p>"):
             for path, marker in (("gioi-thieu", "Giới thiệu đơn vị"), ("lanh-dao", "Ban lãnh đạo"), ("co-cau", "Cơ cấu tổ chức"),
                                  ("lien-he", "Liên hệ"), ("huong-dan", "Hướng dẫn khai thác tài liệu"), ("", "Giới thiệu đơn vị")):
                 status, body = render(f"/{path}")
@@ -174,6 +174,7 @@ class TestReaderPages(IntegrationTestCase):
         self.assertNotIn("Người Ẩn", body)
         with self._org():
             self.assertIn("Chưa có thông tin lãnh đạo", render("/lanh-dao")[1])
+            self.assertNotIn("Giới thiệu đơn vị", render("/gioi-thieu")[1])  # no introduction yet: the section is left out
 
     def test_text_entered_by_staff_is_escaped_everywhere(self):
         leaders = [frappe._dict(idx=1, full_name=XSS, position=XSS, display_order=1, is_visible=1, photo="", bio=XSS)]

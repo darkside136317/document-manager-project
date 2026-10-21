@@ -117,7 +117,7 @@ try {
     await page.locator("#usr").fill("e2e.reader@example.com");
     await page.locator("#pwd").fill("không-đúng-mật-khẩu");
     await page.getByRole("button", { name: "Đăng nhập" }).last().click();
-    await visible(page.getByRole("alert").filter({ hasText: "Email hoặc mật khẩu không đúng" }));
+    await visible(page.getByRole("alert").filter({ hasText: "Thông tin đăng nhập không đúng" }));
   });
 
   await run("a visitor registers and is told the request is waiting", async () => {

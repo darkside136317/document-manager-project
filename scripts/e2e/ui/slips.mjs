@@ -10,8 +10,9 @@
 // created for the run is removed at the end (`accounts.py down` removes the reader created at the counter).
 import { chromium } from "playwright";
 import fs from "node:fs";
+import { navGroup, navLink, navOffers } from "./nav.mjs";
 
-const PW = process.env.DM_E2E_PASSWORD || (() => { throw new Error("Set DM_E2E_PASSWORD"); })();
+const PW =process.env.DM_E2E_PASSWORD || (() => { throw new Error("Set DM_E2E_PASSWORD"); })();
 const OUT = process.env.OUT_DIR || "out";
 fs.mkdirSync(OUT, { recursive: true });
 const BASE = process.env.BASE_URL || "http://localhost:8888";
@@ -99,14 +100,15 @@ try {
 
   await run("the sidebar counts what waits for the reading room", async () => {
     await page.goto(`${BASE}/dashboard`, { waitUntil: "networkidle" });
-    const link = page.getByRole("navigation", { name: "Điều hướng chính" }).getByRole("link", { name: /Phiếu yêu cầu sử dụng/ });
-    await visible(link);
+    // the closed group shows the sum of its counters; opened, each link shows its own
+    expect(/\d+/.test(await navGroup(page, "Khai thác tài liệu").textContent()), "no counter on the slips group");
+    const link = await navLink(page, /Phiếu yêu cầu sử dụng/);
     expect(/\d+/.test(await link.textContent()), "no counter next to the usage slips");
-    await visible(page.getByRole("navigation", { name: "Điều hướng chính" }).getByRole("link", { name: /Góp ý của độc giả/ }));
+    await navLink(page, /Góp ý của độc giả/);
   });
 
   await run("the queue opens on the reception tab and lists the new slips", async () => {
-    await page.getByRole("navigation", { name: "Điều hướng chính" }).getByRole("link", { name: /Phiếu yêu cầu sử dụng/ }).click();
+    await (await navLink(page, /Phiếu yêu cầu sử dụng/)).click();
     await visible(page.getByRole("tab", { name: /Chờ tiếp nhận/, selected: true }));
     await visible(page.getByRole("row", { name: new RegExp(usageNormal) }));
     await visible(page.getByRole("row", { name: new RegExp(usageSecret) }).getByText("Cần lãnh đạo"));
@@ -210,9 +212,8 @@ try {
   });
 
   await run("the leader has no reader management or settings in the sidebar", async () => {
-    const nav = page.getByRole("navigation", { name: "Điều hướng chính" });
-    expect((await nav.getByRole("link", { name: "Đăng ký độc giả" }).count()) === 0, "the leader sees the registrations");
-    await visible(nav.getByRole("link", { name: "Danh sách độc giả" }));
+    expect((await navOffers(page, "Đăng ký độc giả")) === 0, "the leader sees the registrations");
+    await navLink(page, "Danh sách độc giả");
     const response = await leaderCtx.request.post(`${API}.slips.renew`, { headers: headersOf(await csrfFrom(leaderCtx, "/dashboard")), data: { name: usageNormal } });
     expect(response.status() === 403, `a leader renewed a slip (${response.status()})`);
   });

@@ -178,13 +178,13 @@ class TestP0Hardening(IntegrationTestCase):
         frappe.delete_doc("Archival File", extra.name, force=True)
         self.assertEqual(frappe.db.get_value("Fonds", fonds, "total_files"), 2)
 
-    def test_deleting_a_document_releases_its_gridfs_files_after_commit(self):
+    def test_deleting_a_document_releases_its_stored_files_after_commit(self):
         frappe.set_user("Administrator")
         extra = frappe.get_doc({"doctype": "Archive Document", "document_title": "P0 blob",
                                 "archival_file": self.file_a, "gridfs_file_id": "abc123",
                                 "gridfs_preview_id": "def456"}).insert()
         with patch("document_manager.document_manager.doctype.archive_document.archive_document."
-                   "enqueue_delete_gridfs_files") as enqueue:
+                   "enqueue_delete_object_files") as enqueue:
             frappe.delete_doc("Archive Document", extra.name, force=True)
         enqueue.assert_any_call(["abc123"], "documents")
         enqueue.assert_any_call(["def456"], "previews")
