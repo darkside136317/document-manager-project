@@ -76,7 +76,7 @@ Tám phân hệ theo Phụ lục 03:
 | 8 | Quản trị | `api/users.py`, `api/permissions.py`, `api/logs.py`, `api/admin.py`, `services/permission_matrix.py` |
 
 Quy mô mã (ước lượng): 50 DocType, 117 endpoint API, 11 báo cáo, 27 phép kiểm tra toàn vẹn bằng SQL, 23 trang và khoảng 40 thành phần Vue,
-22 module test Python (484 test), 191 test vitest, 8 luồng Playwright.
+24 module test Python (509 test), 205 test vitest, 8 luồng Playwright.
 
 ## 2. Kiến trúc triển khai
 
@@ -172,7 +172,7 @@ document-manager-project/
 │   │   ├── templates/                      khung Jinja của trang độc giả, mẫu in báo cáo
 │   │   ├── public/                         css/js trang độc giả; staff/ = bundle SPA (sinh ra khi build)
 │   │   ├── fixtures/role.json              6 vai trò
-│   │   └── tests/                          22 module test tích hợp
+│   │   └── tests/                          24 module test tích hợp
 │   └── frontend/                           mã nguồn SPA cán bộ (Vue 3 + Vite)
 │       ├── src/{pages,components,lib}/     trang, thành phần, logic thuần
 │       └── tests/                          vitest
@@ -992,14 +992,19 @@ Các sự cố khi vận hành: [DEPLOYMENT.md](DEPLOYMENT.md#9-xử-lý-sự-c�
 
 | Lớp | Vị trí | Quy mô | Cách chạy |
 |---|---|---|---|
-| Tích hợp Python (Frappe) | `document_manager/tests/test_*.py` | 22 module, 484 test | `bench --site <site> run-tests --app document_manager --module document_manager.tests.test_<tên>` |
-| Đơn vị giao diện | `frontend/tests/*.test.js` | 191 test | `cd apps/document_manager/frontend && npm test` |
-| HTTP đầu-cuối | `scripts/e2e/e2e_http.py` | 497 kiểm tra (ma trận người dùng × API, địa chỉ cũ) | `DM_E2E_PASSWORD=… python scripts/e2e/e2e_http.py` |
+| Tích hợp Python (Frappe) | `document_manager/tests/test_*.py` | 24 module, 509 test | `bench --site <site> run-tests --app document_manager --module document_manager.tests.test_<tên>` |
+| Đơn vị giao diện | `frontend/tests/*.test.js` | 205 test | `cd apps/document_manager/frontend && npm test` |
+| HTTP đầu-cuối | `scripts/e2e/e2e_http.py` | 502 kiểm tra (ma trận người dùng × API, địa chỉ cũ) | `DM_E2E_PASSWORD=… python scripts/e2e/e2e_http.py` |
 | Trình duyệt | `scripts/e2e/ui/*.mjs` (Playwright) | 8 luồng, 126 bước | `DM_E2E_PASSWORD=… OUT_DIR=out node <luồng>.mjs` |
 | Hiệu năng | `scripts/perf/volume_check.py` | 1 triệu văn bản | trên site thử có tên bắt đầu bằng `perf` |
 
 Quy ước test Python: `IntegrationTestCase`, mỗi test trong savepoint và rollback; dữ liệu thử tự tạo trong test (`_seed_archive(...)`). Test chạm
 Custom DocPerm phải xóa cache quyền sau rollback. Không sửa JSON DocType khi đang chạy test trên stack dev (trình theo dõi sẽ `migrate` giữa chừng).
+
+Luồng trình duyệt tìm liên kết thanh bên qua `scripts/e2e/ui/nav.mjs`: thanh bên gom liên kết thành nhóm thu gọn, `navLink` mở nhóm trước khi
+tìm, `navOffers` đếm cả liên kết đang ẩn (dùng cho mọi kiểm tra "không được thấy menu").
+
+Danh mục đầy đủ các test case và kết quả lần chạy gần nhất: `docs/BAO_CAO_KIEM_THU.md`.
 
 Tài khoản thử cho kiểm thử đầu-cuối: `scripts/e2e/accounts.py up` trước, `down` sau (xóa tài khoản và mọi dữ liệu có tiền tố `E2E-`).
 
@@ -1007,7 +1012,7 @@ Tài khoản thử cho kiểm thử đầu-cuối: `scripts/e2e/accounts.py up` 
 
 1. *Static checks*: `compileall`, `ruff` (lỗi thật: E9, F63, F7, F82), JSON hợp lệ, cú pháp JS, `docker compose config` cho ba tổ hợp.
 2. *Staff UI*: vitest và build.
-3. *Frappe tests*: build image, tạo site sạch, `migrate`, chạy 22 module Python.
+3. *Frappe tests*: build image, tạo site sạch, `migrate`, chạy 23 module Python (mọi module trừ `test_object_storage`).
 4. *Build and publish image*: phát hành lên GHCR (chỉ `main` và tag).
 
 ## 17. Hướng dẫn mở rộng

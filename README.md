@@ -181,16 +181,17 @@ và **Độc giả → Thiết lập độc giả** (hạn mức phiếu, gia h�
 
 | Lớp | Quy mô | Cách chạy |
 |---|---|---|
-| Python (Frappe) | 484 test, 22 module | `$C exec backend bench --site <site> run-tests --app document_manager --module document_manager.tests.test_<tên>` (`C` như ví dụ dev ở trên) |
-| Giao diện cán bộ (vitest) | 191 test | `cd apps/document_manager/frontend && npm test` |
-| HTTP đầu-cuối | 497 kiểm tra, gồm ma trận quyền của mọi API | `DM_E2E_PASSWORD=… python scripts/e2e/e2e_http.py` |
+| Python (Frappe) | 509 test, 24 module | `$C exec backend bench --site <site> run-tests --app document_manager --module document_manager.tests.test_<tên>` (`C` như ví dụ dev ở trên) |
+| Giao diện cán bộ (vitest) | 205 test | `cd apps/document_manager/frontend && npm test` |
+| HTTP đầu-cuối | 502 kiểm tra, gồm ma trận quyền của mọi API | `DM_E2E_PASSWORD=… python scripts/e2e/e2e_http.py` |
 | Trình duyệt (Playwright) | 8 luồng, 126 bước | `scripts/e2e/ui/<luồng>.mjs` |
 | Hiệu năng | 1 triệu văn bản | `scripts/perf/volume_check.py` trên một site thử riêng |
 
 Kiểm thử đầu-cuối cần tài khoản thử: `scripts/e2e/accounts.py up` trước, `down` sau (xem đầu tệp).
+Danh mục mọi test case kèm kết quả lần chạy gần nhất: [docs/BAO_CAO_KIEM_THU.md](docs/BAO_CAO_KIEM_THU.md).
 
 CI (`.github/workflows/ci.yml`): kiểm tra tĩnh (biên dịch, ruff, JSON, cú pháp JS, compose) → vitest và build giao diện →
-build image, tạo site mới sạch, `migrate`, chạy toàn bộ 22 module Python → phát hành image lên GHCR.
+build image, tạo site mới sạch, `migrate`, chạy 23 module Python → phát hành image lên GHCR.
 
 ## Hiệu năng
 
