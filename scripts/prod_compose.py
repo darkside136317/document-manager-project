@@ -41,6 +41,8 @@ def main() -> int:
     ]
     if mode != "disabled":
         command.extend(["-f", "docker-compose.prod.minio.yml"])
+    if values.get("DATA_ROOT"):
+        command.extend(["-f", "docker-compose.prod.bind.yml"])
     command.extend(sys.argv[1:])
     # File values win over unrelated shell variables, including COMPOSE_PROFILES.
     environment = os.environ.copy()

@@ -96,6 +96,8 @@ class TestStaffApi(IntegrationTestCase):
         data = boot.get_staff_boot()
         slugs = {m["slug"] for m in data["masters"]}
         self.assertIn("tu-dien", slugs)
+        self.assertNotIn("muc-luc-tai-lieu", slugs)
+        self.assertIn("Catalog", {entry["doctype"] for entry in data["archive"]})
         self.assertEqual(data["user"]["name"], CATALOGER)
         self.assertTrue(any(g["group"] == "Danh mục" for g in data["nav"]))
         self.assertEqual(data["legacy"], [])  # every screen is in the staff app now

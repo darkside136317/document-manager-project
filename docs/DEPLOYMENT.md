@@ -58,6 +58,7 @@ Dev dùng `.env.dev` (từ `.env.dev.example`); production dùng `.env.prod`. M�
 | `FRAPPE_SITE_NAME` | Đúng hostname khách hàng đã trỏ DNS, ví dụ `hoso.abc.com.vn`; cũng là tên site Frappe |
 | `PUBLIC_URL` | `https://` + `FRAPPE_SITE_NAME`, ví dụ `https://hoso.abc.com.vn` |
 | `COMPOSE_PROJECT_NAME`, `DATA_VOLUME_PREFIX` | Tên riêng cho từng khách hàng trên cùng host; thay cả hai giá trị mẫu, tách container, network và volume dữ liệu |
+| `DATA_ROOT` | Thư mục dữ liệu trên host, ví dụ `/srv/docmanager`; để trống nếu muốn dùng Docker volume thông thường |
 | `ADMIN_PASSWORD`, `MARIADB_ROOT_PASSWORD`, `MEILISEARCH_MASTER_KEY` | Ba giá trị ngẫu nhiên **khác nhau**, mỗi giá trị có thể tạo bằng `openssl rand -hex 24` |
 | `MINIO_MODE`, `COMPOSE_PROFILES` | Mặc định `disabled`/rỗng để chỉ dùng Frappe; `auto`/`auto` để tự chạy MinIO; `manual`/rỗng để kết nối MinIO có sẵn |
 | `MINIO_ENDPOINT`, `MINIO_BUCKET` | `disabled`: endpoint rỗng; `auto`: `http://minio:9000` và `documents`; `manual`: URL nội bộ/TLS và tên bucket đã tạo |
@@ -69,6 +70,11 @@ Dev dùng `.env.dev` (từ `.env.dev.example`); production dùng `.env.prod`. M�
 
 Tên volume của dev mặc định là `docmanager_*`. `DATA_VOLUME_PREFIX` production phải khác, và phải giữ nguyên qua các lần cập nhật;
 đổi giá trị này sẽ khiến Compose gắn vào volume trống. Đổi `FRAPPE_SITE_NAME` sau khi tạo site cũng không tự đổi tên site cũ.
+Khi đặt `DATA_ROOT`, tạo trước các thư mục `db-data`, `redis-queue`, `sites`, `logs`, `meilisearch` và `minio` bên dưới thư mục này.
+Production nạp thêm `docker-compose.prod.bind.yml`: các volume dữ liệu vẫn được Docker khởi tạo nhưng nội dung nằm trực tiếp trong
+`DATA_ROOT` trên host. Giữ nguyên `DATA_ROOT` sau lần chạy đầu; đổi đường dẫn sẽ gắn vào thư mục dữ liệu khác.
+Các dịch vụ chạy liên tục, gồm Redis, dùng chính sách `restart: always`; Docker và reverse proxy trên host cũng cần được bật
+tự khởi động bằng systemd để web hoạt động trở lại sau reboot.
 Với `disabled`, giữ bốn khóa MinIO và `MINIO_ENDPOINT` rỗng như tệp mẫu. Để bật `auto`, đặt `MINIO_MODE=auto`,
 `COMPOSE_PROFILES=auto`, `MINIO_ENDPOINT=http://minio:9000`, `MINIO_BUCKET=documents` và điền bốn khóa MinIO.
 Để bật `manual`, dùng cấu hình dưới đây. Mọi lệnh production phải chạy qua `scripts/prod_compose.py` để chỉ nạp
@@ -137,6 +143,11 @@ Kiểm tra: `https://<tên-miền>/gioi-thieu` (trang công khai) và `https://<
 
 nginx trong compose chỉ lắng nghe trên `127.0.0.1:8080` của host. Đặt reverse proxy có TLS (Nginx, Traefik hoặc Caddy)
 phía trước. Với Nginx ngoài Docker trên cùng máy, thay `hoso.abc.com.vn` dưới đây bằng `FRAPPE_SITE_NAME` thật và cấp chứng chỉ TLS:
+
+Nếu truy cập trực tiếp qua EIP, đặt `FRAPPE_SITE_NAME` bằng IP và `PUBLIC_URL=https://<IP>` trước khi tạo site. Chứng chỉ
+Let's Encrypt cho IP chỉ có hiệu lực khoảng 6 ngày, nên cần Certbot hỗ trợ chứng chỉ IP và gia hạn tự động; mở inbound TCP
+80/443 trên security group. Đặt `/docs` và `/docs/dang-nhap` chuyển hướng đến `/dang-nhap` trong server HTTPS để có
+đường vào trang đăng nhập. Các trang ứng dụng tiếp tục dùng đường dẫn gốc như `/dashboard` và `/portal`.
 
 ```nginx
 server {

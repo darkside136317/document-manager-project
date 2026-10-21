@@ -30,8 +30,6 @@ GROUP_ADMIN = "Quản trị"
 MASTERS = [
     {"doctype": "Archival Agency", "slug": "co-quan-luu-tru", "label": "Cơ quan lưu trữ", "icon": "building-2"},
     {"doctype": "Fonds", "slug": "phong-luu-tru", "label": "Phông lưu trữ", "icon": "library"},
-    {"doctype": "Catalog", "slug": "muc-luc-tai-lieu", "label": "Mục lục tài liệu", "icon": "book-open-text",
-     "list_fields": ["catalog_title", "catalog_number", "record_group", "fonds"]},
     {"doctype": "Document Type Category", "slug": "loai-hinh-tai-lieu", "label": "Loại hình tài liệu", "icon": "file-type"},
     {"doctype": "Document Group", "slug": "nhom-tai-lieu", "label": "Nhóm tài liệu", "icon": "layers"},
     {"doctype": "Storage Warehouse", "slug": "kho-luu-tru", "label": "Kho, giá, hộp lưu trữ", "icon": "warehouse"},
@@ -49,6 +47,8 @@ DICTIONARY_LANGUAGE = "Ngôn ngữ"
 ARCHIVE_SCREENS = [
     {"doctype": "Record Group", "slug": "khoi-tai-lieu", "label": "Khối tài liệu", "icon": "layers",
      "list_fields": ["group_title", "group_code", "fonds", "status"]},
+    {"doctype": "Catalog", "slug": "muc-luc-tai-lieu", "label": "Mục lục tài liệu", "icon": "book-open-text",
+     "list_fields": ["catalog_title", "catalog_number", "record_group", "fonds"]},
     {"doctype": "Archival File", "slug": "ho-so", "label": "Hồ sơ lưu trữ", "icon": "folder",
      "list_fields": ["file_number", "file_title", "catalog", "status", "confidentiality_level", "total_documents"],
      "search_fields": ["file_title", "file_number"]},

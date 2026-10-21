@@ -1,0 +1,40 @@
+# Optional production overlay: keep persistent Docker volumes in DATA_ROOT on
+# the host. Retaining volume mounts lets Docker initialize image contents in a
+# new sites volume, as it does with a regular named volume.
+volumes:
+  db-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${DATA_ROOT:?Set DATA_ROOT to an absolute host directory}/db-data
+  redis-queue-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${DATA_ROOT:?Set DATA_ROOT to an absolute host directory}/redis-queue
+  sites:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${DATA_ROOT:?Set DATA_ROOT to an absolute host directory}/sites
+  logs:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${DATA_ROOT:?Set DATA_ROOT to an absolute host directory}/logs
+  meilisearch-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${DATA_ROOT:?Set DATA_ROOT to an absolute host directory}/meilisearch
+  minio-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${DATA_ROOT:?Set DATA_ROOT to an absolute host directory}/minio

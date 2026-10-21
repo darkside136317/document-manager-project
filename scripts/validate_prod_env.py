@@ -61,6 +61,16 @@ def validate(path: Path) -> list[str]:
     if not IDENTIFIER.fullmatch(project) or project in ("docker", "docmanager_customer"):
         issues.append("COMPOSE_PROJECT_NAME must uniquely identify this customer deployment")
 
+    data_root = values.get("DATA_ROOT", "")
+    if data_root:
+        root_path = Path(data_root)
+        if not root_path.is_absolute() or root_path == Path("/") or ".." in root_path.parts:
+            issues.append("DATA_ROOT must be an absolute host directory outside the source tree")
+        elif path.resolve().parents[1] in (root_path.resolve(), *root_path.resolve().parents):
+            issues.append("DATA_ROOT must be outside the source tree")
+        elif not root_path.is_dir():
+            issues.append("Create DATA_ROOT on the host before deployment")
+
     port = values.get("HTTP_PUBLISH_PORT", "")
     match = PORT.fullmatch(port)
     if not match or int(match.group(1)) > 65535:

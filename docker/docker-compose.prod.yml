@@ -22,10 +22,10 @@ services:
   frontend:
     image: docmanager-custom:${ERPNEXT_VERSION:?}
     restart: always
-    # The sites volume contains private uploads on the host SSD. Nginx only
-    # needs read access; backend and workers retain write access in the base file.
+    # nginx-entrypoint.sh refreshes sites/assets at startup, so this mount must
+    # be writable even though Nginx serves files from it afterward.
     volumes:
-      - sites:/home/frappe/frappe-bench/sites:ro
+      - sites:/home/frappe/frappe-bench/sites
     ports:
       - "${HTTP_PUBLISH_PORT:-127.0.0.1:8080}:8080"
     deploy:
@@ -68,6 +68,12 @@ services:
       resources:
         limits:
           memory: 2G
+
+  redis-cache:
+    restart: always
+
+  redis-queue:
+    restart: always
 
   meilisearch:
     # Search index persists on the named volume from the base Compose file.

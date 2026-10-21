@@ -27,6 +27,7 @@ import SearchPage from "./pages/SearchPage.vue";
 export const routes = [
   { path: "/", name: "home", component: DashboardHome, meta: { title: "Tổng quan" } },
   { path: "/bien-muc", name: "archive", component: ArchiveBrowser, meta: { title: "Biên mục hồ sơ, văn bản" } },
+  { path: "/danh-muc/muc-luc-tai-lieu", redirect: "/bien-muc" },
   { path: "/so-hoa/jobs/:id", name: "ai-job", component: AiJobPage, meta: { title: "Kết quả AI bóc tách" } },
   { path: "/ho-so/:name", name: "file", component: FilePage, meta: { title: "Hồ sơ" } },
   { path: "/van-ban/:name", name: "document", component: DocumentPage, meta: { title: "Văn bản" } },
